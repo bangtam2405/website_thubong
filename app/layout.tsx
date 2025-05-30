@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   title: "Thú Bông Xinh - Thiết Kế Thú Nhồi Bông Tùy Chỉnh",
   description:
     "Thiết kế thú nhồi bông tùy chỉnh của riêng bạn với công cụ tương tác. Chọn tai, mắt, màu lông, quần áo và nhiều hơn nữa!",
-    generator: 'v0.dev'
+  generator: "v0.dev",
 }
 
 export default function RootLayout({
@@ -21,9 +21,10 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="vi">
-      <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="light">
+    
+    <html lang="vi" className={inter.className} suppressHydrationWarning>
+      <body>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <div className="flex flex-col min-h-screen">
             <Header />
             <main className="flex-grow">{children}</main>

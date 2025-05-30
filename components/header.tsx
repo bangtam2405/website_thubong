@@ -231,7 +231,7 @@ export default function Header() {
                   />
                 </svg>
               </div>
-              <span className="text-base font-medium text-pink-500">093.377.6616</span>
+              <span className="text-base font-medium text-pink-500">078.123.456</span>
             </div>
           </div>
         </div>

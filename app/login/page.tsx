@@ -17,22 +17,73 @@ export default function AuthPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    // Giả lập API call
-    setTimeout(() => {
-      setIsLoading(false)
-      // Trong ứng dụng thực tế, điều này sẽ chuyển hướng đến trang chủ hoặc bảng điều khiển
-    }, 1500)
+
+    const email = (document.getElementById("email") as HTMLInputElement).value
+    const password = (document.getElementById("password") as HTMLInputElement).value
+
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        localStorage.setItem("token", data.token)
+        // Nếu backend trả user thì lưu, không thì bỏ dòng này
+        if (data.user) localStorage.setItem("user", JSON.stringify(data.user))
+        alert("Đăng nhập thành công!")
+        window.location.href = "/" 
+      } else {
+        // Backend của bạn trả về lỗi trong trường msg hoặc errors
+        alert(data.msg || (data.errors && data.errors[0].msg) || "Lỗi đăng nhập")
+      }
+    } catch (err) {
+      alert("Lỗi kết nối server")
+    }
+
+    setIsLoading(false)
   }
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    // Giả lập API call
-    setTimeout(() => {
+
+    const name = (document.getElementById("name") as HTMLInputElement).value
+    const email = (document.getElementById("register-email") as HTMLInputElement).value
+    const password = (document.getElementById("register-password") as HTMLInputElement).value
+    const confirm = (document.getElementById("confirm-password") as HTMLInputElement).value
+
+    if (password !== confirm) {
+      alert("Mật khẩu xác nhận không khớp")
       setIsLoading(false)
-      // Trong ứng dụng thực tế, điều này sẽ chuyển hướng đến trang chủ hoặc bảng điều khiển
-    }, 1500)
+      return
+    }
+
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: name, email, password }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        alert("Đăng ký thành công")
+        // Bạn có thể thêm chuyển sang tab login hoặc tự động đăng nhập
+      } else {
+        alert(data.msg || (data.errors && data.errors[0].msg) || "Lỗi không xác định")
+      }
+    } catch (err) {
+      alert("Lỗi kết nối server")
+    }
+
+    setIsLoading(false)
   }
+
 
   return (
     <div className="container flex items-center justify-center min-h-[calc(100vh-200px)] py-12">

@@ -13,7 +13,7 @@ import { Download, Heart, Save, ShoppingCart, Undo, Redo, Camera } from "lucide-
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useToast } from "@/components/ui/use-toast"
 
-// Định nghĩa kiểu dữ liệu cho các tùy chọn tùy chỉnh
+
 interface CustomizationOption {
   id: string
   name: string
@@ -21,7 +21,7 @@ interface CustomizationOption {
   price?: number
 }
 
-// Dữ liệu mẫu cho các tùy chọn tùy chỉnh
+
 const bodyOptions: CustomizationOption[] = [
   { id: "body1", name: "Gấu Truyền Thống", image: "/placeholder.svg?height=100&width=100" },
   { id: "body2", name: "Thỏ", image: "/placeholder.svg?height=100&width=100" },
