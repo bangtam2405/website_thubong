@@ -1,9 +1,11 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
+import React, { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import axios from "axios"
+import jwt_decode from "jwt-decode"
+
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -13,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -22,29 +25,33 @@ export default function AuthPage() {
     const password = (document.getElementById("password") as HTMLInputElement).value
 
     try {
-      const res = await fetch("http://localhost:5000/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+      const response = await axios.post("http://localhost:5000/api/auth/login", {
+        email,
+        password,
       })
 
-      const data = await res.json()
+      const { token } = response.data
+      localStorage.setItem("token", token)
 
-      if (res.ok) {
-        localStorage.setItem("token", data.token)
-        // Nếu backend trả user thì lưu, không thì bỏ dòng này
-        if (data.user) localStorage.setItem("user", JSON.stringify(data.user))
-        alert("Đăng nhập thành công!")
-        window.location.href = "/" 
+      // Decode token để lấy role (giả sử backend trả role trong token)
+      const decoded: any = jwt_decode(token)
+      const role = decoded.role
+      localStorage.setItem("role", role)
+
+      alert("Đăng nhập thành công!")
+
+      // Chuyển hướng theo role
+      if (role === "admin") {
+        router.push("/admin")
       } else {
-        // Backend của bạn trả về lỗi trong trường msg hoặc errors
-        alert(data.msg || (data.errors && data.errors[0].msg) || "Lỗi đăng nhập")
+        router.push("/")
       }
-    } catch (err) {
-      alert("Lỗi kết nối server")
+    } catch (error: any) {
+      const msg = error?.response?.data?.msg || "Lỗi đăng nhập"
+      alert(msg)
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -63,27 +70,20 @@ export default function AuthPage() {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: name, email, password }),
+      const res = await axios.post("http://localhost:5000/api/auth/register", {
+        username: name,
+        email,
+        password,
       })
 
-      const data = await res.json()
-
-      if (res.ok) {
-        alert("Đăng ký thành công")
-        // Bạn có thể thêm chuyển sang tab login hoặc tự động đăng nhập
-      } else {
-        alert(data.msg || (data.errors && data.errors[0].msg) || "Lỗi không xác định")
-      }
-    } catch (err) {
-      alert("Lỗi kết nối server")
+      alert("Đăng ký thành công, bạn có thể đăng nhập!")
+    } catch (err: any) {
+      const msg = err?.response?.data?.msg || "Lỗi đăng ký"
+      alert(msg)
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
-
 
   return (
     <div className="container flex items-center justify-center min-h-[calc(100vh-200px)] py-12">

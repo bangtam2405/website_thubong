@@ -38,14 +38,6 @@ const orders = [
     items: 3,
   },
   {
-    id: "ORD-004",
-    customer: "Phạm Thị D",
-    date: "12/05/2023",
-    status: "pending",
-    total: 45.99,
-    items: 1,
-  },
-  {
     id: "ORD-005",
     customer: "Hoàng Văn E",
     date: "11/05/2023",
@@ -79,14 +71,6 @@ const accessories = [
     category: "Phụ Kiện",
     price: 5.99,
     stock: 28,
-    image: "/placeholder.svg?height=50&width=50",
-  },
-  {
-    id: "BODY-001",
-    name: "Thân Gấu Truyền Thống",
-    category: "Thân",
-    price: 12.99,
-    stock: 50,
     image: "/placeholder.svg?height=50&width=50",
   },
   {
@@ -141,6 +125,7 @@ export default function AdminDashboard() {
       <h1 className="text-3xl font-bold mb-8">Bảng Điều Khiển Quản Trị</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        {/* Tổng đơn hàng */}
         <Card>
           <CardContent className="flex flex-col items-center justify-center p-6">
             <div className="bg-pink-100 p-3 rounded-full mb-4">
@@ -152,6 +137,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
+        {/* Tổng khách hàng */}
         <Card>
           <CardContent className="flex flex-col items-center justify-center p-6">
             <div className="bg-blue-100 p-3 rounded-full mb-4">
@@ -163,6 +149,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
+        {/* Doanh thu */}
         <Card>
           <CardContent className="flex flex-col items-center justify-center p-6">
             <div className="bg-green-100 p-3 rounded-full mb-4">
@@ -174,6 +161,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
+        {/* Kho hàng */}
         <Card>
           <CardContent className="flex flex-col items-center justify-center p-6">
             <div className="bg-yellow-100 p-3 rounded-full mb-4">
@@ -187,11 +175,13 @@ export default function AdminDashboard() {
       </div>
 
       <Tabs defaultValue="orders">
-        <TabsList className="mb-6">
+        <TabsList className="mb-6 flex flex-wrap gap-2">
           <TabsTrigger value="orders">Đơn Hàng</TabsTrigger>
           <TabsTrigger value="inventory">Kho Hàng</TabsTrigger>
+          <TabsTrigger value="categories">Danh Mục</TabsTrigger>
         </TabsList>
 
+        {/* Tab Đơn Hàng */}
         <TabsContent value="orders">
           <Card>
             <CardHeader>
@@ -229,44 +219,34 @@ export default function AdminDashboard() {
                     <TableHead>Khách Hàng</TableHead>
                     <TableHead>Ngày</TableHead>
                     <TableHead>Trạng Thái</TableHead>
+                    <TableHead>Tổng Tiền</TableHead>
                     <TableHead>Số Lượng</TableHead>
-                    <TableHead className="text-right">Tổng Tiền</TableHead>
-                    <TableHead className="text-right">Thao Tác</TableHead>
+                    <TableHead>Thao Tác</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredOrders.map((order) => (
                     <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.id}</TableCell>
+                      <TableCell>{order.id}</TableCell>
                       <TableCell>{order.customer}</TableCell>
                       <TableCell>{order.date}</TableCell>
                       <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={
-                            order.status === "delivered"
-                              ? "bg-green-100 text-green-800 hover:bg-green-100"
-                              : order.status === "shipped"
-                                ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
-                                : order.status === "processing"
-                                  ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
-                                  : "bg-gray-100 text-gray-800 hover:bg-gray-100"
-                          }
-                        >
+                        <Badge variant="outline" className="capitalize">
                           {getStatusText(order.status)}
                         </Badge>
                       </TableCell>
+                      <TableCell>{order.total.toFixed(2)}$</TableCell>
                       <TableCell>{order.items}</TableCell>
-                      <TableCell className="text-right">{order.total.toFixed(2)}$</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon">
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        </div>
+                      <TableCell>
+                        <Button variant="ghost" size="sm" className="mr-2" aria-label="Xem">
+                          <Eye />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="mr-2" aria-label="Sửa">
+                          <Edit />
+                        </Button>
+                        <Button variant="ghost" size="sm" color="destructive" aria-label="Xóa">
+                          <Trash2 />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -276,89 +256,75 @@ export default function AdminDashboard() {
           </Card>
         </TabsContent>
 
+        {/* Tab Kho Hàng */}
         <TabsContent value="inventory">
           <Card>
             <CardHeader>
-              <CardTitle>Quản Lý Kho Hàng</CardTitle>
-              <CardDescription>Quản lý phụ kiện, thân và các thành phần khác</CardDescription>
-              <div className="flex flex-col sm:flex-row gap-4 mt-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                  <Input
-                    placeholder="Tìm kiếm kho hàng..."
-                    className="pl-8"
-                    value={searchAccessories}
-                    onChange={(e) => setSearchAccessories(e.target.value)}
-                  />
-                </div>
-                <Button className="w-full sm:w-auto">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Thêm Mặt Hàng Mới
-                </Button>
+              <CardTitle>Kho Hàng</CardTitle>
+              <CardDescription>Quản lý mặt hàng trong kho</CardDescription>
+              <div className="mt-4 relative w-full max-w-sm">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                <Input
+                  placeholder="Tìm kiếm mặt hàng..."
+                  className="pl-8"
+                  value={searchAccessories}
+                  onChange={(e) => setSearchAccessories(e.target.value)}
+                />
               </div>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Mã Sản Phẩm</TableHead>
                     <TableHead>Hình Ảnh</TableHead>
-                    <TableHead>Mã</TableHead>
-                    <TableHead>Tên</TableHead>
-                    <TableHead>Danh Mục</TableHead>
+                    <TableHead>Tên Sản Phẩm</TableHead>
+                    <TableHead>Loại</TableHead>
                     <TableHead>Giá</TableHead>
                     <TableHead>Tồn Kho</TableHead>
-                    <TableHead className="text-right">Thao Tác</TableHead>
+                    <TableHead>Thao Tác</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredAccessories.map((item) => (
                     <TableRow key={item.id}>
+                      <TableCell>{item.id}</TableCell>
                       <TableCell>
                         <Image
-                          src={item.image || "/placeholder.svg"}
+                          src={item.image}
                           alt={item.name}
-                          width={40}
-                          height={40}
+                          width={50}
+                          height={50}
                           className="rounded-md"
                         />
                       </TableCell>
-                      <TableCell className="font-medium">{item.id}</TableCell>
                       <TableCell>{item.name}</TableCell>
                       <TableCell>{item.category}</TableCell>
                       <TableCell>{item.price.toFixed(2)}$</TableCell>
+                      <TableCell>{item.stock}</TableCell>
                       <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={
-                            item.stock > 30
-                              ? "bg-green-100 text-green-800 hover:bg-green-100"
-                              : item.stock > 10
-                                ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
-                                : "bg-red-100 text-red-800 hover:bg-red-100"
-                          }
-                        >
-                          {item.stock}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <Button variant="ghost" size="sm" className="mr-2" aria-label="Xem">
+                          <Eye />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="mr-2" aria-label="Sửa">
+                          <Edit />
+                        </Button>
+                        <Button variant="ghost" size="sm" color="destructive" aria-label="Xóa">
+                          <Trash2 />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab Danh Mục */}
+        <TabsContent value="categories">
+          <Card className="text-center p-20">
+            <p>Chưa có dữ liệu cho tab Danh Mục</p>
           </Card>
         </TabsContent>
       </Tabs>
