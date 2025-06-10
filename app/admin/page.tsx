@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Eye, Download, Plus, Search, Trash2, Edit, BarChart3, ShoppingBag, Users, Settings } from "lucide-react"
 import Image from "next/image"
+import axios from "axios"
+import { useRouter } from "next/navigation"
 
 // Dữ liệu mẫu cho đơn hàng
 const orders = [
@@ -20,22 +22,6 @@ const orders = [
     status: "processing",
     total: 42.99,
     items: 1,
-  },
-  {
-    id: "ORD-002",
-    customer: "Trần Thị B",
-    date: "14/05/2023",
-    status: "shipped",
-    total: 89.98,
-    items: 2,
-  },
-  {
-    id: "ORD-003",
-    customer: "Lê Văn C",
-    date: "13/05/2023",
-    status: "delivered",
-    total: 129.97,
-    items: 3,
   },
   {
     id: "ORD-005",
@@ -83,170 +69,89 @@ const accessories = [
   },
 ]
 
+// Hàm lấy tất cả _id con/cháu của 1 danh mục cha
+function getAllDescendantIds(categories: any[], parentId: any): any[] {
+  const directChildren = categories.filter((cat: any) => cat.parent === parentId);
+  let all = directChildren.map((cat: any) => cat._id);
+  for (const child of directChildren) {
+    all = all.concat(getAllDescendantIds(categories, child._id));
+  }
+  return all;
+}
+
+// Hàm lấy các con trực tiếp của 1 parent
+function getChildren(categories: any[], parentId: any): any[] {
+  return categories.filter((cat: any) => cat.parent === parentId);
+}
+
 export default function AdminDashboard() {
-  const [searchOrders, setSearchOrders] = useState("")
-  const [searchAccessories, setSearchAccessories] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
+  const [categories, setCategories] = useState<any[]>([])
+  const [orders, setOrders] = useState<any[]>([])
+  const [search, setSearch] = useState("")
+  const [categoryFilter, setCategoryFilter] = useState("all")
+  const router = useRouter()
 
-  // Lọc đơn hàng dựa trên tìm kiếm và trạng thái
-  const filteredOrders = orders.filter((order) => {
-    const matchesSearch =
-      order.id.toLowerCase().includes(searchOrders.toLowerCase()) ||
-      order.customer.toLowerCase().includes(searchOrders.toLowerCase())
-    const matchesStatus = statusFilter === "all" || order.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
+  useEffect(() => {
+    axios.get("http://localhost:5000/api/categories").then(res => setCategories(res.data))
+    axios.get("http://localhost:5000/api/orders").then(res => setOrders(res.data))
+  }, [])
 
-  // Lọc phụ kiện dựa trên tìm kiếm
-  const filteredAccessories = accessories.filter(
-    (accessory) =>
-      accessory.name.toLowerCase().includes(searchAccessories.toLowerCase()) ||
-      accessory.category.toLowerCase().includes(searchAccessories.toLowerCase()),
-  )
+  const mainCategories = categories.filter(cat => cat.parent === null)
+  const options = categories.filter(cat => cat.parent && cat.parent !== null)
 
-  // Chuyển đổi trạng thái sang tiếng Việt
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "Chờ Xử Lý"
-      case "processing":
-        return "Đang Xử Lý"
-      case "shipped":
-        return "Đã Gửi"
-      case "delivered":
-        return "Đã Giao"
-      default:
-        return status
-    }
+  let filteredOptions = options;
+  if (categoryFilter !== "all") {
+    const descendantIds = getAllDescendantIds(categories, categoryFilter);
+    filteredOptions = options.filter(opt =>
+      (descendantIds.includes(opt.parent) || opt.parent === categoryFilter) &&
+      (opt.name?.toLowerCase().includes(search.toLowerCase()))
+    );
+  } else {
+    filteredOptions = options.filter(opt =>
+      opt.name?.toLowerCase().includes(search.toLowerCase())
+    );
   }
 
   return (
     <div className="container mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold mb-8">Bảng Điều Khiển Quản Trị</h1>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        {/* Tổng đơn hàng */}
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center p-6">
-            <div className="bg-pink-100 p-3 rounded-full mb-4">
-              <ShoppingBag className="h-8 w-8 text-pink-500" />
-            </div>
-            <CardTitle className="text-xl mb-1">Đơn Hàng</CardTitle>
-            <p className="text-3xl font-bold">{orders.length}</p>
-            <p className="text-sm text-gray-500">Tổng Đơn Hàng</p>
-          </CardContent>
-        </Card>
-
-        {/* Tổng khách hàng */}
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center p-6">
-            <div className="bg-blue-100 p-3 rounded-full mb-4">
-              <Users className="h-8 w-8 text-blue-500" />
-            </div>
-            <CardTitle className="text-xl mb-1">Khách Hàng</CardTitle>
-            <p className="text-3xl font-bold">120</p>
-            <p className="text-sm text-gray-500">Người Dùng Đã Đăng Ký</p>
-          </CardContent>
-        </Card>
-
-        {/* Doanh thu */}
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center p-6">
-            <div className="bg-green-100 p-3 rounded-full mb-4">
-              <BarChart3 className="h-8 w-8 text-green-500" />
-            </div>
-            <CardTitle className="text-xl mb-1">Doanh Thu</CardTitle>
-            <p className="text-3xl font-bold">4,289$</p>
-            <p className="text-sm text-gray-500">Tháng Này</p>
-          </CardContent>
-        </Card>
-
-        {/* Kho hàng */}
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center p-6">
-            <div className="bg-yellow-100 p-3 rounded-full mb-4">
-              <Settings className="h-8 w-8 text-yellow-500" />
-            </div>
-            <CardTitle className="text-xl mb-1">Kho Hàng</CardTitle>
-            <p className="text-3xl font-bold">{accessories.length}</p>
-            <p className="text-sm text-gray-500">Mặt Hàng Trong Kho</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Tabs defaultValue="orders">
-        <TabsList className="mb-6 flex flex-wrap gap-2">
+      <Tabs defaultValue="inventory">
+        <TabsList className="mb-6 flex gap-2">
           <TabsTrigger value="orders">Đơn Hàng</TabsTrigger>
           <TabsTrigger value="inventory">Kho Hàng</TabsTrigger>
-          <TabsTrigger value="categories">Danh Mục</TabsTrigger>
         </TabsList>
 
-        {/* Tab Đơn Hàng */}
+        {/* Đơn Hàng */}
         <TabsContent value="orders">
           <Card>
             <CardHeader>
               <CardTitle>Quản Lý Đơn Hàng</CardTitle>
-              <CardDescription>Xem và quản lý đơn hàng của khách hàng</CardDescription>
-              <div className="flex flex-col sm:flex-row gap-4 mt-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                  <Input
-                    placeholder="Tìm kiếm đơn hàng..."
-                    className="pl-8"
-                    value={searchOrders}
-                    onChange={(e) => setSearchOrders(e.target.value)}
-                  />
-                </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Lọc theo trạng thái" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tất Cả Trạng Thái</SelectItem>
-                    <SelectItem value="pending">Chờ Xử Lý</SelectItem>
-                    <SelectItem value="processing">Đang Xử Lý</SelectItem>
-                    <SelectItem value="shipped">Đã Gửi</SelectItem>
-                    <SelectItem value="delivered">Đã Giao</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <CardDescription>Xem, cập nhật trạng thái, xem chi tiết thiết kế</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Mã Đơn Hàng</TableHead>
+                    <TableHead>Mã Đơn</TableHead>
                     <TableHead>Khách Hàng</TableHead>
                     <TableHead>Ngày</TableHead>
                     <TableHead>Trạng Thái</TableHead>
-                    <TableHead>Tổng Tiền</TableHead>
-                    <TableHead>Số Lượng</TableHead>
+                    <TableHead>Tổng</TableHead>
                     <TableHead>Thao Tác</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredOrders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell>{order.id}</TableCell>
-                      <TableCell>{order.customer}</TableCell>
+                  {orders.map(order => (
+                    <TableRow key={order._id}>
+                      <TableCell>{order.code}</TableCell>
+                      <TableCell>{order.customerName}</TableCell>
                       <TableCell>{order.date}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="capitalize">
-                          {getStatusText(order.status)}
-                        </Badge>
+                        <Badge>{order.status}</Badge>
                       </TableCell>
-                      <TableCell>{order.total.toFixed(2)}$</TableCell>
-                      <TableCell>{order.items}</TableCell>
+                      <TableCell>{order.total}$</TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="sm" className="mr-2" aria-label="Xem">
-                          <Eye />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="mr-2" aria-label="Sửa">
-                          <Edit />
-                        </Button>
-                        <Button variant="ghost" size="sm" color="destructive" aria-label="Xóa">
-                          <Trash2 />
-                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => {/* Xem chi tiết */}}><Edit /></Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -256,75 +161,101 @@ export default function AdminDashboard() {
           </Card>
         </TabsContent>
 
-        {/* Tab Kho Hàng */}
+        {/* Kho Hàng */}
         <TabsContent value="inventory">
           <Card>
-            <CardHeader>
-              <CardTitle>Kho Hàng</CardTitle>
-              <CardDescription>Quản lý mặt hàng trong kho</CardDescription>
-              <div className="mt-4 relative w-full max-w-sm">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                <Input
-                  placeholder="Tìm kiếm mặt hàng..."
-                  className="pl-8"
-                  value={searchAccessories}
-                  onChange={(e) => setSearchAccessories(e.target.value)}
-                />
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Kho Hàng</CardTitle>
+                <CardDescription>Quản lý toàn bộ phụ kiện, bộ phận, tồn kho, giá, hình ảnh...</CardDescription>
+              </div>
+              <div className="flex flex-wrap gap-4 mb-4">
+                <Input placeholder="Tìm kiếm sản phẩm..." value={search} onChange={e => setSearch(e.target.value)} />
+                <select
+                  className="border rounded px-2 py-1"
+                  value={categoryFilter}
+                  onChange={e => setCategoryFilter(e.target.value)}
+                >
+                  <option value="all">Tất cả danh mục</option>
+                  {mainCategories.map(cat => (
+                    <option key={cat._id} value={cat._id}>{cat.name}</option>
+                  ))}
+                </select>
+                <Button className="ml-auto" onClick={() => router.push("/admin/category")}> <Plus className="w-4 h-4 mr-2" /> Thêm danh mục </Button>
               </div>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Mã Sản Phẩm</TableHead>
-                    <TableHead>Hình Ảnh</TableHead>
-                    <TableHead>Tên Sản Phẩm</TableHead>
-                    <TableHead>Loại</TableHead>
-                    <TableHead>Giá</TableHead>
-                    <TableHead>Tồn Kho</TableHead>
-                    <TableHead>Thao Tác</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredAccessories.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>{item.id}</TableCell>
-                      <TableCell>
-                        <Image
-                          src={item.image}
-                          alt={item.name}
-                          width={50}
-                          height={50}
-                          className="rounded-md"
-                        />
-                      </TableCell>
-                      <TableCell>{item.name}</TableCell>
-                      <TableCell>{item.category}</TableCell>
-                      <TableCell>{item.price.toFixed(2)}$</TableCell>
-                      <TableCell>{item.stock}</TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm" className="mr-2" aria-label="Xem">
-                          <Eye />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="mr-2" aria-label="Sửa">
-                          <Edit />
-                        </Button>
-                        <Button variant="ghost" size="sm" color="destructive" aria-label="Xóa">
-                          <Trash2 />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              {/* Hiển thị dạng group phân cấp */}
+              {mainCategories
+                .filter(cat => categoryFilter === "all" || cat._id === categoryFilter)
+                .map(parent => (
+                  <div key={parent._id} className="mb-10 bg-white rounded-xl shadow p-6">
+                    <h2 className="text-2xl font-bold mb-4 text-pink-600">{parent.name}</h2>
+                    {/* Lặp qua các con trực tiếp của parent */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                      {getChildren(categories, parent._id).map(child => (
+                        <div key={child._id} className="bg-pink-50 rounded-lg p-4 shadow flex flex-col">
+                          <div className="font-semibold text-lg mb-2 text-pink-700">{child.name}</div>
+                          {/* Nếu child lại có con, lặp tiếp */}
+                          {getChildren(categories, child._id).length > 0 ? (
+                            <div className="grid grid-cols-1 gap-3">
+                              {getChildren(categories, child._id).map(grandchild => (
+                                <div key={grandchild._id} className="flex items-center gap-3 border rounded p-2 bg-white">
+                                  <Image src={grandchild.image || '/placeholder.svg'} alt={grandchild.name} width={48} height={48} className="rounded" />
+                                  <div className="flex-1">
+                                    <div className="font-medium">{grandchild.name}</div>
+                                    <div className="text-xs text-gray-500">Giá: {grandchild.price ? grandchild.price + '$' : '---'}</div>
+                                  </div>
+                                  <Button size="icon" variant="ghost" onClick={() => router.push(`/admin/edit-product/${grandchild._id}`)}><Edit /></Button>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    onClick={async () => {
+                                      if (window.confirm("Bạn có chắc chắn muốn xóa?")) {
+                                        await axios.delete(`http://localhost:5000/api/categories/${grandchild._id}`)
+                                        const res = await axios.get("http://localhost:5000/api/categories")
+                                        setCategories(res.data)
+                                      }
+                                    }}
+                                  >
+                                    <Trash2 />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-3 border rounded p-2 bg-white">
+                              <Image src={child.image || '/placeholder.svg'} alt={child.name} width={48} height={48} className="rounded" />
+                              <div className="flex-1">
+                                <div className="font-medium">{child.name}</div>
+                                <div className="text-xs text-gray-500">Giá: {child.price ? child.price + '$' : '---'}</div>
+                              </div>
+                              <Button size="icon" variant="ghost" onClick={() => router.push(`/admin/edit-product/${child._id}`)}><Edit /></Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={async () => {
+                                  if (window.confirm("Bạn có chắc chắn muốn xóa?")) {
+                                    await axios.delete(`http://localhost:5000/api/categories/${child._id}`)
+                                    const res = await axios.get("http://localhost:5000/api/categories")
+                                    setCategories(res.data)
+                                  }
+                                }}
+                              >
+                                <Trash2 />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              {/* Nếu không có danh mục */}
+              {mainCategories.length === 0 && (
+                <div className="text-center text-gray-500 mt-8">Không có danh mục nào hoặc chưa có dữ liệu.</div>
+              )}
             </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Tab Danh Mục */}
-        <TabsContent value="categories">
-          <Card className="text-center p-20">
-            <p>Chưa có dữ liệu cho tab Danh Mục</p>
           </Card>
         </TabsContent>
       </Tabs>

@@ -12,65 +12,27 @@ import { Label } from "@/components/ui/label"
 import { Download, Heart, Save, ShoppingCart, Undo, Redo, Camera } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useToast } from "@/components/ui/use-toast"
+import axios from "axios"
 
-
-interface CustomizationOption {
-  id: string
+interface Category {
+  _id: string
   name: string
-  image: string
+  parent: string | null
+  type: string
+  image?: string
   price?: number
 }
 
-
-const bodyOptions: CustomizationOption[] = [
-  { id: "body1", name: "Gấu Truyền Thống", image: "/placeholder.svg?height=100&width=100" },
-  { id: "body2", name: "Thỏ", image: "/placeholder.svg?height=100&width=100" },
-  { id: "body3", name: "Cún Con", image: "/placeholder.svg?height=100&width=100" },
-  { id: "body4", name: "Mèo Con", image: "/placeholder.svg?height=100&width=100" },
-]
-
-const earOptions: CustomizationOption[] = [
-  { id: "ear1", name: "Tai Tròn", image: "/placeholder.svg?height=100&width=100" },
-  { id: "ear2", name: "Tai Nhọn", image: "/placeholder.svg?height=100&width=100" },
-  { id: "ear3", name: "Tai Xệ", image: "/placeholder.svg?height=100&width=100" },
-]
-
-const eyeOptions: CustomizationOption[] = [
-  { id: "eye1", name: "Mắt Nút", image: "/placeholder.svg?height=100&width=100" },
-  { id: "eye2", name: "Mắt Thêu", image: "/placeholder.svg?height=100&width=100" },
-  { id: "eye3", name: "Mắt Nhựa", image: "/placeholder.svg?height=100&width=100" },
-]
-
-const furColorOptions: CustomizationOption[] = [
-  { id: "color1", name: "Nâu", image: "/placeholder.svg?height=100&width=100" },
-  { id: "color2", name: "Trắng", image: "/placeholder.svg?height=100&width=100" },
-  { id: "color3", name: "Hồng", image: "/placeholder.svg?height=100&width=100" },
-  { id: "color4", name: "Xanh Dương", image: "/placeholder.svg?height=100&width=100" },
-  { id: "color5", name: "Tím", image: "/placeholder.svg?height=100&width=100" },
-]
-
-const clothingOptions: CustomizationOption[] = [
-  { id: "clothing1", name: "Áo Thun", image: "/placeholder.svg?height=100&width=100", price: 5 },
-  { id: "clothing2", name: "Váy", image: "/placeholder.svg?height=100&width=100", price: 8 },
-  { id: "clothing3", name: "Yếm", image: "/placeholder.svg?height=100&width=100", price: 7 },
-  { id: "clothing4", name: "Áo Len", image: "/placeholder.svg?height=100&width=100", price: 6 },
-]
-
-const accessoryOptions: CustomizationOption[] = [
-  { id: "acc1", name: "Nơ Cổ", image: "/placeholder.svg?height=100&width=100", price: 3 },
-  { id: "acc2", name: "Kính", image: "/placeholder.svg?height=100&width=100", price: 4 },
-  { id: "acc3", name: "Mũ", image: "/placeholder.svg?height=100&width=100", price: 5 },
-  { id: "acc4", name: "Khăn Quàng", image: "/placeholder.svg?height=100&width=100", price: 4 },
-]
-
 export default function CustomizePage() {
   const { toast } = useToast()
+  const [categories, setCategories] = useState<Category[]>([])
+  const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("body")
   const [selectedOptions, setSelectedOptions] = useState({
-    body: bodyOptions[0].id,
-    ears: earOptions[0].id,
-    eyes: eyeOptions[0].id,
-    furColor: furColorOptions[0].id,
+    body: "",
+    ears: "",
+    eyes: "",
+    furColor: "",
     clothing: "",
     accessories: [] as string[],
     name: "",
@@ -81,13 +43,46 @@ export default function CustomizePage() {
   const [history, setHistory] = useState<any[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
 
+  useEffect(() => {
+    axios.get("http://localhost:5000/api/categories")
+      .then(res => setCategories(res.data))
+      .catch(err => console.error("Lỗi khi tải danh mục:", err))
+      .finally(() => setLoading(false))
+  }, [])
+
+  // Lấy các danh mục cha
+  const bodies = categories.filter(cat => cat.type === "body")
+  const ears = categories.filter(cat => cat.type === "ear")
+  const eyes = categories.filter(cat => cat.type === "eye")
+  const clothings = categories.filter(cat => cat.type === "clothing")
+  const accessories = categories.filter(cat => cat.type === "accessory")
+
+  // Lấy các option con theo parent
+  const getOptions = (parentId: string) => categories.filter(cat => String(cat.parent) === String(parentId))
+
+  // Khởi tạo selectedOptions động dựa trên dữ liệu fetch được
+  useEffect(() => {
+    if (!loading && bodies.length && ears.length && eyes.length) {
+      setSelectedOptions({
+        body: getOptions(bodies[0]._id)[0]?._id || "",
+        ears: getOptions(ears[0]._id)[0]?._id || "",
+        eyes: getOptions(eyes[0]._id)[0]?._id || "",
+        furColor: "",
+        clothing: getOptions(clothings[0]?._id)[0]?._id || "",
+        accessories: [],
+        name: "",
+        size: "medium",
+      })
+    }
+  }, [loading, categories])
+
   // Tính tổng giá dựa trên lựa chọn
   useEffect(() => {
     let price = 29.99 // Giá cơ bản
 
     // Thêm giá quần áo nếu được chọn
     if (selectedOptions.clothing) {
-      const selectedClothing = clothingOptions.find((item) => item.id === selectedOptions.clothing)
+      const selectedClothing = categories.find((item) => item._id === selectedOptions.clothing)
       if (selectedClothing?.price) {
         price += selectedClothing.price
       }
@@ -95,7 +90,7 @@ export default function CustomizePage() {
 
     // Thêm giá phụ kiện
     selectedOptions.accessories.forEach((accId) => {
-      const selectedAcc = accessoryOptions.find((item) => item.id === accId)
+      const selectedAcc = categories.find((item) => item._id === accId)
       if (selectedAcc?.price) {
         price += selectedAcc.price
       }
@@ -109,7 +104,7 @@ export default function CustomizePage() {
     }
 
     setTotalPrice(price)
-  }, [selectedOptions])
+  }, [selectedOptions, categories])
 
   // Thêm vào lịch sử khi lựa chọn thay đổi
   useEffect(() => {
@@ -196,6 +191,33 @@ export default function CustomizePage() {
     })
   }
 
+  // Lấy nhóm con cho Đặc Điểm (Features)
+  const featuresParent = categories.find(cat => cat.name === "Đặc Điểm" && cat.parent === null);
+  const featureGroups = featuresParent
+    ? categories.filter(cat => cat.parent === featuresParent._id)
+    : [];
+  // Lấy nhóm con cho Phụ kiện
+  const accessoriesParent = categories.find(cat => cat.name === "Phụ kiện" && cat.parent === null);
+  const accessoryGroups = accessoriesParent
+    ? categories.filter(cat => cat.parent === accessoriesParent._id)
+    : [];
+
+  // Lấy nhóm con cho Thân (Body)
+  const bodyParent = categories.find(cat => cat.name === "Thân" && cat.parent === null);
+  const bodyGroups = bodyParent
+    ? categories.filter(cat => cat.parent === bodyParent._id)
+    : [];
+
+  // Lấy ảnh cho từng lựa chọn (luôn lấy từ selectedOptions, không phụ thuộc tab)
+  const bodyImg = categories.find(c => c._id === selectedOptions.body)?.image
+  const furColorImg = categories.find(c => c._id === selectedOptions.furColor)?.image
+  const clothingImg = categories.find(c => c._id === selectedOptions.clothing)?.image
+  const earImg = categories.find(c => c._id === selectedOptions.ears)?.image
+  const eyeImg = categories.find(c => c._id === selectedOptions.eyes)?.image
+  const accessoriesImgs = selectedOptions.accessories.map(id => categories.find(c => c._id === id)?.image).filter(Boolean)
+
+  if (loading) return <div>Đang tải dữ liệu...</div>
+
   return (
     <div className="container mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold text-center mb-8">Thiết Kế Thú Nhồi Bông Tùy Chỉnh Của Bạn</h1>
@@ -228,16 +250,18 @@ export default function CustomizePage() {
               </div>
             </div>
 
-            <div className="relative h-[400px] bg-pink-50 rounded-lg flex items-center justify-center mb-6">
-              {/* Đây sẽ được thay thế bằng canvas hoặc xem trước tương tác trong triển khai thực tế */}
-              <div className="text-center">
-                <Image
-                  src="/placeholder.svg?height=300&width=300"
-                  alt="Xem Trước Thú Nhồi Bông"
-                  width={300}
-                  height={300}
-                  className="mx-auto"
-                />
+            <div className="relative h-[400px] w-[300px] mx-auto bg-pink-50 rounded-lg flex items-center justify-center mb-6">
+              <div className="relative w-[300px] h-[400px]">
+                {bodyImg && <Image src={bodyImg} alt="Thân" fill className="absolute z-10" />}
+                {furColorImg && <Image src={furColorImg} alt="Màu lông" fill className="absolute z-20" />}
+                {clothingImg && <Image src={clothingImg} alt="Quần áo" fill className="absolute z-30" />}
+                {earImg && <Image src={earImg} alt="Tai" fill className="absolute z-40" />}
+                {eyeImg && <Image src={eyeImg} alt="Mắt" fill className="absolute z-50" />}
+                {accessoriesImgs.map((img, idx) =>
+                  img ? <Image key={idx} src={img} alt={`Phụ kiện ${idx}`} fill className="absolute z-60" /> : null
+                )}
+              </div>
+              <div className="absolute bottom-2 left-0 right-0 text-center">
                 <p className="mt-4 text-gray-500">Xem Trước Trực Tiếp</p>
                 {selectedOptions.name && <p className="mt-2 text-pink-500 font-medium">Tên: {selectedOptions.name}</p>}
               </div>
@@ -247,18 +271,18 @@ export default function CustomizePage() {
               <div>
                 <h3 className="font-medium mb-2">Lựa Chọn Hiện Tại:</h3>
                 <ul className="text-sm text-gray-600 space-y-1">
-                  <li>Thân: {bodyOptions.find((o) => o.id === selectedOptions.body)?.name}</li>
-                  <li>Tai: {earOptions.find((o) => o.id === selectedOptions.ears)?.name}</li>
-                  <li>Mắt: {eyeOptions.find((o) => o.id === selectedOptions.eyes)?.name}</li>
-                  <li>Màu Lông: {furColorOptions.find((o) => o.id === selectedOptions.furColor)?.name}</li>
+                  <li>Thân: {bodies.find((o) => o._id === selectedOptions.body)?.name}</li>
+                  <li>Tai: {ears.find((o) => o._id === selectedOptions.ears)?.name}</li>
+                  <li>Mắt: {eyes.find((o) => o._id === selectedOptions.eyes)?.name}</li>
+                  <li>Màu Lông: {categories.find((o) => o._id === selectedOptions.furColor)?.name}</li>
                   {selectedOptions.clothing && (
-                    <li>Quần Áo: {clothingOptions.find((o) => o.id === selectedOptions.clothing)?.name}</li>
+                    <li>Quần Áo: {clothings.find((o) => o._id === selectedOptions.clothing)?.name}</li>
                   )}
                   {selectedOptions.accessories.length > 0 && (
                     <li>
                       Phụ Kiện:{" "}
                       {selectedOptions.accessories
-                        .map((id) => accessoryOptions.find((o) => o.id === id)?.name)
+                        .map((id) => accessories.find((o) => o._id === id)?.name)
                         .join(", ")}
                     </li>
                   )}
@@ -280,14 +304,14 @@ export default function CustomizePage() {
                       <li className="flex justify-between">
                         <span>Quần Áo:</span>
                         <span>
-                          +{clothingOptions.find((o) => o.id === selectedOptions.clothing)?.price?.toFixed(2)}$
+                          +{clothings.find((o) => o._id === selectedOptions.clothing)?.price?.toFixed(2)}$
                         </span>
                       </li>
                     )}
                     {selectedOptions.accessories.map((accId) => (
                       <li key={accId} className="flex justify-between">
-                        <span>{accessoryOptions.find((o) => o.id === accId)?.name}:</span>
-                        <span>+{accessoryOptions.find((o) => o.id === accId)?.price?.toFixed(2)}$</span>
+                        <span>{accessories.find((o) => o._id === accId)?.name}:</span>
+                        <span>+{accessories.find((o) => o._id === accId)?.price?.toFixed(2)}$</span>
                       </li>
                     ))}
                     {selectedOptions.size !== "medium" && (
@@ -319,194 +343,108 @@ export default function CustomizePage() {
                 </TabsList>
 
                 <TabsContent value="body" className="space-y-6">
-                  <div>
-                    <h3 className="font-medium mb-3">Chọn Loại Thân</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      {bodyOptions.map((option) => (
-                        <div
-                          key={option.id}
-                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                            selectedOptions.body === option.id ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
-                          }`}
-                          onClick={() => handleOptionSelect("body", option.id)}
+                  {bodyGroups.map(group => (
+                    <div key={group._id}>
+                      <h3 className="font-medium mb-3">{group.name}</h3>
+                      {group.name === "Kích Thước" ? (
+                        <RadioGroup
+                          value={(selectedOptions as any)[group.type] || selectedOptions.size}
+                          onValueChange={value => setSelectedOptions(prev => ({ ...prev, [group.type || "size"]: value }))}
+                          className="flex space-x-4"
                         >
-                          <Image
-                            src={option.image || "/placeholder.svg"}
-                            alt={option.name}
-                            width={80}
-                            height={80}
-                            className="mx-auto mb-2"
-                          />
-                          <p className="text-center text-sm">{option.name}</p>
+                          {categories.filter(opt => opt.parent === group._id && opt.type === "option").map(option => (
+                            <div key={option._id} className="flex items-center space-x-2">
+                              <RadioGroupItem value={option._id} id={`size-${option._id}`} />
+                              <Label htmlFor={`size-${option._id}`}>{option.name}</Label>
+                            </div>
+                          ))}
+                        </RadioGroup>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-3">
+                          {categories.filter(opt => opt.parent === group._id && opt.type === "option").map(option => (
+                            <div
+                              key={option._id}
+                              className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                                (selectedOptions as any)[group.type] === option._id ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
+                              }`}
+                              onClick={() => setSelectedOptions(prev => ({ ...prev, [group.type]: option._id }))}
+                            >
+                              <Image
+                                src={option.image || "/placeholder.svg"}
+                                alt={option.name}
+                                width={60}
+                                height={60}
+                                className="mx-auto mb-2"
+                              />
+                              <p className="text-center text-sm">{option.name}</p>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-medium mb-3">Kích Thước</h3>
-                    <RadioGroup
-                      value={selectedOptions.size}
-                      onValueChange={handleSizeChange}
-                      className="flex space-x-4"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="small" id="size-small" />
-                        <Label htmlFor="size-small">Nhỏ</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="medium" id="size-medium" />
-                        <Label htmlFor="size-medium">Vừa</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="large" id="size-large" />
-                        <Label htmlFor="size-large">Lớn</Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-
-                  <div>
-                    <h3 className="font-medium mb-3">Màu Lông</h3>
-                    <div className="grid grid-cols-3 gap-3">
-                      {furColorOptions.map((option) => (
-                        <div
-                          key={option.id}
-                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                            selectedOptions.furColor === option.id
-                              ? "border-pink-500 bg-pink-50"
-                              : "hover:border-gray-300"
-                          }`}
-                          onClick={() => handleOptionSelect("furColor", option.id)}
-                        >
-                          <Image
-                            src={option.image || "/placeholder.svg"}
-                            alt={option.name}
-                            width={60}
-                            height={60}
-                            className="mx-auto mb-2"
-                          />
-                          <p className="text-center text-sm">{option.name}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  ))}
                 </TabsContent>
 
                 <TabsContent value="features" className="space-y-6">
-                  <div>
-                    <h3 className="font-medium mb-3">Tai</h3>
-                    <div className="grid grid-cols-3 gap-3">
-                      {earOptions.map((option) => (
-                        <div
-                          key={option.id}
-                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                            selectedOptions.ears === option.id ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
-                          }`}
-                          onClick={() => handleOptionSelect("ears", option.id)}
-                        >
-                          <Image
-                            src={option.image || "/placeholder.svg"}
-                            alt={option.name}
-                            width={60}
-                            height={60}
-                            className="mx-auto mb-2"
-                          />
-                          <p className="text-center text-sm">{option.name}</p>
-                        </div>
-                      ))}
+                  {featureGroups.map(group => (
+                    <div key={group._id}>
+                      <h3 className="font-medium mb-3">{group.name}</h3>
+                      <div className="grid grid-cols-3 gap-3">
+                        {categories.filter(opt => opt.parent === group._id && opt.type === "option").map(option => (
+                          <div
+                            key={option._id}
+                            className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                              (selectedOptions as any)[group.type] === option._id ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
+                            }`}
+                            onClick={() => setSelectedOptions(prev => ({ ...prev, [group.type]: option._id }))}
+                          >
+                            <Image
+                              src={option.image || "/placeholder.svg"}
+                              alt={option.name}
+                              width={60}
+                              height={60}
+                              className="mx-auto mb-2"
+                            />
+                            <p className="text-center text-sm">{option.name}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-medium mb-3">Mắt</h3>
-                    <div className="grid grid-cols-3 gap-3">
-                      {eyeOptions.map((option) => (
-                        <div
-                          key={option.id}
-                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                            selectedOptions.eyes === option.id ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
-                          }`}
-                          onClick={() => handleOptionSelect("eyes", option.id)}
-                        >
-                          <Image
-                            src={option.image || "/placeholder.svg"}
-                            alt={option.name}
-                            width={60}
-                            height={60}
-                            className="mx-auto mb-2"
-                          />
-                          <p className="text-center text-sm">{option.name}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-medium mb-3">Đặt Tên Cho Thú Bông Của Bạn</h3>
-                    <Input
-                      placeholder="Nhập tên"
-                      value={selectedOptions.name}
-                      onChange={handleNameChange}
-                      maxLength={20}
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Tên này sẽ được thêu trên thẻ (tùy chọn)</p>
-                  </div>
+                  ))}
                 </TabsContent>
 
                 <TabsContent value="extras" className="space-y-6">
-                  <div>
-                    <h3 className="font-medium mb-3">Quần Áo (Tùy Chọn)</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      {clothingOptions.map((option) => (
-                        <div
-                          key={option.id}
-                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                            selectedOptions.clothing === option.id
-                              ? "border-pink-500 bg-pink-50"
-                              : "hover:border-gray-300"
-                          }`}
-                          onClick={() => handleOptionSelect("clothing", option.id)}
-                        >
-                          <Image
-                            src={option.image || "/placeholder.svg"}
-                            alt={option.name}
-                            width={70}
-                            height={70}
-                            className="mx-auto mb-2"
-                          />
-                          <p className="text-center text-sm">{option.name}</p>
-                          <p className="text-center text-xs text-pink-500">+{option.price?.toFixed(2)}$</p>
-                        </div>
-                      ))}
+                  {accessoryGroups.map(group => (
+                    <div key={group._id}>
+                      <h3 className="font-medium mb-3">{group.name}</h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        {categories.filter(opt => opt.parent === group._id && opt.type === "option").map(option => (
+                          <div
+                            key={option._id}
+                            className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                              selectedOptions.accessories?.includes(option._id) ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
+                            }`}
+                            onClick={() => setSelectedOptions(prev => ({
+                              ...prev,
+                              accessories: prev.accessories?.includes(option._id)
+                                ? prev.accessories.filter((id: string) => id !== option._id)
+                                : [...(prev.accessories || []), option._id]
+                            }))}
+                          >
+                            <Image
+                              src={option.image || "/placeholder.svg"}
+                              alt={option.name}
+                              width={70}
+                              height={70}
+                              className="mx-auto mb-2"
+                            />
+                            <p className="text-center text-sm">{option.name}</p>
+                            <p className="text-center text-xs text-pink-500">+{option.price?.toFixed(2)}$</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-medium mb-3">Phụ Kiện (Tùy Chọn)</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      {accessoryOptions.map((option) => (
-                        <div
-                          key={option.id}
-                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                            selectedOptions.accessories.includes(option.id)
-                              ? "border-pink-500 bg-pink-50"
-                              : "hover:border-gray-300"
-                          }`}
-                          onClick={() => handleOptionSelect("accessories", option.id)}
-                        >
-                          <Image
-                            src={option.image || "/placeholder.svg"}
-                            alt={option.name}
-                            width={70}
-                            height={70}
-                            className="mx-auto mb-2"
-                          />
-                          <p className="text-center text-sm">{option.name}</p>
-                          <p className="text-center text-xs text-pink-500">+{option.price?.toFixed(2)}$</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  ))}
                 </TabsContent>
               </Tabs>
 

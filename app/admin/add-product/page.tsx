@@ -1,97 +1,91 @@
-'use client';
+"use client";
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
-import React, { useState } from 'react';
+type Category = {
+  _id: string;
+  name: string;
+  type: 'body' | 'feature' | 'accessory';
+};
 
-export default function AddProductPage() {
+export default function AddPartForm() {
+  const [categories, setCategories] = useState<Category[]>([]);
   const [name, setName] = useState('');
-  const [price, setPrice] = useState('');
-  const [category, setCategory] = useState('');
-  const [description, setDescription] = useState('');
-  const [message, setMessage] = useState('');
+  const [image, setImage] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+
+  useEffect(() => {
+  axios.get('http://localhost:5000/api/categories') // đường dẫn đúng
+    .then(res => setCategories(res.data))
+    .catch(err => console.error('Lỗi lấy danh mục:', err))
+}, [])
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate dữ liệu đơn giản
-    if (!name || !price || !category) {
-      setMessage('Vui lòng nhập đầy đủ thông tin');
-      return;
-    }
-
     try {
-      const res = await fetch('http://localhost:4000/products', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name,
-          price: Number(price),
-          category,
-          description,
-        }),
-      });
+      const partData = {
+        name,
+        image,
+        category: selectedCategory,
+      };
 
-      if (res.ok) {
-        setMessage('Thêm sản phẩm thành công');
-        setName('');
-        setPrice('');
-        setCategory('');
-        setDescription('');
-      } else {
-        const data = await res.json();
-        setMessage('Lỗi: ' + data.message);
-      }
+      await axios.post('/api/admin/part', partData); // endpoint đã dùng verifyToken + checkAdmin
+      alert('Đã thêm part mới!');
+
+      // Reset form
+      setName('');
+      setImage('');
+      setSelectedCategory('');
     } catch (error) {
-      setMessage('Lỗi khi gọi API');
+      alert('Lỗi khi thêm part!');
       console.error(error);
     }
   };
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Thêm sản phẩm mới</h1>
+    <form onSubmit={handleSubmit} className="space-y-4 max-w-md mx-auto p-4 border rounded shadow">
+      <h2 className="text-xl font-semibold text-center mb-4">Thêm Part Mới</h2>
 
-      {message && <p>{message}</p>}
+      <input
+        type="text"
+        placeholder="Tên part (VD: Tai thỏ, Mắt tròn...)"
+        value={name}
+        onChange={e => setName(e.target.value)}
+        required
+        className="w-full px-3 py-2 border rounded"
+      />
 
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>Tên sản phẩm:</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </div>
+      <input
+        type="text"
+        placeholder="Link ảnh preview"
+        value={image}
+        onChange={e => setImage(e.target.value)}
+        required
+        className="w-full px-3 py-2 border rounded"
+      />
 
-        <div>
-          <label>Giá:</label>
-          <input
-            type="number"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-          />
-        </div>
+      <select
+        value={selectedCategory}
+        onChange={e => setSelectedCategory(e.target.value)}
+        required
+        className="w-full px-3 py-2 border rounded"
+      >
+        <option value="">Chọn danh mục</option>
+        {categories.map(cat => (
+          <option key={cat._id} value={cat._id}>
+            {cat.name} ({cat.type})
+          </option>
+        ))}
+      </select>
 
-        <div>
-          <label>Danh mục:</label>
-          <input
-            type="text"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          />
-        </div>
-
-        <div>
-          <label>Mô tả:</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-
-        <button type="submit">Thêm sản phẩm</button>
-      </form>
-    </div>
+      <button
+        type="submit"
+        className="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded hover:bg-blue-700"
+      >
+        Thêm Part
+      </button>
+    </form>
   );
 }
