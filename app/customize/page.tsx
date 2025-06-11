@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -13,6 +13,7 @@ import { Download, Heart, Save, ShoppingCart, Undo, Redo, Camera } from "lucide-
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useToast } from "@/components/ui/use-toast"
 import axios from "axios"
+import { fabric } from "fabric"
 
 interface Category {
   _id: string
@@ -43,32 +44,19 @@ export default function CustomizePage() {
   const [history, setHistory] = useState<any[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
 
-  useEffect(() => {
-    axios.get("http://localhost:5000/api/categories")
-      .then(res => setCategories(res.data))
-      .catch(err => console.error("Lỗi khi tải danh mục:", err))
-      .finally(() => setLoading(false))
-  }, [])
-
-  // Lấy các danh mục cha
-  const bodies = categories.filter(cat => cat.type === "body")
-  const ears = categories.filter(cat => cat.type === "ear")
-  const eyes = categories.filter(cat => cat.type === "eye")
-  const clothings = categories.filter(cat => cat.type === "clothing")
-  const accessories = categories.filter(cat => cat.type === "accessory")
-
-  // Lấy các option con theo parent
-  const getOptions = (parentId: string) => categories.filter(cat => String(cat.parent) === String(parentId))
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [fabricCanvas, setFabricCanvas] = useState<any>(null)
+  const [fabricLib, setFabricLib] = useState<any>(null)
 
   // Khởi tạo selectedOptions động dựa trên dữ liệu fetch được
   useEffect(() => {
-    if (!loading && bodies.length && ears.length && eyes.length) {
+    if (!loading && categories.length > 0) {
       setSelectedOptions({
-        body: getOptions(bodies[0]._id)[0]?._id || "",
-        ears: getOptions(ears[0]._id)[0]?._id || "",
-        eyes: getOptions(eyes[0]._id)[0]?._id || "",
+        body: categories.filter(cat => cat.type === "body")[0]?._id || "",
+        ears: categories.filter(cat => cat.type === "ear")[0]?._id || "",
+        eyes: categories.filter(cat => cat.type === "eye")[0]?._id || "",
         furColor: "",
-        clothing: getOptions(clothings[0]?._id)[0]?._id || "",
+        clothing: categories.filter(cat => cat.type === "clothing")[0]?._id || "",
         accessories: [],
         name: "",
         size: "medium",
@@ -116,16 +104,58 @@ export default function CustomizePage() {
     }
   }, [selectedOptions])
 
+  // Dynamic import fabric.js và khởi tạo canvas
+  useEffect(() => {
+    if (canvasRef.current && !fabricCanvas) {
+      const canvas = new fabric.Canvas(canvasRef.current, {
+        width: 500,
+        height: 650,
+        backgroundColor: "#fdf2f8"
+      });
+      setFabricCanvas(canvas);
+    }
+    // Cleanup
+    return () => {
+      if (fabricCanvas) fabricCanvas.dispose();
+    };
+  }, [canvasRef, fabricCanvas]);
+
+  // Update layer mỗi khi selectedOptions thay đổi
+  useEffect(() => {
+    if (!fabricCanvas || !fabricLib) return;
+    fabricCanvas.clear();
+    fabricCanvas.setBackgroundColor("#fdf2f8", () => {});
+    // Helper để add image
+    const addImg = (url: string | undefined, zIndex: number, label?: string) => {
+      if (!url) url = "/cute.png"; // test.png là ảnh mẫu trong public/
+      console.log(`[addImg] zIndex ${zIndex} (${label || ''}):`, url)
+      fabricLib.Image.fromURL(url, (img: any) => {
+        if (!img) return;
+        img.selectable = false;
+        img.evented = false;
+        img.set({ left: 0, top: 0, scaleX: 1, scaleY: 1 });
+        fabricCanvas.add(img);
+        fabricCanvas.moveTo(img, zIndex);
+        fabricCanvas.renderAll();
+      });
+    };
+    addImg(categories.find(c => c._id === selectedOptions.body)?.image, 10, 'body');
+    addImg(categories.find(c => c._id === selectedOptions.furColor)?.image, 20, 'furColor');
+    addImg(categories.find(c => c._id === selectedOptions.clothing)?.image, 30, 'clothing');
+    addImg(categories.find(c => c._id === selectedOptions.ears)?.image, 40, 'ears');
+    addImg(categories.find(c => c._id === selectedOptions.eyes)?.image, 50, 'eyes');
+    selectedOptions.accessories.forEach((accId: string, idx: number) => addImg(categories.find(c => c._id === accId)?.image, 60 + idx, `accessory-${accId}`));
+    console.log('[useEffect] selectedOptions:', selectedOptions)
+    console.log('[useEffect] categories:', categories)
+  }, [fabricCanvas, fabricLib, selectedOptions, categories]);
+
   const handleOptionSelect = (category: string, optionId: string) => {
     setSelectedOptions((prev) => {
-      if (category === "accessories") {
-        // Chuyển đổi lựa chọn phụ kiện
-        const accessories = prev.accessories.includes(optionId)
-          ? prev.accessories.filter((id) => id !== optionId)
-          : [...prev.accessories, optionId]
-        return { ...prev, accessories }
-      }
-      return { ...prev, [category]: optionId }
+      const next = category === "accessories"
+        ? { ...prev, accessories: prev.accessories.includes(optionId) ? prev.accessories.filter((id) => id !== optionId) : [...prev.accessories, optionId] }
+        : { ...prev, [category]: optionId }
+      console.log("[handleOptionSelect]", category, optionId, next)
+      return next
     })
   }
 
@@ -151,12 +181,19 @@ export default function CustomizePage() {
     }
   }
 
-  const handleSaveDesign = () => {
-    // Trong ứng dụng thực tế, điều này sẽ lưu vào cơ sở dữ liệu
+  const handleSaveDesign = async () => {
+    if (!fabricCanvas) return;
+    const canvasJSON = fabricCanvas.toJSON();
+    await axios.post("/api/designs", {
+      userId: "userId",
+      designName: selectedOptions.name || "Thiết kế mới",
+      parts: selectedOptions,
+      canvasJSON
+    });
     toast({
       title: "Đã Lưu Thiết Kế",
       description: "Thiết kế tùy chỉnh của bạn đã được lưu vào tài khoản.",
-    })
+    });
   }
 
   const handleAddToCart = () => {
@@ -208,13 +245,35 @@ export default function CustomizePage() {
     ? categories.filter(cat => cat.parent === bodyParent._id)
     : [];
 
-  // Lấy ảnh cho từng lựa chọn (luôn lấy từ selectedOptions, không phụ thuộc tab)
-  const bodyImg = categories.find(c => c._id === selectedOptions.body)?.image
-  const furColorImg = categories.find(c => c._id === selectedOptions.furColor)?.image
-  const clothingImg = categories.find(c => c._id === selectedOptions.clothing)?.image
-  const earImg = categories.find(c => c._id === selectedOptions.ears)?.image
-  const eyeImg = categories.find(c => c._id === selectedOptions.eyes)?.image
-  const accessoriesImgs = selectedOptions.accessories.map(id => categories.find(c => c._id === id)?.image).filter(Boolean)
+  function mapGroupToOptionKey(group: any) {
+    if (group.type === "body" || group.name.toLowerCase().includes("loại thân")) return "body";
+    if (group.type === "ear" || group.name.toLowerCase().includes("tai")) return "ears";
+    if (group.type === "eye" || group.name.toLowerCase().includes("mắt")) return "eyes";
+    if (group.type === "furColor" || group.name.toLowerCase().includes("màu lông")) return "furColor";
+    if (group.type === "clothing" || group.name.toLowerCase().includes("quần áo")) return "clothing";
+    return group.type;
+  }
+
+  useEffect(() => {
+    axios.get("http://localhost:5000/api/categories")
+      .then(res => {
+        console.log("API categories data:", res.data)
+        // Nếu trả về object có field categories thì lấy đúng field đó
+        if (Array.isArray(res.data)) {
+          setCategories(res.data)
+        } else if (Array.isArray(res.data.categories)) {
+          setCategories(res.data.categories)
+        } else {
+          setCategories([])
+          console.error("API trả về không đúng định dạng:", res.data)
+        }
+      })
+      .catch(err => {
+        console.error("Lỗi khi tải danh mục:", err)
+        setCategories([])
+      })
+      .finally(() => setLoading(false))
+  }, [])
 
   if (loading) return <div>Đang tải dữ liệu...</div>
 
@@ -250,17 +309,8 @@ export default function CustomizePage() {
               </div>
             </div>
 
-            <div className="relative h-[400px] w-[300px] mx-auto bg-pink-50 rounded-lg flex items-center justify-center mb-6">
-              <div className="relative w-[300px] h-[400px]">
-                {bodyImg && <Image src={bodyImg} alt="Thân" fill className="absolute z-10" />}
-                {furColorImg && <Image src={furColorImg} alt="Màu lông" fill className="absolute z-20" />}
-                {clothingImg && <Image src={clothingImg} alt="Quần áo" fill className="absolute z-30" />}
-                {earImg && <Image src={earImg} alt="Tai" fill className="absolute z-40" />}
-                {eyeImg && <Image src={eyeImg} alt="Mắt" fill className="absolute z-50" />}
-                {accessoriesImgs.map((img, idx) =>
-                  img ? <Image key={idx} src={img} alt={`Phụ kiện ${idx}`} fill className="absolute z-60" /> : null
-                )}
-              </div>
+            <div className="relative h-[650px] w-[500px] mx-auto bg-pink-50 rounded-lg flex items-center justify-center mb-6">
+              <canvas ref={canvasRef} width={500} height={650} className="rounded-lg" />
               <div className="absolute bottom-2 left-0 right-0 text-center">
                 <p className="mt-4 text-gray-500">Xem Trước Trực Tiếp</p>
                 {selectedOptions.name && <p className="mt-2 text-pink-500 font-medium">Tên: {selectedOptions.name}</p>}
@@ -271,18 +321,18 @@ export default function CustomizePage() {
               <div>
                 <h3 className="font-medium mb-2">Lựa Chọn Hiện Tại:</h3>
                 <ul className="text-sm text-gray-600 space-y-1">
-                  <li>Thân: {bodies.find((o) => o._id === selectedOptions.body)?.name}</li>
-                  <li>Tai: {ears.find((o) => o._id === selectedOptions.ears)?.name}</li>
-                  <li>Mắt: {eyes.find((o) => o._id === selectedOptions.eyes)?.name}</li>
+                  <li>Thân: {bodyGroups.find((o) => o._id === selectedOptions.body)?.name}</li>
+                  <li>Tai: {categories.find((o) => o._id === selectedOptions.ears)?.name}</li>
+                  <li>Mắt: {categories.find((o) => o._id === selectedOptions.eyes)?.name}</li>
                   <li>Màu Lông: {categories.find((o) => o._id === selectedOptions.furColor)?.name}</li>
                   {selectedOptions.clothing && (
-                    <li>Quần Áo: {clothings.find((o) => o._id === selectedOptions.clothing)?.name}</li>
+                    <li>Quần Áo: {categories.find((o) => o._id === selectedOptions.clothing)?.name}</li>
                   )}
                   {selectedOptions.accessories.length > 0 && (
                     <li>
                       Phụ Kiện:{" "}
                       {selectedOptions.accessories
-                        .map((id) => accessories.find((o) => o._id === id)?.name)
+                        .map((id) => categories.find((o) => o._id === id)?.name)
                         .join(", ")}
                     </li>
                   )}
@@ -304,14 +354,14 @@ export default function CustomizePage() {
                       <li className="flex justify-between">
                         <span>Quần Áo:</span>
                         <span>
-                          +{clothings.find((o) => o._id === selectedOptions.clothing)?.price?.toFixed(2)}$
+                          +{categories.find((o) => o._id === selectedOptions.clothing)?.price?.toFixed(2)}$
                         </span>
                       </li>
                     )}
                     {selectedOptions.accessories.map((accId) => (
                       <li key={accId} className="flex justify-between">
-                        <span>{accessories.find((o) => o._id === accId)?.name}:</span>
-                        <span>+{accessories.find((o) => o._id === accId)?.price?.toFixed(2)}$</span>
+                        <span>{categories.find((o) => o._id === accId)?.name}:</span>
+                        <span>+{categories.find((o) => o._id === accId)?.price?.toFixed(2)}$</span>
                       </li>
                     ))}
                     {selectedOptions.size !== "medium" && (
@@ -348,8 +398,8 @@ export default function CustomizePage() {
                       <h3 className="font-medium mb-3">{group.name}</h3>
                       {group.name === "Kích Thước" ? (
                         <RadioGroup
-                          value={(selectedOptions as any)[group.type] || selectedOptions.size}
-                          onValueChange={value => setSelectedOptions(prev => ({ ...prev, [group.type || "size"]: value }))}
+                          value={(selectedOptions as any)[mapGroupToOptionKey(group)] || selectedOptions.size}
+                          onValueChange={value => setSelectedOptions(prev => ({ ...prev, [mapGroupToOptionKey(group) || "size"]: value }))}
                           className="flex space-x-4"
                         >
                           {categories.filter(opt => opt.parent === group._id && opt.type === "option").map(option => (
@@ -365,9 +415,9 @@ export default function CustomizePage() {
                             <div
                               key={option._id}
                               className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                                (selectedOptions as any)[group.type] === option._id ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
+                                (selectedOptions as any)[mapGroupToOptionKey(group)] === option._id ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
                               }`}
-                              onClick={() => setSelectedOptions(prev => ({ ...prev, [group.type]: option._id }))}
+                              onClick={() => handleOptionSelect(mapGroupToOptionKey(group), option._id)}
                             >
                               <Image
                                 src={option.image || "/placeholder.svg"}
@@ -390,24 +440,43 @@ export default function CustomizePage() {
                     <div key={group._id}>
                       <h3 className="font-medium mb-3">{group.name}</h3>
                       <div className="grid grid-cols-3 gap-3">
-                        {categories.filter(opt => opt.parent === group._id && opt.type === "option").map(option => (
-                          <div
-                            key={option._id}
-                            className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                              (selectedOptions as any)[group.type] === option._id ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
-                            }`}
-                            onClick={() => setSelectedOptions(prev => ({ ...prev, [group.type]: option._id }))}
-                          >
-                            <Image
-                              src={option.image || "/placeholder.svg"}
-                              alt={option.name}
-                              width={60}
-                              height={60}
-                              className="mx-auto mb-2"
-                            />
-                            <p className="text-center text-sm">{option.name}</p>
-                          </div>
-                        ))}
+                        {categories.filter(opt => opt.parent === group._id).length > 0
+                          ? categories.filter(opt => opt.parent === group._id).map(option => (
+                              <div
+                                key={option._id}
+                                className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                                  (selectedOptions as any)[mapGroupToOptionKey(group)] === option._id ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
+                                }`}
+                                onClick={() => handleOptionSelect(mapGroupToOptionKey(group), option._id)}
+                              >
+                                <Image
+                                  src={option.image || "/placeholder.svg"}
+                                  alt={option.name}
+                                  width={60}
+                                  height={60}
+                                  className="mx-auto mb-2"
+                                />
+                                <p className="text-center text-sm">{option.name}</p>
+                              </div>
+                            ))
+                          : (
+                            <div
+                              className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                                (selectedOptions as any)[mapGroupToOptionKey(group)] === group._id ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
+                              }`}
+                              onClick={() => handleOptionSelect(mapGroupToOptionKey(group), group._id)}
+                            >
+                              <Image
+                                src={group.image || "/placeholder.svg"}
+                                alt={group.name}
+                                width={60}
+                                height={60}
+                                className="mx-auto mb-2"
+                              />
+                              <p className="text-center text-sm">{group.name}</p>
+                            </div>
+                          )
+                        }
                       </div>
                     </div>
                   ))}
@@ -424,12 +493,7 @@ export default function CustomizePage() {
                             className={`border rounded-lg p-3 cursor-pointer transition-all ${
                               selectedOptions.accessories?.includes(option._id) ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
                             }`}
-                            onClick={() => setSelectedOptions(prev => ({
-                              ...prev,
-                              accessories: prev.accessories?.includes(option._id)
-                                ? prev.accessories.filter((id: string) => id !== option._id)
-                                : [...(prev.accessories || []), option._id]
-                            }))}
+                            onClick={() => handleOptionSelect(mapGroupToOptionKey(group), option._id)}
                           >
                             <Image
                               src={option.image || "/placeholder.svg"}
