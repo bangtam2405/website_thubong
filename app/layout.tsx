@@ -5,13 +5,14 @@ import "./globals.css"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "sonner"
+import { CartProvider } from "@/contexts/CartContext"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Thú Bông Xinh - Thiết Kế Thú Nhồi Bông Tùy Chỉnh",
-  description:
-    "Thiết kế thú nhồi bông tùy chỉnh của riêng bạn với công cụ tương tác. Chọn tai, mắt, màu lông, quần áo và nhiều hơn nữa!",
+  title: "Thú Bông Tùy Chỉnh - Tạo Thú Bông Theo Ý Bạn",
+  description: "Tạo thú bông tùy chỉnh theo ý thích của bạn. Chọn màu sắc, kích thước và phụ kiện để tạo ra thú bông độc đáo của riêng bạn.",
   generator: "v0.dev",
 }
 
@@ -21,16 +22,18 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    
     <html lang="vi" className={inter.className} suppressHydrationWarning>
       <body>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <div className="flex flex-col min-h-screen">
-            <Header />
-            <main className="flex-grow">{children}</main>
-            <Footer />
-          </div>
-        </ThemeProvider>
+        <CartProvider>
+          <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+            <div className="flex flex-col min-h-screen">
+              <Header />
+              <main className="flex-grow">{children}</main>
+              <Footer />
+            </div>
+          </ThemeProvider>
+          <Toaster richColors position="top-right" />
+        </CartProvider>
       </body>
     </html>
   )

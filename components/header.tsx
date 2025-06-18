@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ShoppingCart, User, Search, Menu, X } from "lucide-react"
+import { ShoppingCart, User, Search, Menu, X, Heart } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,9 +15,26 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [user, setUser] = useState<any>(useCurrentUser());
+  useEffect(() => {
+    const handleUserUpdated = () => {
+      setUser(useCurrentUser());
+    };
+    window.addEventListener("user-updated", handleUserUpdated);
+    return () => window.removeEventListener("user-updated", handleUserUpdated);
+  }, []);
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("userId");
+    localStorage.removeItem("role");
+    localStorage.removeItem("name");
+    localStorage.removeItem("email");
+    window.location.href = "/login";
+  };
 
   return (
     <header className="sticky top-0 z-50">
@@ -93,29 +110,47 @@ export default function Header() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  {user ? (
+                    <>
+                      <DropdownMenuLabel>Xin chào, {user.username || user.userId}</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem>
+                        <Link href="/wishlist" className="w-full flex items-center">
+                          <Heart className="h-4 w-4 mr-2" />
+                          Danh sách yêu thích
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <Link href="/my-designs" className="w-full">Xem Thiết Kế Đã Lưu</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <Link href="/profile" className="w-full">Hồ Sơ</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <Link href="/orders" className="w-full">Đơn Hàng Của Tôi</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleLogout} className="text-red-500 cursor-pointer">Đăng Xuất</DropdownMenuItem>
+                    </>
+                  ) : (
+                    <>
                   <DropdownMenuLabel>Tài Khoản Của Tôi</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem>
-                    <Link href="/login" className="w-full">
-                      Đăng Nhập
-                    </Link>
+                        <Link href="/login" className="w-full">Đăng Nhập</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem>
-                    <Link href="/register" className="w-full">
-                      Đăng Ký
-                    </Link>
+                        <Link href="/register" className="w-full">Đăng Ký</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem>
-                    <Link href="/profile" className="w-full">
-                      Hồ Sơ
-                    </Link>
+                        <Link href="/profile" className="w-full">Hồ Sơ</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem>
-                    <Link href="/orders" className="w-full">
-                      Đơn Hàng Của Tôi
-                    </Link>
+                        <Link href="/orders" className="w-full">Đơn Hàng Của Tôi</Link>
                   </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
 

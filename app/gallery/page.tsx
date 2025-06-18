@@ -1,90 +1,27 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Heart, Star } from "lucide-react"
-
-const galleryItems = [
-  {
-    id: "1",
-    name: "Gấu Nâu Truyền Thống",
-    description: "Gấu bông truyền thống với mắt nút và nơ đỏ",
-    price: 39.99,
-    rating: 4.8,
-    reviews: 124,
-    image: "/images/bear-brown.jpg", // Đổi sang ảnh thật
-    featured: true,
-  },
-  {
-    id: "2",
-    name: "Thỏ Hồng",
-    description: "Thỏ bông mềm mại màu hồng với tai xệ và váy hoa",
-    price: 42.99,
-    rating: 4.6,
-    reviews: 98,
-    image: "/images/rabbit-pink.jpg",
-  },
-  {
-    id: "3",
-    name: "Voi Xanh",
-    description: "Voi bông đáng yêu màu xanh với tai to và áo sọc",
-    price: 44.99,
-    rating: 4.9,
-    reviews: 156,
-    image: "/images/elephant-blue.jpg",
-  },
-  {
-    id: "4",
-    name: "Gấu Trúc",
-    description: "Gấu trúc đáng yêu với phụ kiện tre và khăn quàng xanh lá",
-    price: 41.99,
-    rating: 4.7,
-    reviews: 112,
-    image: "/images/panda.jpg",
-  },
-  {
-    id: "5",
-    name: "Kỳ Lân Tím",
-    description: "Kỳ lân ma thuật với bờm cầu vồng và sừng lấp lánh",
-    price: 46.99,
-    rating: 4.9,
-    reviews: 203,
-    image: "/images/unicorn-purple.jpg",
-    featured: true,
-  },
-  {
-    id: "6",
-    name: "Vịt Vàng",
-    description: "Vịt vui vẻ với mỏ cam và trang phục thủy thủ",
-    price: 38.99,
-    rating: 4.5,
-    reviews: 87,
-    image: "/images/duck-yellow.jpg",
-  },
-  {
-    id: "7",
-    name: "Cáo Đỏ",
-    description: "Cáo thông minh với đuôi xù và phụ kiện kính",
-    price: 43.99,
-    rating: 4.8,
-    reviews: 134,
-    image: "/images/fox-red.jpg",
-  },
-  {
-    id: "8",
-    name: "Khủng Long Xanh Lá",
-    description: "Khủng long thân thiện với gai lưng và biểu cảm vui vẻ",
-    price: 45.99,
-    rating: 4.7,
-    reviews: 109,
-    image: "/images/dinosaur-green.jpg",
-  },
-]
+import { Heart, Star, ShoppingCart } from "lucide-react"
+import axios from "axios"
+import { AddToCartButton } from "@/components/AddToCartButton"
+import { Product } from "@/types/product"
 
 export default function GalleryPage() {
+  const [galleryItems, setGalleryItems] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    axios.get("http://localhost:5000/api/products?type=collection")
+      .then(res => setGalleryItems(res.data))
+      .catch(() => setGalleryItems([]))
+      .finally(() => setLoading(false))
+  }, [])
+
   return (
     <div className="container mx-auto py-12 px-4">
       <div className="text-center mb-12">
@@ -95,17 +32,25 @@ export default function GalleryPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {loading && (
+          <div className="col-span-full text-center text-gray-400">Đang tải dữ liệu...</div>
+        )}
+        {!loading && galleryItems.length === 0 && (
+          <div className="col-span-full text-center text-gray-400">Chưa có sản phẩm bộ sưu tập nào.</div>
+        )}
         {galleryItems.map((item) => (
-          <Card key={item.id} className="overflow-hidden group">
+          <Card key={item._id} className="overflow-hidden group">
             <div className="relative">
               <div className="aspect-square overflow-hidden">
-                <Image
-                  src={item.image}
-                  alt={item.name}
-                  width={300}
-                  height={300}
-                  className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
-                />
+                <Link href={`/product/${item._id}`}>
+                  <Image
+                    src={item.image || "/placeholder.svg"}
+                    alt={item.name}
+                    width={300}
+                    height={300}
+                    className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
+                  />
+                </Link>
               </div>
               <Button
                 variant="ghost"
@@ -127,20 +72,32 @@ export default function GalleryPage() {
                     <Star
                       key={i}
                       className={`h-4 w-4 ${
-                        i < Math.floor(item.rating)
+                        i < Math.floor(item.rating || 0)
                           ? "text-yellow-400 fill-yellow-400"
                           : "text-gray-300"
                       }`}
                     />
                   ))}
                 </div>
-                <span className="text-sm text-gray-500">({item.reviews})</span>
+                <span className="text-sm text-gray-500">({item.reviews || 0})</span>
               </div>
-              <p className="font-bold text-lg">{item.price.toFixed(2)}$</p>
+              <div className="flex justify-between items-center">
+                <div className="text-lg font-semibold text-pink-600">
+                  {item.price.toLocaleString('vi-VN')}₫
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-pink-600 hover:text-pink-700"
+                >
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  Thêm vào giỏ
+                </Button>
+              </div>
             </CardContent>
             <CardFooter className="p-4 pt-0 flex flex-col gap-2">
-              <Button className="w-full bg-pink-500 hover:bg-pink-600">Thêm vào giỏ</Button>
-              <Link href={`/customize?template=${item.id}`} className="w-full">
+              <AddToCartButton product={item} className="w-full bg-pink-500 hover:bg-pink-600" />
+              <Link href={`/customize?template=${item._id}`} className="w-full">
                 <Button variant="outline" className="w-full">
                   Tùy chỉnh
                 </Button>

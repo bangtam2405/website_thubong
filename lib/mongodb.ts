@@ -1,7 +1,7 @@
 // lib/mongodb.ts
 import { MongoClient } from 'mongodb';
 
-const uri = process.env.MONGODB_URI as string; // bạn có thể đặt trong .env.local
+const uri = process.env.MONGODB_URI!;
 const options = {};
 
 let client: MongoClient;
@@ -22,6 +22,12 @@ if (process.env.NODE_ENV === 'development') {
   // Trong production, tạo client mới mỗi lần
   client = new MongoClient(uri, options);
   clientPromise = client.connect();
+}
+
+export async function getMongoClient() {
+  if (!client) client = new MongoClient(uri);
+  if (!client.topology?.isConnected()) await client.connect();
+  return client;
 }
 
 export default clientPromise;

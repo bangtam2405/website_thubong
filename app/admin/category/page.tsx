@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
+import ImageUpload from "@/components/ImageUpload";
 
 interface Category {
   _id: string;
@@ -53,6 +54,10 @@ export default function CategoryForm() {
       alert("Lỗi khi thêm danh mục");
       console.error(error);
     }
+  };
+
+  const handleImageUploaded = (imageUrl: string) => {
+    setImage(imageUrl);
   };
 
   // Lấy các danh mục từng cấp
@@ -117,12 +122,10 @@ export default function CategoryForm() {
           className="w-full border border-gray-300 rounded-lg p-2"
           required
         />
-        <input
-          type="text"
-          placeholder="Ảnh (URL)"
-          value={image}
-          onChange={(e) => setImage(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg p-2"
+        <ImageUpload 
+          onImageUploaded={handleImageUploaded}
+          currentImage={image}
+          folder="categories"
         />
         <input
           type="number"

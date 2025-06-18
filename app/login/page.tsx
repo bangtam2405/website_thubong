@@ -33,18 +33,36 @@ export default function AuthPage() {
       const { token } = response.data
       localStorage.setItem("token", token)
 
+      // Gọi API lấy user profile mới nhất
+      let userProfile = null;
+      try {
+        const profileRes = await axios.get("http://localhost:5000/api/auth/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (profileRes.data && profileRes.data.success && profileRes.data.user) {
+          userProfile = profileRes.data.user;
+          localStorage.setItem("userId", userProfile._id || userProfile.id || "");
+          localStorage.setItem("username", userProfile.username || "");
+          localStorage.setItem("email", userProfile.email || "");
+          localStorage.setItem("user", JSON.stringify(userProfile));
+        }
+      } catch (e) {
+        // fallback nếu lỗi
+      }
+
       // Decode token để lấy role (giả sử backend trả role trong token)
       const decoded: any = jwt_decode(token)
       const role = decoded.role
+      // Đã lấy userId, name từ profile ở trên
       localStorage.setItem("role", role)
 
       alert("Đăng nhập thành công!")
 
       // Chuyển hướng theo role
       if (role === "admin") {
-        router.push("/admin")
+        window.location.href = "/admin"
       } else {
-        router.push("/")
+        window.location.href = "/"
       }
     } catch (error: any) {
       const msg = error?.response?.data?.msg || "Lỗi đăng nhập"
@@ -58,7 +76,7 @@ export default function AuthPage() {
     e.preventDefault()
     setIsLoading(true)
 
-    const name = (document.getElementById("name") as HTMLInputElement).value
+    const username = (document.getElementById("name") as HTMLInputElement).value
     const email = (document.getElementById("register-email") as HTMLInputElement).value
     const password = (document.getElementById("register-password") as HTMLInputElement).value
     const confirm = (document.getElementById("confirm-password") as HTMLInputElement).value
@@ -71,7 +89,7 @@ export default function AuthPage() {
 
     try {
       const res = await axios.post("http://localhost:5000/api/auth/register", {
-        username: name,
+        username,
         email,
         password,
       })

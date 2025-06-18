@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import ImageUpload from "@/components/ImageUpload";
 
 type Category = {
   _id: string;
@@ -44,6 +45,10 @@ export default function AddPartForm() {
     }
   };
 
+  const handleImageUploaded = (imageUrl: string) => {
+    setImage(imageUrl);
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-md mx-auto p-4 border rounded shadow">
       <h2 className="text-xl font-semibold text-center mb-4">Thêm Part Mới</h2>
@@ -57,13 +62,10 @@ export default function AddPartForm() {
         className="w-full px-3 py-2 border rounded"
       />
 
-      <input
-        type="text"
-        placeholder="Link ảnh preview"
-        value={image}
-        onChange={e => setImage(e.target.value)}
-        required
-        className="w-full px-3 py-2 border rounded"
+      <ImageUpload 
+        onImageUploaded={handleImageUploaded}
+        currentImage={image}
+        folder="parts"
       />
 
       <select
