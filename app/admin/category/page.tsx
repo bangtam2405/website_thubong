@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import axios from "axios";
+import instance from "@/lib/axiosConfig";
 import ImageUpload from "@/components/ImageUpload";
 
 interface Category {
@@ -22,9 +22,10 @@ export default function CategoryForm() {
   const [image, setImage] = useState<string>("");
   const [price, setPrice] = useState<string>("");
   const [type, setType] = useState<string>("body");
+  const [quantity, setQuantity] = useState<string>("");
 
   useEffect(() => {
-    axios.get("http://localhost:5000/api/categories")
+    instance.get("http://localhost:5000/api/categories")
       .then(res => setCategories(res.data))
       .catch(err => console.error("Lỗi khi tải danh mục:", err));
   }, []);
@@ -33,12 +34,13 @@ export default function CategoryForm() {
     e.preventDefault();
     const parent = level3 || level2 || level1 || null;
     try {
-      await axios.post("http://localhost:5000/api/categories", {
+      await instance.post("http://localhost:5000/api/categories", {
         name,
         parent,
         type: parent ? "option" : type,
         image,
         price: price ? Number(price) : undefined,
+        quantity: quantity ? Number(quantity) : undefined,
       });
       alert("Đã thêm danh mục");
       setName("");
@@ -48,7 +50,7 @@ export default function CategoryForm() {
       setLevel2("");
       setLevel3("");
       setType("body");
-      const res = await axios.get("http://localhost:5000/api/categories");
+      const res = await instance.get("http://localhost:5000/api/categories");
       setCategories(res.data);
     } catch (error) {
       alert("Lỗi khi thêm danh mục");
@@ -132,6 +134,13 @@ export default function CategoryForm() {
           placeholder="Giá (nếu có)"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
+          className="w-full border border-gray-300 rounded-lg p-2"
+        />
+        <input
+          type="number"
+          placeholder="Số lượng (nếu có)"
+          value={quantity}
+          onChange={(e) => setQuantity(e.target.value)}
           className="w-full border border-gray-300 rounded-lg p-2"
         />
       </div>

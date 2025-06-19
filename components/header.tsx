@@ -16,17 +16,21 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
+import { usePathname } from "next/navigation"
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [user, setUser] = useState<any>(useCurrentUser());
+  const pathname = usePathname();
   useEffect(() => {
     const handleUserUpdated = () => {
       setUser(useCurrentUser());
     };
     window.addEventListener("user-updated", handleUserUpdated);
+    // Luôn cập nhật user mỗi khi route thay đổi
+    setUser(useCurrentUser());
     return () => window.removeEventListener("user-updated", handleUserUpdated);
-  }, []);
+  }, [pathname]);
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("userId");

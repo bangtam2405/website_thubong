@@ -3,7 +3,7 @@
 import React, { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import axios from "axios"
+import instance from "@/lib/axiosConfig"
 import jwt_decode from "jwt-decode"
 
 import { Button } from "@/components/ui/button"
@@ -25,36 +25,50 @@ export default function AuthPage() {
     const password = (document.getElementById("password") as HTMLInputElement).value
 
     try {
-      const response = await axios.post("http://localhost:5000/api/auth/login", {
+      const response = await instance.post("/api/auth/login", {
         email,
         password,
       })
 
-      const { token } = response.data
-      localStorage.setItem("token", token)
+      const { accessToken, refreshToken } = response.data
+      localStorage.setItem("token", accessToken)
+      localStorage.setItem("accessToken", accessToken)
+      localStorage.setItem("refreshToken", refreshToken)
 
       // Gọi API lấy user profile mới nhất
       let userProfile = null;
+      let userId = "";
+      let username = "";
       try {
-        const profileRes = await axios.get("http://localhost:5000/api/auth/me", {
-          headers: { Authorization: `Bearer ${token}` },
+        const profileRes = await instance.get("auth/me", {
+          headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (profileRes.data && profileRes.data.success && profileRes.data.user) {
           userProfile = profileRes.data.user;
-          localStorage.setItem("userId", userProfile._id || userProfile.id || "");
-          localStorage.setItem("username", userProfile.username || "");
+          userId = userProfile._id || userProfile.id || "";
+          username = userProfile.username || "";
+          localStorage.setItem("userId", userId);
+          localStorage.setItem("username", username);
           localStorage.setItem("email", userProfile.email || "");
           localStorage.setItem("user", JSON.stringify(userProfile));
         }
       } catch (e) {
-        // fallback nếu lỗi
+        // fallback nếu lỗi: lấy từ token decode và email
+        try {
+          const decoded: any = jwt_decode(accessToken);
+          userId = decoded.userId || "";
+          username = email;
+          localStorage.setItem("userId", userId);
+          localStorage.setItem("username", username);
+        } catch {}
       }
 
       // Decode token để lấy role (giả sử backend trả role trong token)
-      const decoded: any = jwt_decode(token)
+      const decoded: any = jwt_decode(accessToken)
       const role = decoded.role
       // Đã lấy userId, name từ profile ở trên
       localStorage.setItem("role", role)
+      window.dispatchEvent(new Event("user-updated"));
 
       alert("Đăng nhập thành công!")
 
@@ -76,11 +90,21 @@ export default function AuthPage() {
     e.preventDefault()
     setIsLoading(true)
 
-    const username = (document.getElementById("name") as HTMLInputElement).value
-    const email = (document.getElementById("register-email") as HTMLInputElement).value
-    const password = (document.getElementById("register-password") as HTMLInputElement).value
-    const confirm = (document.getElementById("confirm-password") as HTMLInputElement).value
+    const username = (document.getElementById("name") as HTMLInputElement)?.value || ""
+    const email = (document.getElementById("register-email") as HTMLInputElement)?.value || ""
+    const password = (document.getElementById("register-password") as HTMLInputElement)?.value || ""
+    const confirm = (document.getElementById("confirm-password") as HTMLInputElement)?.value || ""
+    const fullName = (document.getElementById("register-fullname") as HTMLInputElement)?.value || ""
+    const phone = (document.getElementById("register-phone") as HTMLInputElement)?.value || ""
+    const dob = (document.getElementById("register-dob") as HTMLInputElement)?.value || ""
+    const gender = (document.querySelector('input[name="register-gender"]:checked') as HTMLInputElement)?.value || "other"
+    const address = (document.getElementById("register-address") as HTMLInputElement)?.value || ""
 
+    if (!fullName || !email || !phone || !dob || !address) {
+      alert("Vui lòng nhập đầy đủ thông tin!")
+      setIsLoading(false)
+      return
+    }
     if (password !== confirm) {
       alert("Mật khẩu xác nhận không khớp")
       setIsLoading(false)
@@ -88,16 +112,22 @@ export default function AuthPage() {
     }
 
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/register", {
-        username,
+      const res = await instance.post("/api/auth/register", {
+        username: username || fullName,
         email,
         password,
+        fullName,
+        phone,
+        dob,
+        gender,
+        address,
       })
 
       alert("Đăng ký thành công, bạn có thể đăng nhập!")
     } catch (err: any) {
-      const msg = err?.response?.data?.msg || "Lỗi đăng ký"
-      alert(msg)
+      console.log("Lỗi đăng ký:", err?.response?.data);
+      const msg = err?.response?.data?.msg || err?.response?.data?.message || "Lỗi đăng ký";
+      alert(msg);
     } finally {
       setIsLoading(false)
     }
@@ -146,12 +176,32 @@ export default function AuthPage() {
               <form onSubmit={handleRegister}>
                 <div className="grid gap-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="name">Họ Tên</Label>
-                    <Input id="name" type="text" placeholder="Nguyễn Văn A" required />
+                    <Label htmlFor="register-fullname">Họ tên</Label>
+                    <Input id="register-fullname" type="text" placeholder="Nguyễn Văn A" required />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="register-email">Email</Label>
                     <Input id="register-email" type="email" placeholder="m@example.com" required />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="register-phone">Số điện thoại</Label>
+                    <Input id="register-phone" type="tel" placeholder="0123456789" required />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="register-dob">Ngày sinh</Label>
+                    <Input id="register-dob" type="date" required />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Giới tính</Label>
+                    <div className="flex gap-4">
+                      <label><input type="radio" name="register-gender" value="male" defaultChecked /> Nam</label>
+                      <label><input type="radio" name="register-gender" value="female" /> Nữ</label>
+                      <label><input type="radio" name="register-gender" value="other" /> Khác</label>
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="register-address">Địa chỉ</Label>
+                    <Input id="register-address" type="text" placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành" required />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="register-password">Mật Khẩu</Label>

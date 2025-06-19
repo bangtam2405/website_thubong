@@ -180,6 +180,9 @@ export default function ProductDetail() {
 
           <div className="space-y-4">
             <div className="flex items-center gap-2">
+              <span className="text-gray-600">Số lượng tồn kho: <b>{product.stock}</b></span>
+            </div>
+            <div className="flex items-center gap-2">
               <span className="text-gray-600">Số lượng:</span>
               <div className="flex items-center border rounded-lg">
                 <Button
@@ -194,11 +197,11 @@ export default function ProductDetail() {
                   variant="ghost"
                   onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
                   className="px-3"
+                  disabled={quantity >= product.stock}
                 >
                   +
                 </Button>
               </div>
-              <span className="text-gray-600">({product.stock} sản phẩm có sẵn)</span>
             </div>
 
             <div className="flex gap-4">

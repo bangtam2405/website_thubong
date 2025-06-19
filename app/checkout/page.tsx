@@ -90,6 +90,42 @@ export default function CheckoutPage() {
         setLoading(false)
       }
     } else {
+      // Tạo đơn hàng khi thanh toán COD
+      try {
+        const userId = localStorage.getItem("userId");
+        if (!userId || userId.length !== 24) {
+          toast.error("Bạn cần đăng nhập lại để đặt hàng!");
+          setLoading(false);
+          return;
+        }
+        const orderData = {
+          user: userId,
+          products: items.map(item => ({
+            product: item._id,
+            quantity: item.quantity
+          })),
+          totalPrice: total,
+          name,
+          phone,
+          address
+        };
+        const res = await fetch("http://localhost:5000/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(orderData)
+        });
+        if (!res.ok) {
+          const errMsg = await res.text();
+          console.error("Order API error:", errMsg, orderData);
+          toast.error("Có lỗi khi lưu đơn hàng! " + errMsg);
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        toast.error("Có lỗi khi lưu đơn hàng!");
+        setLoading(false);
+        return;
+      }
       setTimeout(() => {
         setLoading(false)
         toast.success("Đặt hàng thành công! Cảm ơn bạn đã mua hàng.")
