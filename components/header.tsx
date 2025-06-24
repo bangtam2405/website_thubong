@@ -17,11 +17,14 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { usePathname } from "next/navigation"
+import { useCart } from "@/contexts/CartContext"
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [user, setUser] = useState<any>(useCurrentUser());
   const pathname = usePathname();
+  const { items } = useCart();
+  const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
   useEffect(() => {
     const handleUserUpdated = () => {
       setUser(useCurrentUser());
@@ -101,9 +104,11 @@ export default function Header() {
               <Link href="/cart">
                 <Button variant="ghost" size="icon" className="relative">
                   <ShoppingCart className="h-6 w-6 text-gray-700" />
-                  <Badge className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs h-5 w-5 flex items-center justify-center p-0 rounded-full">
-                    3
-                  </Badge>
+                  {cartCount > 0 && (
+                    <Badge className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs h-5 w-5 flex items-center justify-center p-0 rounded-full animate-bounce">
+                      {cartCount}
+                    </Badge>
+                  )}
                 </Button>
               </Link>
 

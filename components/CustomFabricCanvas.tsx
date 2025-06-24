@@ -32,7 +32,30 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
     getActiveObject: () => fabricCanvasRef.current?.getActiveObject(),
     remove: (object: any) => fabricCanvasRef.current?.remove(object),
     discardActiveObject: () => fabricCanvasRef.current?.discardActiveObject(),
-    renderAll: () => fabricCanvasRef.current?.renderAll()
+    renderAll: () => fabricCanvasRef.current?.renderAll(),
+    updateFurColor: (color: string) => {
+      const canvas = fabricCanvasRef.current;
+      if (!canvas) return;
+
+      const bodyObject = canvas.getObjects().find((obj: any) => obj.partType === 'body');
+
+      if (bodyObject) {
+        // Remove previous color filters
+        bodyObject.filters = bodyObject.filters?.filter((f: any) => f.type !== 'BlendColor');
+        
+        // Add new color filter
+        if (color) {
+          bodyObject.filters?.push(new fabric.Image.filters.BlendColor({
+            color: color,
+            mode: 'tint',
+            alpha: 0.7 // Độ đậm nhạt của màu, có thể điều chỉnh
+          }));
+        }
+
+        bodyObject.applyFilters();
+        canvas.renderAll();
+      }
+    }
   }), [])
 
   // Reset hasLoadedFromJSON về false mỗi khi canvasJSON đổi
@@ -186,6 +209,18 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
           const scaleX = 500 / img.width
           const scaleY = 650 / img.height
           fabricImage.set({ left: 0, top: 0, scaleX, scaleY, selectable: false, evented: false, partType: 'body' })
+          
+          // Áp dụng màu lông nếu có
+          if (selectedOptions.furColor) {
+            fabricImage.filters = fabricImage.filters || [];
+            fabricImage.filters.push(new fabric.Image.filters.BlendColor({
+              color: selectedOptions.furColor,
+              mode: 'tint',
+              alpha: 0.7
+            }));
+            fabricImage.applyFilters();
+          }
+
           fabricCanvas.add(fabricImage)
           fabricCanvas.sendToBack(fabricImage)
         } else {
@@ -236,10 +271,10 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
     if (selectedOptions.mouth) {
       addPart(selectedOptions.mouth, 'mouth')
     }
-    // 6. Fur Color (nếu là 1 layer ảnh riêng)
-    if (selectedOptions.furColor) {
-      addPart(selectedOptions.furColor, 'furColor')
-    }
+    // 6. Fur Color sẽ được xử lý bằng filter, không phải layer riêng
+    // if (selectedOptions.furColor) {
+    //   addPart(selectedOptions.furColor, 'furColor')
+    // }
     // 7. Clothing
     if (selectedOptions.clothing) {
       addPart(selectedOptions.clothing, 'clothing')

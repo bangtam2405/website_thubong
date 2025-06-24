@@ -66,6 +66,22 @@ export default function AdminOrderDetailPage() {
             <span>{order.user?._id}</span>
           </div>
           <div className="border-t pt-4 mt-2">
+            <div className="font-semibold mb-2 text-base">Thông tin thanh toán</div>
+            <div className="flex flex-col gap-1 text-gray-700">
+              <div><b>Phương thức:</b> {order.paymentMethod || '---'}</div>
+              <div>
+                <b>Trạng thái:</b>
+                <Badge className={`ml-2 ${order.paymentStatus === 'success' ? 'bg-green-100 text-green-700' : order.paymentStatus === 'failed' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                  {order.paymentStatus === 'success' ? 'Thành công' : order.paymentStatus === 'failed' ? 'Thất bại' : 'Chờ thanh toán'}
+                </Badge>
+              </div>
+              {order.transactionId && <div><b>Mã giao dịch:</b> {order.transactionId}</div>}
+              {order.paymentStatus === 'success' && order.updatedAt && (
+                <div><b>Thời gian thanh toán:</b> {new Date(order.updatedAt).toLocaleString()}</div>
+              )}
+            </div>
+          </div>
+          <div className="border-t pt-4 mt-2">
             <div className="font-semibold mb-1">Thông tin nhận hàng</div>
             <div className="flex flex-col gap-1 text-gray-700">
               <div><b>Họ tên:</b> {order.name}</div>
@@ -89,6 +105,12 @@ export default function AdminOrderDetailPage() {
                 </div>
                 <div className="flex-1">
                   <div className="font-semibold text-base">{item.product?.name || '---'}</div>
+                  {item.product?.specifications?.size && (
+                    <div className="text-xs text-gray-500 mt-1">Kích thước: {item.product.specifications.size === 'small' ? 'Nhỏ' : item.product.specifications.size === 'large' ? 'Lớn' : 'Vừa'}</div>
+                  )}
+                  {!item.product?.specifications?.size && item.product?.size && (
+                    <div className="text-xs text-gray-500 mt-1">Kích thước: {item.product.size === 'small' ? 'Nhỏ' : item.product.size === 'large' ? 'Lớn' : 'Vừa'}</div>
+                  )}
                   <div className="text-sm text-gray-500">x{item.quantity}</div>
                 </div>
                 <div className="font-bold text-pink-600 text-lg">{item.product?.price ? (item.product.price * item.quantity).toLocaleString() + '₫' : '--'}</div>

@@ -325,10 +325,11 @@ function CategoriesTab() {
   const [categories, setCategories] = useState<any[]>([])
   const [search, setSearch] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
+  const [loading, setLoading] = useState(true)
   const router = useRouter()
 
   useEffect(() => {
-    instance.get("http://localhost:5000/api/categories").then(res => setCategories(res.data))
+    instance.get("http://localhost:5000/api/categories").then(res => setCategories(res.data)).finally(() => setLoading(false))
   }, [])
 
   function getAllDescendantIds(categories: any[], parentId: any): any[] {
@@ -434,7 +435,7 @@ function CategoriesTab() {
                               <div className="font-medium">{child.name} (Danh mục cha)</div>
                               <div className="text-xs text-gray-500">Giá: {child.price ? child.price + '$' : '---'}</div>
                             </div>
-                            <Button size="icon" variant="ghost" onClick={() => router.push(`/admin/edit-product/${child._id}`)}><Edit /></Button>
+                            <Button size="icon" variant="ghost" onClick={() => router.push(`/admin/edit-category/${child._id}`)}><Edit /></Button>
                             <Button
                               size="icon"
                               variant="ghost"
@@ -457,7 +458,7 @@ function CategoriesTab() {
                                 <div className="font-medium">{grandchild.name}</div>
                                 <div className="text-xs text-gray-500">Giá: {grandchild.price ? grandchild.price + '$' : '---'}</div>
                               </div>
-                              <Button size="icon" variant="ghost" onClick={() => router.push(`/admin/edit-product/${grandchild._id}`)}><Edit /></Button>
+                              <Button size="icon" variant="ghost" onClick={() => router.push(`/admin/edit-category/${grandchild._id}`)}><Edit /></Button>
                               <Button
                                 size="icon"
                                 variant="ghost"
@@ -481,7 +482,7 @@ function CategoriesTab() {
                             <div className="font-medium">{child.name}</div>
                             <div className="text-xs text-gray-500">Giá: {child.price ? child.price + '$' : '---'}</div>
                           </div>
-                          <Button size="icon" variant="ghost" onClick={() => router.push(`/admin/edit-product/${child._id}`)}><Edit /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => router.push(`/admin/edit-category/${child._id}`)}><Edit /></Button>
                           <Button
                             size="icon"
                             variant="ghost"

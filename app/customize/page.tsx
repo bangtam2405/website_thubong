@@ -49,6 +49,16 @@ export default function CustomizePage() {
   const [history, setHistory] = useState<any[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
 
+  // Danh sách màu lông
+  const furColors = [
+    { name: "Nâu", value: "#D2B48C" },
+    { name: "Trắng", value: "#FFFFFF" },
+    { name: "Hồng", value: "#FFC0CB" },
+    { name: "Vàng", value: "#FFD700" },
+    { name: "Xám", value: "#808080" },
+    { name: "Be", value: "#F5F5DC" },
+  ];
+
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
   const editType = searchParams.get("type"); // "product" hoặc "design"
@@ -234,6 +244,13 @@ export default function CustomizePage() {
   const handleSizeChange = (value: string) => {
     setSelectedOptions((prev) => ({ ...prev, size: value }))
   }
+
+  const handleColorChange = (color: string) => {
+    setSelectedOptions((prev) => ({ ...prev, furColor: color }));
+    if (fabricRef.current) {
+      fabricRef.current.updateFurColor(color);
+    }
+  };
 
   const handleUndo = () => {
     if (historyIndex > 0) {

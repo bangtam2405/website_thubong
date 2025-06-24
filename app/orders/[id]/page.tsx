@@ -6,7 +6,15 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import axios from "axios"
 import Image from "next/image"
-import { Dialog } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -114,6 +122,26 @@ export default function OrderDetailPage() {
             <span className="font-semibold">Khách hàng:</span>
             <span>{order.user?.username || order.user?.email}</span>
           </div>
+          
+          <div className="border-t pt-4 mt-2">
+            <div className="font-semibold mb-2 text-base">Thông tin thanh toán</div>
+            <div className="flex flex-col gap-1 text-gray-700">
+              <div><b>Phương thức:</b> {order.paymentMethod}</div>
+              <div>
+                <b>Trạng thái:</b>
+                <Badge 
+                  className={`ml-2 ${order.paymentStatus === 'success' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}
+                >
+                  {order.paymentStatus === 'success' ? 'Thành công' : 'Chờ thanh toán'}
+                </Badge>
+              </div>
+              {order.transactionId && <div><b>Mã giao dịch:</b> {order.transactionId}</div>}
+              {order.paymentStatus === 'success' && order.updatedAt && (
+                <div><b>Thời gian thanh toán:</b> {new Date(order.updatedAt).toLocaleString()}</div>
+              )}
+            </div>
+          </div>
+
           <div className="border-t pt-4 mt-2">
             <div className="font-semibold mb-1">Thông tin nhận hàng</div>
             <div className="flex flex-col gap-1 text-gray-700">
@@ -144,13 +172,17 @@ export default function OrderDetailPage() {
           </div>
           {order.status === 'Chờ xác nhận' && (
             <>
-              <Button className="mt-4 bg-red-500 hover:bg-red-600 w-fit" onClick={() => setShowCancelModal(true)}>
-                Hủy đơn hàng
-              </Button>
-              <Dialog open={showCancelModal} onOpenChange={setShowCancelModal}>
-                <div className="fixed inset-0 bg-black/30 z-40 flex items-center justify-center">
-                  <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md z-50">
-                    <h2 className="text-lg font-bold mb-4">Lý do hủy đơn hàng</h2>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="mt-4 bg-red-500 hover:bg-red-600 w-fit">
+                    Hủy đơn hàng
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Lý do hủy đơn hàng</DialogTitle>
+                  </DialogHeader>
+                  <div className="py-4">
                     <RadioGroup value={cancelReason} onValueChange={setCancelReason} className="mb-4">
                       {cancelReasons.map(r => (
                         <div key={r} className="flex items-center gap-2 mb-2">
@@ -165,14 +197,16 @@ export default function OrderDetailPage() {
                       value={cancelNote}
                       onChange={e => setCancelNote(e.target.value)}
                     />
-                    <div className="flex gap-2 justify-end">
-                      <Button variant="outline" onClick={() => setShowCancelModal(false)}>Hủy</Button>
-                      <Button onClick={handleCancel} disabled={canceling || !cancelReason} className="bg-red-500 hover:bg-red-600 text-white">
-                        {canceling ? "Đang hủy..." : "Xác nhận hủy"}
-                      </Button>
-                    </div>
                   </div>
-                </div>
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button variant="outline">Hủy</Button>
+                    </DialogClose>
+                    <Button onClick={handleCancel} disabled={canceling || !cancelReason} className="bg-red-500 hover:bg-red-600 text-white">
+                      {canceling ? "Đang hủy..." : "Xác nhận hủy"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
               </Dialog>
             </>
           )}
@@ -193,6 +227,12 @@ export default function OrderDetailPage() {
                 </div>
                 <div className="flex-1">
                   <div className="font-semibold text-base">{item.product?.name || '---'}</div>
+                  {item.product?.specifications?.size && (
+                    <div className="text-xs text-gray-500 mt-1">Kích thước: {item.product.specifications.size === 'small' ? 'Nhỏ' : item.product.specifications.size === 'large' ? 'Lớn' : 'Vừa'}</div>
+                  )}
+                  {!item.product?.specifications?.size && item.product?.size && (
+                    <div className="text-xs text-gray-500 mt-1">Kích thước: {item.product.size === 'small' ? 'Nhỏ' : item.product.size === 'large' ? 'Lớn' : 'Vừa'}</div>
+                  )}
                   <div className="text-sm text-gray-500">x{item.quantity}</div>
                 </div>
                 <div className="font-bold text-pink-600 text-lg">{item.product?.price ? (item.product.price * item.quantity).toLocaleString() + '₫' : '--'}</div>

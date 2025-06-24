@@ -53,14 +53,27 @@ export default function CheckoutPage() {
     setLoading(true)
 
     if (payment === 'vnpay') {
+      const userId = localStorage.getItem("userId");
+      if (!userId || userId.length !== 24) {
+        toast.error("Bạn cần đăng nhập lại để đặt hàng!");
+        setLoading(false);
+        return;
+      }
+
       const res = await fetch('http://localhost:5000/api/payment/vnpay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: total,
-          orderId: `ORDER${Date.now()}`,
-          orderInfo: `Thanh toán đơn hàng cho ${name}`,
-          returnUrl: `${window.location.origin}/payment-result`
+          returnUrl: `${window.location.origin}/payment-result`,
+          products: items.map(item => ({
+            product: item._id,
+            quantity: item.quantity
+          })),
+          user: userId,
+          name,
+          phone,
+          address,
         })
       });
       const data = await res.json();
