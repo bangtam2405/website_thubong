@@ -39,6 +39,7 @@ export default function CustomizePage() {
     nose: "",
     mouth: "",
     furColor: "",
+    material: "",
     clothing: "",
     accessories: [] as string[],
     name: "",
@@ -539,6 +540,24 @@ export default function CustomizePage() {
     ? categories.filter(cat => cat.parent === bodyParent._id)
     : [];
 
+  // Lấy nhóm con của 'Thân' (các nhóm: Loại Thân, Kích Thước, Chất Liệu, Màu Lông)
+  const thanParent = categories.find(cat => cat.name === "Thân" && !cat.parent);
+  const thanGroups = thanParent
+    ? categories.filter(cat => cat.parent === thanParent._id)
+    : [];
+
+  // Hàm lấy các lựa chọn thực tế theo tên nhóm
+  const getOptionsByGroupName = (groupName: string) => {
+    const group = thanGroups.find(g => g.name.toLowerCase().includes(groupName.toLowerCase()));
+    if (!group) return [];
+    return categories.filter(cat => cat.parent === group._id);
+  };
+
+  const bodyOptions = getOptionsByGroupName("Loại Thân");
+  const sizeOptions = getOptionsByGroupName("Kích Thước");
+  const materialOptions = getOptionsByGroupName("Chất Liệu");
+  const furColorOptions = getOptionsByGroupName("Màu Lông");
+
   function mapGroupToOptionKey(group: any) {
     if (group.type === "accessory" || group.name.toLowerCase().includes("phụ kiện")) return "accessories";
     if (group.type === "body" || group.name.toLowerCase().includes("loại thân")) return "body";
@@ -736,46 +755,81 @@ export default function CustomizePage() {
                 </TabsList>
 
                 <TabsContent value="body" className="space-y-6">
-                  {bodyGroups.map(group => (
-                    <div key={group._id}>
-                      <h3 className="font-medium mb-3">{group.name}</h3>
-                      {group.name === "Kích Thước" ? (
-                        <RadioGroup
-                          value={(selectedOptions as any)[mapGroupToOptionKey(group)] || selectedOptions.size}
-                          onValueChange={value => setSelectedOptions(prev => ({ ...prev, [mapGroupToOptionKey(group) || "size"]: value }))}
-                          className="flex space-x-4"
+                  {/* Loại Thân */}
+                  <div>
+                    <h3 className="font-medium mb-3">Loại Thân</h3>
+                    <div className="grid grid-cols-3 gap-3">
+                      {bodyOptions.map(option => (
+                        <div
+                          key={option._id}
+                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                            selectedOptions.body === option._id ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
+                          }`}
+                          onClick={() => setSelectedOptions(prev => ({ ...prev, body: option._id }))}
                         >
-                          {categories.filter(opt => opt.parent === group._id && opt.type === "option").map(option => (
-                            <div key={option._id} className="flex items-center space-x-2">
-                              <RadioGroupItem value={option._id} id={`size-${option._id}`} />
-                              <Label htmlFor={`size-${option._id}`}>{option.name}</Label>
-                            </div>
-                          ))}
-                        </RadioGroup>
-                      ) : (
-                        <div className="grid grid-cols-3 gap-3">
-                          {categories.filter(opt => opt.parent === group._id && opt.type === "option").map(option => (
-                            <div
-                              key={option._id}
-                              className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                                (selectedOptions as any)[mapGroupToOptionKey(group)] === option._id ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
-                              }`}
-                              onClick={() => handleOptionSelect(mapGroupToOptionKey(group), option._id)}
-                            >
-                              <Image
-                                src={option.image || "/placeholder.svg"}
-                                alt={option.name}
-                                width={60}
-                                height={60}
-                                className="mx-auto mb-2"
-                              />
-                              <p className="text-center text-sm">{option.name}</p>
-                            </div>
-                          ))}
+                          <Image
+                            src={option.image || "/placeholder.svg"}
+                            alt={option.name}
+                            width={60}
+                            height={60}
+                            className="mx-auto mb-2"
+                          />
+                          <p className="text-center text-sm">{option.name}</p>
                         </div>
-                      )}
+                      ))}
                     </div>
-                  ))}
+                  </div>
+                  {/* Kích Thước */}
+                  <div>
+                    <h3 className="font-medium mb-3">Kích Thước</h3>
+                    <RadioGroup
+                      value={selectedOptions.size}
+                      onValueChange={value => setSelectedOptions(prev => ({ ...prev, size: value }))}
+                      className="flex space-x-4"
+                    >
+                      {sizeOptions.map(option => (
+                        <div className="flex items-center space-x-2" key={option._id}>
+                          <RadioGroupItem value={option._id} id={`size-${option._id}`} />
+                          <Label htmlFor={`size-${option._id}`}>{option.name}</Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+                  {/* Chất Liệu */}
+                  <div>
+                    <h3 className="font-medium mb-3">Chất Liệu</h3>
+                    <RadioGroup
+                      value={selectedOptions.material}
+                      onValueChange={value => setSelectedOptions(prev => ({ ...prev, material: value }))}
+                      className="flex space-x-4"
+                    >
+                      {materialOptions.map(option => (
+                        <div className="flex items-center space-x-2" key={option._id}>
+                          <RadioGroupItem value={option._id} id={`material-${option._id}`} />
+                          <Label htmlFor={`material-${option._id}`}>{option.name}</Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+                  {/* Màu Lông */}
+                  <div>
+                    <h3 className="font-medium mb-3">Màu Lông</h3>
+                    <div className="flex flex-wrap gap-3">
+                      {furColorOptions.map((option) => (
+                        <div
+                          key={option._id}
+                          onClick={() => handleColorChange(option.image || "")}
+                          className={`w-10 h-10 rounded-full border-2 cursor-pointer transition-all ${
+                            selectedOptions.furColor === option.image
+                              ? "ring-2 ring-offset-2 ring-pink-500"
+                              : "border-gray-200"
+                          }`}
+                          style={{ backgroundColor: option.image || "#eee" }}
+                          title={option.name}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="features" className="space-y-6">

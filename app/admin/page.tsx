@@ -7,12 +7,173 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Eye, Plus, Edit, Trash2 } from "lucide-react"
+import { Eye, Plus, Edit, Trash2, LineChart, Users, ShoppingCart, DollarSign, Package } from "lucide-react"
 import Image from "next/image"
 import instance from "@/lib/axiosConfig"
 import { useRouter } from "next/navigation"
 import ImageUpload from "@/components/ImageUpload"
 import { AdminTabContext } from "./layout"
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
+
+// Định nghĩa kiểu cho một tháng doanh thu
+type MonthRevenue = {
+  name: string;
+  year: number;
+  month: number;
+  total: number;
+};
+
+// Thống kê
+function StatsTab() {
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [fromDate, setFromDate] = useState<string>("");
+  const [toDate, setToDate] = useState<string>("");
+
+  const fetchStats = () => {
+    setLoading(true);
+    instance.get("/api/admin/stats", {
+      params: {
+        from: fromDate || undefined,
+        to: toDate || undefined
+      }
+    })
+      .then(res => {
+        const now = toDate ? new Date(toDate) : new Date();
+        const months: MonthRevenue[] = [];
+        for (let i = 11; i >= 0; i--) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          months.push({
+            name: `Thg ${d.getMonth() + 1}/${d.getFullYear()}`,
+            year: d.getFullYear(),
+            month: d.getMonth() + 1,
+            total: 0,
+          });
+        }
+        (res.data.monthlyRevenue as { _id: { year: number, month: number }, total: number }[]).forEach((item) => {
+          const idx = months.findIndex(
+            m => m.year === item._id.year && m.month === item._id.month
+          );
+          if (idx !== -1) months[idx].total = item.total;
+        });
+        setStats({ ...res.data, monthlyRevenue: months });
+      })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchStats();
+    // eslint-disable-next-line
+  }, []);
+
+  if (loading) return <div>Đang tải dữ liệu thống kê...</div>;
+  if (!stats) return <div>Không có dữ liệu.</div>;
+
+  return (
+    <div className="space-y-8">
+      <div className="flex gap-4 mb-4 items-end">
+        <div>
+          <label className="block text-sm font-medium mb-1">Từ ngày</label>
+          <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="border rounded px-2 py-1" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Đến ngày</label>
+          <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="border rounded px-2 py-1" />
+        </div>
+        <Button onClick={fetchStats} className="h-10">Lọc</Button>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Tổng Doanh Thu</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalRevenue.toLocaleString()}₫</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Tổng Khách Hàng</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">+{stats.totalCustomers}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Tổng Đơn Hàng</CardTitle>
+            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">+{stats.totalOrders}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Tổng Sản Phẩm</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalProducts}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-4">
+          <CardHeader>
+            <CardTitle>Doanh Thu 12 Tháng Gần Nhất</CardTitle>
+          </CardHeader>
+          <CardContent className="pl-2">
+            <ResponsiveContainer width="100%" height={350}>
+              <BarChart data={stats.monthlyRevenue}>
+                <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${(value as number) / 1000}k`} />
+                <Bar dataKey="total" fill="currentColor" radius={[4, 4, 0, 0]} className="fill-primary" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-3">
+          <CardHeader>
+            <CardTitle>Đơn Hàng Gần Đây</CardTitle>
+            <CardDescription>
+              5 đơn hàng mới nhất.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+             <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Khách Hàng</TableHead>
+                    <TableHead>Trạng thái</TableHead>
+                    <TableHead>Tổng</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {stats.recentOrders.map((order: any) => (
+                    <TableRow key={order._id}>
+                      <TableCell>
+                        <div className="font-medium">{order.user?.username || 'N/A'}</div>
+                        <div className="hidden text-sm text-muted-foreground md:inline">
+                          {order.user?.email}
+                        </div>
+                      </TableCell>
+                      <TableCell><Badge>{order.status}</Badge></TableCell>
+                      <TableCell>{order.totalPrice.toLocaleString()}₫</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
 
 // Đơn hàng
 function OrdersTab() {
@@ -514,13 +675,28 @@ function CategoriesTab() {
 }
 
 export default function AdminPage() {
-  const { tab } = useContext(AdminTabContext);
+  const { tab, setTab } = useContext(AdminTabContext)
+
+  const renderTab = () => {
+    switch (tab) {
+      case "stats":
+        return <StatsTab />
+      case "orders":
+        return <OrdersTab />
+      case "users":
+        return <UsersTab />
+      case "products":
+        return <ProductsTab />
+      case "categories":
+        return <CategoriesTab />
+      default:
+        return <StatsTab />
+    }
+  }
+
   return (
     <>
-      {tab === "orders" && <OrdersTab />}
-      {tab === "users" && <UsersTab />}
-      {tab === "products" && <ProductsTab />}
-      {tab === "categories" && <CategoriesTab />}
+      {renderTab()}
     </>
   );
 }

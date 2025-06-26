@@ -68,6 +68,10 @@ export default function CategoryForm() {
   const level2Children = categories.filter(cat => cat.parent === level2);
   const level2IsLeaf = level2 && level2Children.length === 0;
 
+  // Tìm tên của category cha (level 2) đang được chọn
+  const selectedLevel2Category = categories.find(cat => cat._id === level2);
+  const isFurColorCategory = selectedLevel2Category?.name === "Màu Lông";
+
   return (
     <form
       onSubmit={handleSubmit}
@@ -124,11 +128,25 @@ export default function CategoryForm() {
           className="w-full border border-gray-300 rounded-lg p-2"
           required
         />
-        <ImageUpload 
-          onImageUploaded={handleImageUploaded}
-          currentImage={image}
-          folder="categories"
-        />
+        {isFurColorCategory ? (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Mã màu (Hex)</label>
+            <input
+              type="text"
+              placeholder="#FFD700"
+              value={image}
+              onChange={(e) => setImage(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg p-2"
+              required
+            />
+          </div>
+        ) : (
+          <ImageUpload
+            onImageUploaded={handleImageUploaded}
+            currentImage={image}
+            folder="categories"
+          />
+        )}
         <input
           type="number"
           placeholder="Giá (nếu có)"

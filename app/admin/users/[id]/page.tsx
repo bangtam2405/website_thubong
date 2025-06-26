@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import axios from "axios"
+import axios from "@/lib/axiosConfig"
 
 export default function UserDetailPage() {
   const { id } = useParams()
@@ -15,10 +15,11 @@ export default function UserDetailPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!id) return;
     Promise.all([
-      axios.get(`http://localhost:5000/api/auth/users/${id}`),
-      axios.get(`http://localhost:5000/api/orders/${id}`),
-      axios.get(`http://localhost:5000/api/wishlist/${id}`)
+      axios.get(`/api/auth/users/${id}`),
+      axios.get(`/api/orders/${id}`),
+      axios.get(`/api/wishlist/admin/${id}`)
     ]).then(([u, o, w]) => {
       setUser(u.data)
       setOrders(o.data)
@@ -32,7 +33,7 @@ export default function UserDetailPage() {
 
   const handleSaveNote = async () => {
     setSavingNote(true)
-    await axios.put(`http://localhost:5000/api/auth/users/${id}/note`, { note })
+    await axios.put(`/api/auth/users/${id}/note`, { note })
     setSavingNote(false)
   }
 

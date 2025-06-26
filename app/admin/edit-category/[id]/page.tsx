@@ -20,16 +20,28 @@ export default function EditCategoryPage() {
   const [name, setName] = useState("")
   const [price, setPrice] = useState("")
   const [image, setImage] = useState("")
+  const [parentCategory, setParentCategory] = useState<any>(null)
 
   useEffect(() => {
     if (id) {
       axios.get(`http://localhost:5000/api/categories/${id}`)
-        .then(res => {
+        .then(async res => {
           const categoryData = res.data;
           setCategory(categoryData);
           setName(categoryData.name || "");
           setPrice(categoryData.price ? String(categoryData.price) : "");
           setImage(categoryData.image || "");
+          // Nếu có parent thì fetch parent
+          if (categoryData.parent) {
+            try {
+              const parentRes = await axios.get(`http://localhost:5000/api/categories/${categoryData.parent}`);
+              setParentCategory(parentRes.data);
+            } catch (err) {
+              setParentCategory(null);
+            }
+          } else {
+            setParentCategory(null);
+          }
         })
         .catch(err => {
           console.error("Failed to fetch category:", err);
@@ -81,7 +93,21 @@ export default function EditCategoryPage() {
           <Input id="price" value={price} onChange={e => setPrice(e.target.value)} placeholder="Giá (nếu có)" type="number" />
         </div>
         <div>
-          <ImageUpload onImageUploaded={handleImageUploaded} currentImage={image} />
+          {parentCategory && parentCategory.name === "Màu Lông" ? (
+            <>
+              <Label htmlFor="colorHex">Mã màu lông (Hex)</Label>
+              <Input
+                id="colorHex"
+                value={image}
+                onChange={e => setImage(e.target.value)}
+                placeholder="#E6BEA5"
+                maxLength={7}
+              />
+              <div className="w-10 h-10 mt-2 rounded border" style={{ background: image || '#fff' }} />
+            </>
+          ) : (
+            <ImageUpload onImageUploaded={handleImageUploaded} currentImage={image} />
+          )}
         </div>
         <div className="flex gap-4 mt-6">
           <Button type="submit" className="bg-pink-600 hover:bg-pink-700 text-white">Lưu thay đổi</Button>
