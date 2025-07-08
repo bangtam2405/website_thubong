@@ -12,10 +12,13 @@ export interface Category {
   price?: number
 }
 
-const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOptions, categories, canvasJSON }: { 
+const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOptions, categories, canvasJSON, backgroundImage, customTexts = [], onCustomTextsChange }: { 
   selectedOptions: any, 
   categories: Category[], 
-  canvasJSON?: any
+  canvasJSON?: any,
+  backgroundImage?: string,
+  customTexts?: { id: string, text: string, fill: string, fontSize: number, fontFamily: string, left: number, top: number }[],
+  onCustomTextsChange?: (texts: any[]) => void
 }, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fabricCanvasRef = useRef<any>(null)
@@ -36,13 +39,10 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
     updateFurColor: (color: string) => {
       const canvas = fabricCanvasRef.current;
       if (!canvas) return;
-
       const bodyObject = canvas.getObjects().find((obj: any) => obj.partType === 'body');
-
       if (bodyObject) {
         // Remove previous color filters
         bodyObject.filters = bodyObject.filters?.filter((f: any) => f.type !== 'BlendColor');
-        
         // Add new color filter
         if (color) {
           bodyObject.filters?.push(new fabric.Image.filters.BlendColor({
@@ -51,11 +51,57 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
             alpha: 0.7 // Độ đậm nhạt của màu, có thể điều chỉnh
           }));
         }
-
         bodyObject.applyFilters();
         canvas.renderAll();
       }
-    }
+    },
+    // Thêm text mới
+    addText: (text: string, options?: { left?: number, top?: number, fill?: string, fontSize?: number, fontFamily?: string }) => {
+      const canvas = fabricCanvasRef.current;
+      if (!canvas) return;
+      const textbox = new fabric.Textbox(text, {
+        left: options?.left ?? canvas.width / 2,
+        top: options?.top ?? canvas.height / 2,
+        fill: options?.fill ?? '#000',
+        fontSize: options?.fontSize ?? 32,
+        fontFamily: options?.fontFamily ?? 'Arial',
+        editable: true,
+        fontWeight: 'bold',
+        borderColor: '#f472b6',
+        cornerColor: '#f472b6',
+        cornerSize: 8,
+        transparentCorners: false,
+        padding: 4,
+        lockUniScaling: false,
+      });
+      canvas.add(textbox);
+      canvas.setActiveObject(textbox);
+      canvas.renderAll();
+    },
+    // Chỉnh sửa text đang chọn
+    updateActiveText: (props: { text?: string, fill?: string, fontSize?: number, fontFamily?: string }) => {
+      const canvas = fabricCanvasRef.current;
+      if (!canvas) return;
+      const active = canvas.getActiveObject();
+      if (active && active.type === 'textbox') {
+        if (props.text !== undefined) (active as any).text = props.text;
+        if (props.fill !== undefined) (active as any).set('fill', props.fill);
+        if (props.fontSize !== undefined) (active as any).set('fontSize', props.fontSize);
+        if (props.fontFamily !== undefined) (active as any).set('fontFamily', props.fontFamily);
+        canvas.renderAll();
+      }
+    },
+    // Xoá text đang chọn
+    deleteActiveText: () => {
+      const canvas = fabricCanvasRef.current;
+      if (!canvas) return;
+      const active = canvas.getActiveObject();
+      if (active && active.type === 'textbox') {
+        canvas.remove(active);
+        canvas.discardActiveObject();
+        canvas.renderAll();
+      }
+    },
   }), [])
 
   // Reset hasLoadedFromJSON về false mỗi khi canvasJSON đổi
@@ -168,7 +214,24 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
     console.log("selectedOptions:", selectedOptions);
     
     fabricCanvas.clear()
-    fabricCanvas.setBackgroundColor("#fdf2f8", () => {})
+    if (backgroundImage) {
+      fabric.Image.fromURL(backgroundImage, (img: any) => {
+        img.set({
+          left: 0,
+          top: 0,
+          scaleX: fabricCanvas.width / img.width!,
+          scaleY: fabricCanvas.height / img.height!,
+          selectable: false,
+          evented: false
+        });
+        fabricCanvas.setBackgroundImage(img, () => {
+          fabricCanvas.renderAll();
+        });
+      }, { crossOrigin: 'anonymous' });
+    } else {
+      fabricCanvas.setBackgroundColor("#fdf2f8", fabricCanvas.renderAll.bind(fabricCanvas))
+      fabricCanvas.setBackgroundImage(null, fabricCanvas.renderAll.bind(fabricCanvas));
+    }
 
     // Chỉ vẽ khi có ít nhất một phần tử được chọn
     const hasAnySelection = selectedOptions.body || selectedOptions.ears || selectedOptions.eyes || 
@@ -327,7 +390,38 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
       fabricCanvas.off('selection:created')
       fabricCanvas.off('selection:updated')
     }
-  }, [selectedOptions, categories, canvasJSON, hasLoadedFromJSON, justRestored])
+  }, [selectedOptions, categories, canvasJSON, hasLoadedFromJSON, justRestored, backgroundImage])
+
+  // Khi vẽ lại text từ customTexts, xóa toàn bộ textbox cũ trước khi add lại
+  useEffect(() => {
+    const canvas = fabricCanvasRef.current;
+    if (!canvas) return;
+    // XÓA toàn bộ textbox cũ trước khi add lại
+    canvas.getObjects()
+      .filter((obj: any) => obj.type === 'textbox')
+      .forEach((obj: any) => canvas.remove(obj));
+    // Thêm lại từ customTexts
+    customTexts.forEach(t => {
+      let textbox = new fabric.Textbox(t.text, {
+        left: t.left,
+        top: t.top,
+        fill: t.fill,
+        fontSize: t.fontSize,
+        fontFamily: t.fontFamily,
+        editable: true,
+        fontWeight: 'bold',
+        borderColor: '#f472b6',
+        cornerColor: '#f472b6',
+        cornerSize: 8,
+        transparentCorners: false,
+        padding: 4,
+        lockUniScaling: false,
+      });
+      textbox.customId = t.id;
+      canvas.add(textbox);
+    });
+    canvas.renderAll();
+  }, [customTexts]);
 
   return (
     <canvas ref={canvasRef} width={500} height={650} className="rounded-lg" />

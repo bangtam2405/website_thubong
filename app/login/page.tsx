@@ -1,10 +1,12 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import instance from "@/lib/axiosConfig"
 import jwt_decode from "jwt-decode"
+import { signIn, useSession } from "next-auth/react"
+import { GoogleLogin } from '@react-oauth/google'
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,6 +18,17 @@ import { Checkbox } from "@/components/ui/checkbox"
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const { data: session, status } = useSession()
+
+  useEffect(() => {
+    if (status === "authenticated" && session?.user) {
+      localStorage.setItem("user", JSON.stringify(session.user))
+      localStorage.setItem("email", session.user.email || "")
+      localStorage.setItem("username", session.user.name || "")
+      localStorage.setItem("avatar", session.user.image || "")
+      router.push("/")
+    }
+  }, [status, session, router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -171,6 +184,13 @@ export default function AuthPage() {
                   </Button>
                 </div>
               </form>
+              <button
+                type="button"
+                className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded mt-4"
+                onClick={() => signIn("google")}
+              >
+                Đăng nhập bằng Google
+              </button>
             </TabsContent>
             <TabsContent value="register">
               <form onSubmit={handleRegister}>

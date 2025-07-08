@@ -1,6 +1,6 @@
 "use client"
 import { ReactNode, useState, createContext } from "react";
-import { User, ShoppingBag, List, Users, LayoutDashboard } from "lucide-react";
+import { Gift, User, ShoppingBag, List, Users, LayoutDashboard } from "lucide-react";
 
 export const AdminTabContext = createContext({ tab: "stats", setTab: (t: string) => {} });
 
@@ -9,7 +9,8 @@ const menu = [
   { label: "Khách hàng", value: "users", icon: <Users size={20} /> },
   { label: "Sản phẩm", value: "products", icon: <ShoppingBag size={20} /> },
   { label: "Kho phụ kiện", value: "categories", icon: <List size={20} /> },
-  {label: "Thống kê", value: "stats", icon: <LayoutDashboard size={20} /> },
+  { label: "Hộp quà", value: "giftboxes", icon: <Gift size={20} /> },
+  { label: "Thống kê", value: "stats", icon: <LayoutDashboard size={20} /> },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

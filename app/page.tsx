@@ -3,7 +3,17 @@ import { Button } from "@/components/ui/button"
 import { ArrowRight, Gift, Palette, ShoppingBag, Star } from "lucide-react"
 import Image from "next/image"
 
-export default function Home() {
+// Hàm fetch sản phẩm nổi bật từ backend
+async function getFeaturedProducts() {
+  // Đổi URL này cho đúng backend của bạn nếu cần
+  const res = await fetch("http://localhost:5000/api/products?featured=true", { cache: "no-store" });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export default async function Home() {
+  const featuredProducts = await getFeaturedProducts();
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
@@ -43,13 +53,13 @@ export default function Home() {
               </div>
             </div>
             <div className="relative">
-              <div className="relative h-[400px] w-full">
-                <Image
-                  src="/placeholder.svg?height=400&width=400"
-                  alt="Thú Nhồi Bông Tùy Chỉnh"
-                  fill
-                  className="object-contain"
-                  priority
+              <div className="relative h-[400px] w-full flex items-center justify-center">
+                <img 
+                  src="/dethuong.jpg" 
+                  alt="Avatar của tôi" 
+                  width={400} 
+                  height={400} 
+                  className="rounded-3xl shadow-2xl border-8 border-white object-cover"
                 />
               </div>
               <div className="absolute -bottom-6 -left-6 bg-white p-4 rounded-lg shadow-lg">
@@ -63,6 +73,35 @@ export default function Home() {
                 <p className="text-sm font-medium mt-1">"Con gái tôi rất thích chú gấu tùy chỉnh này!"</p>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Sản phẩm nổi bật */}
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-3xl font-bold text-gray-900 mb-8">Sản Phẩm Nổi Bật</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+            {featuredProducts.length === 0 ? (
+              <p className="col-span-3 text-center text-gray-500">Chưa có sản phẩm nổi bật.</p>
+            ) : (
+              featuredProducts.map((product: any) => (
+                <div key={product._id} className="bg-pink-50 rounded-xl p-6 text-center shadow hover:shadow-lg transition">
+                  <Image
+                    src={product.image || "/placeholder.jpg"}
+                    alt={product.name}
+                    width={200}
+                    height={200}
+                    className="mx-auto rounded-lg object-cover"
+                  />
+                  <h3 className="text-xl font-bold text-gray-900 mt-4">{product.name}</h3>
+                  <p className="text-pink-500 font-semibold mt-2">{product.price?.toLocaleString()}₫</p>
+                  <Link href={`/product/${product._id}`}>
+                    <Button size="sm" className="mt-4 bg-pink-500 hover:bg-pink-600">Xem Chi Tiết</Button>
+                  </Link>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </section>
@@ -102,6 +141,25 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">{feature.title}</h3>
                 <p className="text-gray-600">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Review Section */}
+      <section className="py-12 bg-pink-50">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-2xl font-bold mb-6">Khách Hàng Nói Gì?</h2>
+          <div className="flex flex-col md:flex-row gap-8 justify-center">
+            {[
+              { name: "Lan", review: "Gấu bông rất đẹp, chất lượng tuyệt vời!", avatar: "/placeholder-user.jpg" },
+              { name: "Minh", review: "Dịch vụ nhanh, mình rất hài lòng!", avatar: "/placeholder-user.jpg" },
+            ].map((r, i) => (
+              <div key={i} className="bg-white rounded-lg shadow p-6 flex-1">
+                <img src={r.avatar} alt={r.name} className="w-12 h-12 rounded-full mx-auto mb-2" />
+                <p className="italic text-gray-700 mb-2">"{r.review}"</p>
+                <span className="font-semibold text-pink-500">{r.name}</span>
               </div>
             ))}
           </div>

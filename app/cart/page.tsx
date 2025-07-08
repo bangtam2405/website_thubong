@@ -88,7 +88,15 @@ export default function CartPage() {
                       </div>
                       <div className="flex-grow w-full">
                         <h3 className="font-semibold text-lg mb-1 text-gray-800">{item.name}</h3>
-                        <p className="text-sm text-gray-500 mb-2 line-clamp-2">{item.description}</p>
+                        <p className="text-sm text-gray-500 mb-2 line-clamp-2">
+                          {item.description}
+                          {/* eslint-disable-next-line */}
+                          {(item.specifications && (item.specifications as any).giftBox && (item.specifications as any).giftBox.name) && (
+                            <>
+                              <br />Hộp quà: {(item.specifications as any).giftBox.name}
+                            </>
+                          )}
+                        </p>
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
                           <div className="text-lg font-bold text-pink-600">
                             {(item.price * item.quantity).toLocaleString('vi-VN')}₫

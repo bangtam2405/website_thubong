@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Download, Heart, Save, ShoppingCart, Undo, Redo, Camera, Trash2 } from "lucide-react"
+import { Download, Heart, Save, ShoppingCart, Undo, Redo, Camera, Trash2, Type } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { toast } from "sonner"
 import axios from "axios"
@@ -18,6 +18,7 @@ import type { AxiosError } from "axios"
 import { useSearchParams } from "next/navigation"
 import { useCart } from "@/contexts/CartContext"
 import { AddToCartButton } from "@/components/AddToCartButton"
+import GiftBoxModal from '@/components/GiftBoxModal'
 
 interface Category {
   _id: string
@@ -26,6 +27,15 @@ interface Category {
   type: string
   image?: string
   price?: number
+}
+
+interface GiftBox {
+  _id: string;
+  name: string;
+  image: string;
+  price: number;
+  quantity: number;
+  description?: string;
 }
 
 export default function CustomizePage() {
@@ -69,6 +79,23 @@ export default function CustomizePage() {
   const [canvasJSON, setCanvasJSON] = useState<any>(null);
   const fabricRef = useRef<any>(null);
   const [loadedCanvasJSON, setLoadedCanvasJSON] = useState<any>(null);
+
+  const [bgImage, setBgImage] = useState<string | null>(null);
+  const bgInputRef = useRef<HTMLInputElement | null>(null);
+
+  // State cho text tool
+  const [newText, setNewText] = useState("");
+  const [newTextColor, setNewTextColor] = useState("#000000");
+  const [newTextFont, setNewTextFont] = useState("Arial");
+  const [newTextSize, setNewTextSize] = useState(32);
+  const [activeTextProps, setActiveTextProps] = useState<{text: string, fill: string, fontSize: number, fontFamily: string} | null>(null);
+  const fontOptions = ["Arial", "Times New Roman", "Comic Sans MS", "Courier New", "Georgia", "Tahoma", "Verdana"];
+
+  const [customTexts, setCustomTexts] = useState<{ id: string, text: string, fill: string, fontSize: number, fontFamily: string, left: number, top: number }[]>([]);
+
+  const [giftBoxModalOpen, setGiftBoxModalOpen] = useState(false);
+  const [pendingGiftBox, setPendingGiftBox] = useState<any>(null);
+  const [selectedGiftBox, setSelectedGiftBox] = useState<GiftBox | null>(null);
 
   // Reset loadedCanvasJSON khi không edit
   useEffect(() => {
@@ -162,8 +189,18 @@ export default function CustomizePage() {
     // Điều chỉnh giá dựa trên kích thước
     if (selectedOptions.size === "small") {
       price -= 50000 // Giảm 50.000₫ cho size nhỏ
+    } else if (selectedOptions.size === "medium") {
+      // Không thay đổi giá cho size trung bình
     } else if (selectedOptions.size === "large") {
       price += 100000 // Tăng 100.000₫ cho size lớn
+    }
+
+    // Thêm giá chất liệu nếu có
+    if (selectedOptions.material) {
+      const selectedMaterial = categories.find((item) => item._id === selectedOptions.material);
+      if (selectedMaterial?.price) {
+        price += selectedMaterial.price;
+      }
     }
 
     setTotalPrice(price)
@@ -306,28 +343,23 @@ export default function CustomizePage() {
 
   const handleAddToCart = () => {
     if (!fabricRef.current) {
-      toast.error("Không thể lấy hình ảnh thiết kế!")
-      return
+      toast.error("Không thể lấy hình ảnh thiết kế!");
+      return;
     }
-
-    // Lấy hình ảnh từ canvas dưới dạng base64
-    const canvasImage = fabricRef.current.toDataURL({
-      format: 'png',
-      quality: 0.8
-    })
-
+    const canvasImage = fabricRef.current.toDataURL({ format: 'png', quality: 0.8 });
     if (!canvasImage) {
-      toast.error("Không thể lấy hình ảnh thiết kế!")
-      return
+      toast.error("Không thể lấy hình ảnh thiết kế!");
+      return;
     }
-
-    // Tạo một sản phẩm tùy chỉnh từ các lựa chọn hiện tại
+    const selectedMaterial = selectedOptions.material ? categories.find((item) => item._id === selectedOptions.material) : null;
+    const sizeName = categories.find((cat) => cat._id === selectedOptions.size)?.name || "";
+    const materialName = selectedMaterial?.name || "";
     const customizedProduct = {
-      _id: `custom-${Date.now()}`, // Tạo ID tạm thời
+      _id: `custom-${Date.now()}`,
       name: selectedOptions.name || "Thú nhồi bông tùy chỉnh",
-      description: `Thú nhồi bông tùy chỉnh với ${selectedOptions.size} kích thước`,
-      price: totalPrice,
-      image: canvasImage, // Sử dụng hình ảnh từ canvas
+      description: `Kích thước: ${sizeName} ; Chất liệu: ${materialName}`,
+      price: totalPrice + (selectedGiftBox?.price || 0),
+      image: canvasImage,
       type: "custom" as const,
       rating: 0,
       reviews: 0,
@@ -345,16 +377,27 @@ export default function CustomizePage() {
         accessories: selectedOptions.accessories
           .map(id => categories.find((o) => o._id === id)?.name)
           .filter((name): name is string => name !== undefined),
-        size: selectedOptions.size
+        size: selectedOptions.size,
+        material: selectedMaterial?.name || "",
+        materialPrice: selectedMaterial?.price || 0,
+        giftBox: selectedGiftBox ? {
+          id: selectedGiftBox._id,
+          name: selectedGiftBox.name,
+          price: selectedGiftBox.price,
+          image: selectedGiftBox.image,
+        } : null,
       },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
-    }
+    };
+    addToCart(customizedProduct);
+    toast.success("Đã thêm thú nhồi bông tùy chỉnh vào giỏ hàng!");
+  };
 
-    // Thêm vào giỏ hàng
-    addToCart(customizedProduct)
-    toast.success("Đã thêm thú nhồi bông tùy chỉnh vào giỏ hàng!")
-  }
+  const handleGiftBoxSelect = (giftBox: GiftBox | null) => {
+    setGiftBoxModalOpen(false);
+    setSelectedGiftBox(giftBox);
+  };
 
   const handleAddToWishlist = async () => {
     if (!fabricRef.current) {
@@ -598,6 +641,53 @@ export default function CustomizePage() {
     }
   }, []);
 
+  // Sau khi render CustomFabricCanvas, lắng nghe sự kiện chọn object để hiển thị UI chỉnh sửa text
+  useEffect(() => {
+    if (!fabricRef.current?.getCanvas) return;
+    const canvas = fabricRef.current.getCanvas();
+    if (!canvas) return;
+    const handleSelection = () => {
+      const active = canvas.getActiveObject();
+      if (active && active.type === 'textbox') {
+        setActiveTextProps({
+          text: (active as any).text,
+          fill: (active as any).fill,
+          fontSize: (active as any).fontSize,
+          fontFamily: (active as any).fontFamily,
+        });
+      } else {
+        setActiveTextProps(null);
+      }
+    };
+    canvas.on('selection:created', handleSelection);
+    canvas.on('selection:updated', handleSelection);
+    canvas.on('selection:cleared', handleSelection);
+    // Khi mount, nếu đang có object được chọn thì cũng cập nhật luôn
+    handleSelection();
+    return () => {
+      canvas.off('selection:created', handleSelection);
+      canvas.off('selection:updated', handleSelection);
+      canvas.off('selection:cleared', handleSelection);
+    };
+  }, [fabricRef.current?.getCanvas, fabricRef.current, bgImage, selectedOptions]);
+
+  // Hàm đồng bộ toàn bộ textbox hiện tại trên canvas về customTexts
+  const syncAllTextsFromCanvas = () => {
+    const canvas = fabricRef.current?.getCanvas?.();
+    if (!canvas) return [];
+    return canvas.getObjects()
+      .filter((obj: any) => obj.type === 'textbox')
+      .map((obj: any) => ({
+        id: obj.customId,
+        text: obj.text,
+        fill: obj.fill,
+        fontSize: obj.fontSize,
+        fontFamily: obj.fontFamily,
+        left: obj.left,
+        top: obj.top,
+      }));
+  };
+
   if (loading) return <div>Đang tải dữ liệu...</div>
 
   return (
@@ -608,6 +698,34 @@ export default function CustomizePage() {
         {/* Phần Xem Trước */}
         <div className="lg:col-span-2 order-2 lg:order-1">
           <div className="bg-white rounded-xl shadow-lg p-6 h-full">
+            <div className="mb-4 flex items-center gap-4">
+              <label className="font-medium">Nền tuỳ chỉnh:</label>
+              <input
+                type="file"
+                accept="image/*"
+                ref={bgInputRef}
+                onChange={e => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setBgImage(URL.createObjectURL(file));
+                  }
+                }}
+              />
+              {bgImage && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="ml-2 flex items-center gap-1 px-2 py-1 h-7 text-xs"
+                  onClick={() => {
+                    setBgImage(null);
+                    if (bgInputRef.current) bgInputRef.current.value = "";
+                  }}
+                  type="button"
+                >
+                  <Trash2 className="w-4 h-4 mr-1" /> Xoá nền
+                </Button>
+              )}
+            </div>
             <div className="flex justify-between mb-4">
               <div className="flex space-x-2">
                 <Button variant="outline" size="icon" onClick={handleUndo} disabled={historyIndex <= 0}>
@@ -640,19 +758,25 @@ export default function CustomizePage() {
               </div>
             </div>
 
-            <div className="relative h-[650px] w-[500px] mx-auto bg-pink-50 rounded-lg flex items-center justify-center mb-6">
-              <CustomFabricCanvas 
-                ref={fabricRef} 
-                selectedOptions={selectedOptions} 
-                categories={categories} 
-                canvasJSON={loadedCanvasJSON}
-              />
-              <div className="absolute bottom-2 left-0 right-0 text-center">
+            <div className="relative h-[650px] w-[500px] mx-auto bg-pink-50 rounded-lg flex items-center justify-center mb-6 overflow-hidden">
+              {/* Gấu bông luôn ở trên */}
+              <div className="relative z-10 w-full h-full flex items-center justify-center">
+                <CustomFabricCanvas 
+                  ref={fabricRef} 
+                  selectedOptions={selectedOptions} 
+                  categories={categories} 
+                  canvasJSON={loadedCanvasJSON}
+                  backgroundImage={bgImage || undefined}
+                  customTexts={customTexts}
+                  onCustomTextsChange={setCustomTexts}
+                />
+              </div>
+              <div className="absolute bottom-2 left-0 right-0 text-center z-20">
                 <p className="mt-4 text-gray-500">Xem Trước Trực Tiếp</p>
                 {selectedOptions.name && <p className="mt-2 text-pink-500 font-medium">Tên: {selectedOptions.name}</p>}
               </div>
               {!selectedOptions.body && !loadedCanvasJSON && (
-                <div className="absolute inset-0 flex items-center justify-center bg-pink-50 bg-opacity-90">
+                <div className="absolute inset-0 flex items-center justify-center bg-pink-50 bg-opacity-90 z-30">
                   <div className="text-center text-gray-500">
                     <p className="text-lg font-medium mb-2">Bắt đầu thiết kế</p>
                     <p className="text-sm">Chọn các phần tử bên cạnh để tạo thú nhồi bông của bạn</p>
@@ -696,6 +820,24 @@ export default function CustomizePage() {
                       <span>Giá Cơ Bản:</span>
                       <span>299.000₫</span>
                     </li>
+                    {selectedOptions.size && (() => {
+                      const sizeObj = categories.find((o) => o._id === selectedOptions.size);
+                      return sizeObj && sizeObj.price !== undefined ? (
+                        <li className="flex justify-between">
+                          <span>Kích Thước ({sizeObj.name}):</span>
+                          <span>{sizeObj.price > 0 ? `+${sizeObj.price.toLocaleString('vi-VN')}₫` : sizeObj.price < 0 ? `${sizeObj.price.toLocaleString('vi-VN')}₫` : '0₫'}</span>
+                        </li>
+                      ) : null;
+                    })()}
+                    {selectedOptions.material && (() => {
+                      const materialObj = categories.find((o) => o._id === selectedOptions.material);
+                      return materialObj && materialObj.price !== undefined ? (
+                        <li className="flex justify-between">
+                          <span>Chất Liệu ({materialObj.name}):</span>
+                          <span>{materialObj.price > 0 ? `+${materialObj.price.toLocaleString('vi-VN')}₫` : materialObj.price < 0 ? `${materialObj.price.toLocaleString('vi-VN')}₫` : '0₫'}</span>
+                        </li>
+                      ) : null;
+                    })()}
                     {selectedOptions.nose && (
                       <li className="flex justify-between">
                         <span>Mũi:</span>
@@ -726,15 +868,15 @@ export default function CustomizePage() {
                         <span>+{categories.find((o) => o._id === accId)?.price?.toLocaleString('vi-VN')}₫</span>
                       </li>
                     ))}
-                    {selectedOptions.size !== "medium" && (
+                    {selectedGiftBox && (
                       <li className="flex justify-between">
-                        <span>Kích Thước ({selectedOptions.size === "small" ? "Nhỏ" : "Lớn"}):</span>
-                        <span>{selectedOptions.size === "small" ? "-50.000₫" : "+100.000₫"}</span>
+                        <span>Hộp quà: {selectedGiftBox.name}</span>
+                        <span>+{selectedGiftBox.price.toLocaleString('vi-VN')}₫</span>
                       </li>
                     )}
                     <li className="flex justify-between font-bold border-t mt-2 pt-2">
                       <span>Tổng:</span>
-                      <span>{totalPrice.toLocaleString('vi-VN')}₫</span>
+                      <span>{(totalPrice + (selectedGiftBox?.price || 0)).toLocaleString('vi-VN')}₫</span>
                     </li>
                   </ul>
                 </div>
@@ -915,7 +1057,7 @@ export default function CustomizePage() {
                   onClick={handleAddToCart}
                 >
                   <ShoppingCart className="mr-2 h-4 w-4" />
-                  Thêm Vào Giỏ Hàng - {totalPrice.toLocaleString('vi-VN')}₫
+                  Thêm Vào Giỏ Hàng - {(totalPrice + (selectedGiftBox?.price || 0)).toLocaleString('vi-VN')}₫
                 </Button>
                 <div className="flex gap-4">
                   <Button variant="outline" className="flex-1" onClick={handleSaveDesign}>
@@ -927,11 +1069,77 @@ export default function CustomizePage() {
                     Thêm Vào Yêu Thích
                   </Button>
                 </div>
+                <Button
+                  variant={selectedGiftBox ? "secondary" : "outline"}
+                  className="w-full mt-2 border-pink-300"
+                  onClick={() => setGiftBoxModalOpen(true)}
+                >
+                  🎁 {selectedGiftBox ? `Đã chọn: ${selectedGiftBox.name} (+${selectedGiftBox.price.toLocaleString('vi-VN')}₫)` : "Chọn hộp quà (không bắt buộc)"}
+                </Button>
+                <div className="mt-6">
+                  <div className="mb-4 p-3 bg-pink-50 rounded flex flex-col md:flex-row md:items-end gap-3">
+                    <div>
+                      <Label htmlFor="add-text-content">Thêm nội dung lên gấu bông</Label>
+                      <Input id="add-text-content" value={newText} onChange={e => setNewText(e.target.value)} placeholder="Nhập nội dung..." className="w-48" />
+                    </div>
+                    <Button
+                      type="button"
+                      className="flex items-center gap-1 h-10"
+                      onClick={() => {
+                        if (!newText.trim()) return toast.error("Vui lòng nhập nội dung!");
+                        const id = Date.now().toString();
+                        const allCurrentTexts = syncAllTextsFromCanvas();
+                        setCustomTexts([...allCurrentTexts, { id, text: newText, fill: '#000', fontSize: 32, fontFamily: 'Arial', left: 250, top: 325 }]);
+                        fabricRef.current?.addText(newText, { left: 250, top: 325 });
+                        setNewText("");
+                      }}
+                    >
+                      <Type className="w-5 h-5" /> Thêm Text
+                    </Button>
+                  </div>
+                  {activeTextProps && (
+                    <div className="mb-4 p-3 bg-yellow-50 rounded flex flex-col gap-3 border border-yellow-200 w-full max-w-md mx-auto">
+                      <div>
+                        <Label htmlFor="edit-text-content">Chỉnh văn bản</Label>
+                        <Input id="edit-text-content" value={activeTextProps.text} onChange={e => {
+                          setActiveTextProps(props => props ? { ...props, text: e.target.value } : null);
+                          fabricRef.current?.updateActiveText({ text: e.target.value });
+                        }} className="w-full" />
+                      </div>
+                      <div className="grid grid-cols-3 gap-3 items-end">
+                        <div className="flex flex-col items-center">
+                          <Label className="mb-1">Màu chữ</Label>
+                          <input type="color" value={activeTextProps.fill} onChange={e => {
+                            setActiveTextProps(props => props ? { ...props, fill: e.target.value } : null);
+                            fabricRef.current?.updateActiveText({ fill: e.target.value });
+                          }} className="w-10 h-10 p-0 border-none bg-transparent" />
+                        </div>
+                        <div className="flex flex-col">
+                          <Label className="mb-1">Font</Label>
+                          <select value={activeTextProps.fontFamily} onChange={e => {
+                            setActiveTextProps(props => props ? { ...props, fontFamily: e.target.value } : null);
+                            fabricRef.current?.updateActiveText({ fontFamily: e.target.value });
+                          }} className="border rounded px-2 py-1 w-full">
+                            {fontOptions.map(f => <option key={f} value={f}>{f}</option>)}
+                          </select>
+                        </div>
+                        <div className="flex flex-col">
+                          <Label className="mb-1">Cỡ chữ</Label>
+                          <Input type="number" min={10} max={120} value={activeTextProps.fontSize} onChange={e => {
+                            setActiveTextProps(props => props ? { ...props, fontSize: Number(e.target.value) } : null);
+                            fabricRef.current?.updateActiveText({ fontSize: Number(e.target.value) });
+                          }} className="w-full" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
+      <GiftBoxModal open={giftBoxModalOpen} onClose={() => setGiftBoxModalOpen(false)} onSelect={handleGiftBoxSelect} />
     </div>
   )
 }

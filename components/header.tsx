@@ -18,30 +18,43 @@ import { Badge } from "@/components/ui/badge"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { usePathname } from "next/navigation"
 import { useCart } from "@/contexts/CartContext"
+import { useSession, signOut } from "next-auth/react"
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [user, setUser] = useState<any>(useCurrentUser());
+  const { data: session, status } = useSession();
+  const [localUser, setLocalUser] = useState<any>(null);
   const pathname = usePathname();
   const { items } = useCart();
   const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
+
+  useEffect(() => {
+    if (!session?.user) {
+      // Nếu không có session NextAuth, lấy user từ localStorage
+      const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+      if (userStr) {
+        try {
+          setLocalUser(JSON.parse(userStr));
+        } catch {}
+      } else {
+        setLocalUser(null);
+      }
+    } else {
+      setLocalUser(null);
+    }
+  }, [session]);
+
+  const user = session?.user || localUser;
+
   useEffect(() => {
     const handleUserUpdated = () => {
-      setUser(useCurrentUser());
+      setLocalUser(useCurrentUser());
     };
     window.addEventListener("user-updated", handleUserUpdated);
     // Luôn cập nhật user mỗi khi route thay đổi
-    setUser(useCurrentUser());
+    setLocalUser(useCurrentUser());
     return () => window.removeEventListener("user-updated", handleUserUpdated);
   }, [pathname]);
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userId");
-    localStorage.removeItem("role");
-    localStorage.removeItem("name");
-    localStorage.removeItem("email");
-    window.location.href = "/login";
-  };
 
   return (
     <header className="sticky top-0 z-50">
@@ -121,7 +134,7 @@ export default function Header() {
                 <DropdownMenuContent align="end">
                   {user ? (
                     <>
-                      <DropdownMenuLabel>Xin chào, {user.username || user.userId}</DropdownMenuLabel>
+                      <DropdownMenuLabel>Xin chào, {user.name || user.username || user.email}</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem>
                         <Link href="/wishlist" className="w-full flex items-center">
@@ -139,25 +152,25 @@ export default function Header() {
                         <Link href="/orders" className="w-full">Đơn Hàng Của Tôi</Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleLogout} className="text-red-500 cursor-pointer">Đăng Xuất</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => signOut()} className="text-red-500 cursor-pointer">Đăng Xuất</DropdownMenuItem>
                     </>
                   ) : (
                     <>
-                  <DropdownMenuLabel>Tài Khoản Của Tôi</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem>
+                      <DropdownMenuLabel>Tài Khoản Của Tôi</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem>
                         <Link href="/login" className="w-full">Đăng Nhập</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
                         <Link href="/register" className="w-full">Đăng Ký</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem>
                         <Link href="/profile" className="w-full">Hồ Sơ</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
                         <Link href="/orders" className="w-full">Đơn Hàng Của Tôi</Link>
-                  </DropdownMenuItem>
+                      </DropdownMenuItem>
                     </>
                   )}
                 </DropdownMenuContent>
