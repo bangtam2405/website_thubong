@@ -73,6 +73,7 @@ export default function AuthPage() {
           username = email;
           localStorage.setItem("userId", userId);
           localStorage.setItem("username", username);
+          localStorage.setItem("user", JSON.stringify({ _id: userId, username: username, email: email }));
         } catch {}
       }
 

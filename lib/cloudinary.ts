@@ -106,3 +106,37 @@ export const getPublicIdFromUrl = (url: string): string | null => {
     return null;
   }
 }; 
+
+// Hàm upload video mp4
+export const uploadVideo = async (file: Buffer, folder: string = 'website_thubong'): Promise<string> => {
+  try {
+    console.log('Starting Cloudinary video upload...');
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: folder,
+          resource_type: 'video',
+          format: 'mp4',
+        },
+        (error, result) => {
+          if (error) {
+            console.error('Cloudinary video upload error:', error);
+            reject(error);
+          } else {
+            console.log('Cloudinary video upload success:', result?.secure_url);
+            resolve(result);
+          }
+        }
+      );
+      uploadStream.end(file);
+    });
+    const videoUrl = (result as any).secure_url;
+    if (!videoUrl) {
+      throw new Error('No URL returned from Cloudinary');
+    }
+    return videoUrl;
+  } catch (error) {
+    console.error('Error uploading video to Cloudinary:', error);
+    throw new Error(`Failed to upload video: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}; 

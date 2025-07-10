@@ -120,7 +120,8 @@ export default function CheckoutPage() {
           totalPrice: total,
           name,
           phone,
-          address
+          address,
+          paymentMethod: 'COD' // Đảm bảo đúng enum backend
         };
         const res = await fetch("http://localhost:5000/api/orders", {
           method: "POST",

@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
+import ReviewModal from "@/components/ReviewModal";
 
 const statusColor = (status: string) => {
   switch (status) {
@@ -50,6 +51,22 @@ export default function OrderDetailPage() {
     "Thời gian giao hàng quá lâu",
     "Khác..."
   ]
+  const [reviewingProduct, setReviewingProduct] = useState<string | null>(null);
+  const [userReviews, setUserReviews] = useState<any[]>([]);
+  const [reviewLoading, setReviewLoading] = useState(false);
+
+  // Lấy danh sách review của user cho các sản phẩm trong đơn
+  useEffect(() => {
+    if (!order) return;
+    setReviewLoading(true);
+    axios.get("http://localhost:5000/api/reviews/user", {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    })
+      .then(res => setUserReviews(res.data))
+      .finally(() => setReviewLoading(false));
+  }, [order]);
 
   useEffect(() => {
     axios.get(`http://localhost:5000/api/orders/detail/${id}`)
@@ -98,6 +115,10 @@ export default function OrderDetailPage() {
 
   if (loading) return <div className="p-8 text-center">Đang tải...</div>
   if (!order) return <div className="p-8 text-center">Không tìm thấy đơn hàng.</div>
+
+  // Phân loại sản phẩm đã đánh giá và chưa đánh giá
+  const reviewedItems = order.products.filter((item: any) => userReviews.some(r => r.product && (r.product._id === item.product?._id) && r.orderItem === item._id));
+  const unreviewedItems = order.products.filter((item: any) => !userReviews.some(r => r.product && (r.product._id === item.product?._id) && r.orderItem === item._id));
 
   return (
     <div className="container max-w-4xl mx-auto py-10">
@@ -216,29 +237,98 @@ export default function OrderDetailPage() {
         <div className="bg-white rounded-xl shadow p-6">
           <div className="font-semibold mb-3 text-lg">Sản phẩm trong đơn</div>
           <div className="divide-y">
-            {order.products.map((item: any) => (
-              <div key={item.product?._id} className="flex items-center gap-4 py-4">
-                <div className="w-20 h-20 flex-shrink-0">
-                  {item.product?.image ? (
-                    <Image src={item.product.image} alt={item.product.name} width={80} height={80} className="rounded-lg object-cover w-20 h-20" />
-                  ) : (
-                    <div className="w-20 h-20 bg-gray-100 rounded flex items-center justify-center text-gray-400">?</div>
-                  )}
+            {/* Sản phẩm chưa đánh giá */}
+            {unreviewedItems.length > 0 && (
+              <div className="mb-4">
+                <div className="font-semibold text-pink-600 mb-2 flex items-center gap-2 text-base">
+                  <span>Chưa đánh giá</span>
+                  <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">{unreviewedItems.length}</span>
                 </div>
-                <div className="flex-1">
-                  <div className="font-semibold text-base">{item.product?.name || '---'}</div>
-                  {item.product?.specifications?.size && (
-                    <div className="text-xs text-gray-500 mt-1">Kích thước: {item.product.specifications.size === 'small' ? 'Nhỏ' : item.product.specifications.size === 'large' ? 'Lớn' : 'Vừa'}</div>
-                  )}
-                  {!item.product?.specifications?.size && item.product?.size && (
-                    <div className="text-xs text-gray-500 mt-1">Kích thước: {item.product.size === 'small' ? 'Nhỏ' : item.product.size === 'large' ? 'Lớn' : 'Vừa'}</div>
-                  )}
-                  <div className="text-sm text-gray-500">x{item.quantity}</div>
-                </div>
-                <div className="font-bold text-pink-600 text-lg">{item.product?.price ? (item.product.price * item.quantity).toLocaleString() + '₫' : '--'}</div>
+                {unreviewedItems.map((item: any) => (
+                  <div key={item._id} className="flex items-center gap-4 py-4 border rounded-lg mb-2 bg-yellow-50">
+                    <div className="w-20 h-20 flex-shrink-0">
+                      {item.product?.image ? (
+                        <Image src={item.product.image} alt={item.product.name} width={80} height={80} className="rounded-lg object-cover w-20 h-20" />
+                      ) : (
+                        <div className="w-20 h-20 bg-gray-100 rounded flex items-center justify-center text-gray-400">?</div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-base">{item.product?.name || '---'}</div>
+                      {item.product?.specifications?.size && (
+                        <div className="text-xs text-gray-500 mt-1">Kích thước: {item.product.specifications.size === 'small' ? 'Nhỏ' : item.product.specifications.size === 'large' ? 'Lớn' : 'Vừa'}</div>
+                      )}
+                      {!item.product?.specifications?.size && item.product?.size && (
+                        <div className="text-xs text-gray-500 mt-1">Kích thước: {item.product.size === 'small' ? 'Nhỏ' : item.product.size === 'large' ? 'Lớn' : 'Vừa'}</div>
+                      )}
+                      <div className="text-sm text-gray-500">x{item.quantity}</div>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="font-bold text-pink-600 text-lg">{item.product?.price ? (item.product.price * item.quantity).toLocaleString() + '₫' : '--'}</div>
+                      {order.status === 'Đã giao hàng' && (
+                        <Button size="sm" className="bg-pink-500 hover:bg-pink-600 text-white font-semibold shadow" onClick={() => setReviewingProduct(item._id)} disabled={reviewLoading}>
+                          Đánh giá
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
+            {/* Sản phẩm đã đánh giá */}
+            {reviewedItems.length > 0 && (
+              <div>
+                <div className="font-semibold text-green-700 mb-2 flex items-center gap-2 text-base">
+                  <span>Đã đánh giá</span>
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{reviewedItems.length}</span>
+                </div>
+                {reviewedItems.map((item: any) => (
+                  <div key={item._id} className="flex items-center gap-4 py-4 border rounded-lg mb-2 bg-green-50">
+                    <div className="w-20 h-20 flex-shrink-0">
+                      {item.product?.image ? (
+                        <Image src={item.product.image} alt={item.product.name} width={80} height={80} className="rounded-lg object-cover w-20 h-20" />
+                      ) : (
+                        <div className="w-20 h-20 bg-gray-100 rounded flex items-center justify-center text-gray-400">?</div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-base">{item.product?.name || '---'}</div>
+                      {item.product?.specifications?.size && (
+                        <div className="text-xs text-gray-500 mt-1">Kích thước: {item.product.specifications.size === 'small' ? 'Nhỏ' : item.product.specifications.size === 'large' ? 'Lớn' : 'Vừa'}</div>
+                      )}
+                      {!item.product?.specifications?.size && item.product?.size && (
+                        <div className="text-xs text-gray-500 mt-1">Kích thước: {item.product.size === 'small' ? 'Nhỏ' : item.product.size === 'large' ? 'Lớn' : 'Vừa'}</div>
+                      )}
+                      <div className="text-sm text-gray-500">x{item.quantity}</div>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="font-bold text-pink-600 text-lg">{item.product?.price ? (item.product.price * item.quantity).toLocaleString() + '₫' : '--'}</div>
+                      <span className="flex items-center gap-1 text-green-700 font-semibold text-sm bg-green-100 px-2 py-1 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                        Đã đánh giá
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+          <ReviewModal
+            open={!!reviewingProduct}
+            onClose={() => setReviewingProduct(null)}
+            productId={reviewingProduct ? (order.products.find((item: any) => item._id === reviewingProduct)?.product?._id || "") : ""}
+            orderItemId={reviewingProduct || ""}
+            onSubmitted={() => {
+              setReviewingProduct(null);
+              // Refresh lại review
+              axios.get("http://localhost:5000/api/reviews/user", {
+                headers: {
+                  Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+              })
+                .then(res => setUserReviews(res.data));
+            }}
+          />
         </div>
       </div>
     </div>

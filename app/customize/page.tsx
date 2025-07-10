@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Download, Heart, Save, ShoppingCart, Undo, Redo, Camera, Trash2, Type } from "lucide-react"
+import { Download, Heart, Save, ShoppingCart, Undo, Redo, Camera, Trash2, Type, Copy } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { toast } from "sonner"
 import axios from "axios"
@@ -19,6 +19,9 @@ import { useSearchParams } from "next/navigation"
 import { useCart } from "@/contexts/CartContext"
 import { AddToCartButton } from "@/components/AddToCartButton"
 import GiftBoxModal from '@/components/GiftBoxModal'
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import ImageUpload from "@/components/ImageUpload";
 
 interface Category {
   _id: string
@@ -27,6 +30,7 @@ interface Category {
   type: string
   image?: string
   price?: number
+  color?: string; // Thêm trường color cho màu lông
 }
 
 interface GiftBox {
@@ -38,11 +42,38 @@ interface GiftBox {
   description?: string;
 }
 
+// Define the type for selectedOptions
+type SelectedOptions = {
+  body: string;
+  ears: string;
+  eyes: string;
+  nose: string;
+  mouth: string;
+  furColor: string;
+  material: string;
+  clothing: string;
+  accessories: string[];
+  name: string;
+  size: string;
+};
+
+// Utility: merge only non-empty fields from update into base, but never set a field to empty string if it was already set
+function robustMergeOptions(base: SelectedOptions, update: Partial<SelectedOptions>): SelectedOptions {
+  const result: SelectedOptions = { ...base };
+  for (const key in update) {
+    if (update[key as keyof SelectedOptions] !== undefined && update[key as keyof SelectedOptions] !== "") {
+      result[key as keyof SelectedOptions] = update[key as keyof SelectedOptions] as any;
+    }
+  }
+  return result;
+}
+
 export default function CustomizePage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("body")
-  const [selectedOptions, setSelectedOptions] = useState({
+  // Đảm bảo defaultSelectedOptions luôn có ở đầu file
+  const defaultSelectedOptions: SelectedOptions = {
     body: "",
     ears: "",
     eyes: "",
@@ -54,9 +85,11 @@ export default function CustomizePage() {
     accessories: [] as string[],
     name: "",
     size: "",
-  })
+  };
 
-  const [totalPrice, setTotalPrice] = useState(29.99) // Giá cơ bản
+  const [selectedOptions, setSelectedOptions] = useState<SelectedOptions>({ ...defaultSelectedOptions });
+
+  const [totalPrice, setTotalPrice] = useState(0) // Giá ban đầu là 0
   const [history, setHistory] = useState<any[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
 
@@ -73,12 +106,15 @@ export default function CustomizePage() {
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
   const editType = searchParams.get("type"); // "product" hoặc "design"
+  const templateId = searchParams.get("templateId");
+  const adminEdit = searchParams.get("adminEdit");
 
   const { addToCart } = useCart();
 
   const [canvasJSON, setCanvasJSON] = useState<any>(null);
   const fabricRef = useRef<any>(null);
   const [loadedCanvasJSON, setLoadedCanvasJSON] = useState<any>(null);
+  const [hasEditedAfterLoad, setHasEditedAfterLoad] = useState(false);
 
   const [bgImage, setBgImage] = useState<string | null>(null);
   const bgInputRef = useRef<HTMLInputElement | null>(null);
@@ -96,6 +132,9 @@ export default function CustomizePage() {
   const [giftBoxModalOpen, setGiftBoxModalOpen] = useState(false);
   const [pendingGiftBox, setPendingGiftBox] = useState<any>(null);
   const [selectedGiftBox, setSelectedGiftBox] = useState<GiftBox | null>(null);
+
+  // Thêm state cho export JSON
+  const [exportedJSON, setExportedJSON] = useState<string>("");
 
   // Reset loadedCanvasJSON khi không edit
   useEffect(() => {
@@ -152,59 +191,82 @@ export default function CustomizePage() {
 
   // Tính tổng giá dựa trên lựa chọn
   useEffect(() => {
-    let price = 299000 // Giá cơ bản (299.000₫)
+    // Nếu chưa chọn gì thì giá = 0
+    const hasAnySelection = !!(
+      selectedOptions.body ||
+      selectedOptions.ears ||
+      selectedOptions.eyes ||
+      selectedOptions.nose ||
+      selectedOptions.mouth ||
+      selectedOptions.furColor ||
+      selectedOptions.clothing ||
+      selectedOptions.accessories.length > 0
+    );
+    if (!hasAnySelection) {
+      setTotalPrice(0);
+      return;
+    }
 
-    // Thêm giá quần áo nếu được chọn
-    if (selectedOptions.clothing) {
-      const selectedClothing = categories.find((item) => item._id === selectedOptions.clothing)
-      if (selectedClothing?.price) {
-        price += selectedClothing.price
+    let price = 0; // Không còn giá cơ bản, chỉ cộng các phần đã chọn
+
+    // Cộng giá loại thân nếu có
+    if (selectedOptions.body) {
+      const selectedBody = categories.find((item) => item._id === selectedOptions.body);
+      if (typeof selectedBody?.price === 'number') {
+        price += selectedBody.price;
       }
     }
 
-    // Thêm giá phụ kiện
-    selectedOptions.accessories.forEach((accId) => {
-      const selectedAcc = categories.find((item) => item._id === accId)
-      if (selectedAcc?.price) {
-        price += selectedAcc.price
-      }
-    })
-
-    // Thêm giá mũi nếu được chọn
-    if (selectedOptions.nose) {
-      const selectedNose = categories.find((item) => item._id === selectedOptions.nose)
-      if (selectedNose?.price) {
-        price += selectedNose.price
+    // Cộng giá kích thước nếu có
+    if (selectedOptions.size) {
+      const selectedSize = categories.find((item) => item._id === selectedOptions.size);
+      if (typeof selectedSize?.price === 'number') {
+        price += selectedSize.price;
       }
     }
 
-    // Thêm giá miệng nếu được chọn
-    if (selectedOptions.mouth) {
-      const selectedMouth = categories.find((item) => item._id === selectedOptions.mouth)
-      if (selectedMouth?.price) {
-        price += selectedMouth.price
-      }
-    }
-
-    // Điều chỉnh giá dựa trên kích thước
-    if (selectedOptions.size === "small") {
-      price -= 50000 // Giảm 50.000₫ cho size nhỏ
-    } else if (selectedOptions.size === "medium") {
-      // Không thay đổi giá cho size trung bình
-    } else if (selectedOptions.size === "large") {
-      price += 100000 // Tăng 100.000₫ cho size lớn
-    }
-
-    // Thêm giá chất liệu nếu có
+    // Cộng giá chất liệu nếu có
     if (selectedOptions.material) {
       const selectedMaterial = categories.find((item) => item._id === selectedOptions.material);
-      if (selectedMaterial?.price) {
+      if (typeof selectedMaterial?.price === 'number') {
         price += selectedMaterial.price;
       }
     }
 
-    setTotalPrice(price)
-  }, [selectedOptions, categories])
+    // Cộng giá quần áo nếu được chọn
+    if (selectedOptions.clothing) {
+      const selectedClothing = categories.find((item) => item._id === selectedOptions.clothing)
+      if (typeof selectedClothing?.price === 'number') {
+        price += selectedClothing.price
+      }
+    }
+
+    // Cộng giá phụ kiện
+    selectedOptions.accessories.forEach((accId) => {
+      const selectedAcc = categories.find((item) => item._id === accId)
+      if (typeof selectedAcc?.price === 'number') {
+        price += selectedAcc.price
+      }
+    })
+
+    // Cộng giá mũi nếu được chọn
+    if (selectedOptions.nose) {
+      const selectedNose = categories.find((item) => item._id === selectedOptions.nose)
+      if (typeof selectedNose?.price === 'number') {
+        price += selectedNose.price
+      }
+    }
+
+    // Cộng giá miệng nếu được chọn
+    if (selectedOptions.mouth) {
+      const selectedMouth = categories.find((item) => item._id === selectedOptions.mouth)
+      if (typeof selectedMouth?.price === 'number') {
+        price += selectedMouth.price
+      }
+    }
+
+    setTotalPrice(price);
+  }, [selectedOptions, categories]);
 
   // Thêm vào lịch sử khi lựa chọn thay đổi
   useEffect(() => {
@@ -219,24 +281,19 @@ export default function CustomizePage() {
   useEffect(() => {
     if (editId) {
       if (editType === 'product') {
-        // Load trực tiếp từ products API cho custom products
         axios.get(`http://localhost:5000/api/products/${editId}`)
           .then(productRes => {
-            console.log("[DEBUG] Custom product từ products API:", productRes.data);
             const product = productRes.data;
-            
             if (product.isCustom && product.customData) {
-              // Load parts từ customData
               if (product.customData.parts) {
-                setSelectedOptions(product.customData.parts);
+                setSelectedOptions(prev => robustMergeOptions({ ...defaultSelectedOptions, ...prev }, product.customData.parts));
+              } else {
+                setSelectedOptions(prev => ({ ...defaultSelectedOptions, ...prev }));
               }
-              
-              // Set canvas JSON để CustomFabricCanvas load
               if (product.customData.canvasJSON) {
-                const canvasData = typeof product.customData.canvasJSON === 'string' 
-                  ? JSON.parse(product.customData.canvasJSON) 
+                const canvasData = typeof product.customData.canvasJSON === 'string'
+                  ? JSON.parse(product.customData.canvasJSON)
                   : product.customData.canvasJSON;
-                console.log("[DEBUG] Setting loadedCanvasJSON from product:", canvasData);
                 setLoadedCanvasJSON(canvasData);
               }
             }
@@ -245,15 +302,16 @@ export default function CustomizePage() {
             console.error("Không tìm thấy custom product:", productError);
           });
       } else {
-        // Load từ designs API (mặc định)
         axios.get(`http://localhost:5000/api/designs/${editId}`)
           .then(res => {
-            console.log("[DEBUG] Thiết kế từ designs API:", res.data);
             if (res.data && res.data.canvasJSON) {
-              setSelectedOptions(res.data.parts);
-              // Set canvas JSON để CustomFabricCanvas load
-              const canvasData = typeof res.data.canvasJSON === 'string' 
-                ? JSON.parse(res.data.canvasJSON) 
+              if (res.data.parts) {
+                setSelectedOptions(prev => robustMergeOptions({ ...defaultSelectedOptions, ...prev }, res.data.parts));
+              } else {
+                setSelectedOptions(prev => ({ ...defaultSelectedOptions, ...prev }));
+              }
+              const canvasData = typeof res.data.canvasJSON === 'string'
+                ? JSON.parse(res.data.canvasJSON)
                 : res.data.canvasJSON;
               setLoadedCanvasJSON(canvasData);
             }
@@ -265,28 +323,75 @@ export default function CustomizePage() {
     }
   }, [editId, editType]);
 
+  // Load template nếu có templateId
+  useEffect(() => {
+    if (templateId) {
+      fetch(`http://localhost:5000/api/designs/${templateId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.canvasJSON) {
+            setCanvasJSON(data.canvasJSON);
+            setLoadedCanvasJSON(data.canvasJSON);
+            // Nếu muốn set selectedOptions theo parts mẫu:
+            if (data.parts) {
+              setSelectedOptions(prev => robustMergeOptions({ ...defaultSelectedOptions, ...prev }, data.parts));
+            }
+          }
+        });
+    }
+  }, [templateId]);
+
+  // Update handleOptionSelect to only update the selected part
   const handleOptionSelect = (category: string, optionId: string) => {
-    setSelectedOptions((prev) => {
-      const next = category === "accessories"
-        ? { ...prev, accessories: prev.accessories.includes(optionId) ? prev.accessories.filter((id) => id !== optionId) : [...prev.accessories, optionId] }
-        : { ...prev, [category]: optionId }
-      console.log("[handleOptionSelect]", category, optionId, next)
-      return next
-    })
+    if (loadedCanvasJSON && !hasEditedAfterLoad) {
+      setLoadedCanvasJSON(null);
+      setHasEditedAfterLoad(true);
+    }
+    setSelectedOptions(prev => {
+      if (category === "accessories") {
+        return {
+          ...prev,
+          accessories: prev.accessories.includes(optionId)
+            ? prev.accessories.filter((id) => id !== optionId)
+            : [...prev.accessories, optionId],
+        };
+      } else {
+        return {
+          ...prev,
+          [category]: optionId,
+        };
+      }
+    });
   }
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (loadedCanvasJSON && !hasEditedAfterLoad) {
+      setLoadedCanvasJSON(null);
+      setHasEditedAfterLoad(true);
+    }
     setSelectedOptions((prev) => ({ ...prev, name: e.target.value }))
   }
 
   const handleSizeChange = (value: string) => {
+    if (loadedCanvasJSON && !hasEditedAfterLoad) {
+      setLoadedCanvasJSON(null);
+      setHasEditedAfterLoad(true);
+    }
     setSelectedOptions((prev) => ({ ...prev, size: value }))
   }
 
-  const handleColorChange = (color: string) => {
-    setSelectedOptions((prev) => ({ ...prev, furColor: color }));
-    if (fabricRef.current) {
-      fabricRef.current.updateFurColor(color);
+  // Sửa: colorId là _id của category màu lông
+  const handleColorChange = (colorId: string) => {
+    if (loadedCanvasJSON && !hasEditedAfterLoad) {
+      setLoadedCanvasJSON(null);
+      setHasEditedAfterLoad(true);
+    }
+    setSelectedOptions((prev) => ({ ...prev, furColor: colorId }));
+    // Lấy object màu lông từ categories
+    const colorCat = categories.find((cat) => cat._id === colorId);
+    // Nếu image là mã hex, truyền cho canvas
+    if (fabricRef.current && colorCat?.image && /^#([0-9A-F]{3}){1,2}$/i.test(colorCat.image)) {
+      fabricRef.current.updateFurColor(colorCat.image);
     }
   };
 
@@ -322,13 +427,27 @@ export default function CustomizePage() {
       return;
     }
     try {
-      await axios.post("http://localhost:5000/api/designs", {
-        userId,
-        designName: selectedOptions.name || "Thiết kế mới",
-        parts: selectedOptions,
-        canvasJSON: JSON.stringify(canvasData),
-      });
-      toast.success("Đã Lưu Thiết Kế. Thiết kế tùy chỉnh của bạn đã được lưu vào tài khoản.");
+      if (editId && editType === 'design' && adminEdit === '1') {
+        // Update mẫu cũ
+        await axios.put("http://localhost:5000/api/designs", {
+          id: editId,
+          userId,
+          designName: selectedOptions.name || "Thiết kế mới",
+          parts: selectedOptions,
+          canvasJSON: JSON.stringify(canvasData),
+          isPublic: true // giữ public
+        });
+        toast.success("Đã cập nhật mẫu thiết kế sẵn!");
+      } else {
+        // Tạo mới
+        await axios.post("http://localhost:5000/api/designs", {
+          userId,
+          designName: selectedOptions.name || "Thiết kế mới",
+          parts: selectedOptions,
+          canvasJSON: JSON.stringify(canvasData),
+        });
+        toast.success("Đã Lưu Thiết Kế. Thiết kế tùy chỉnh của bạn đã được lưu vào tài khoản.");
+      }
     } catch (err: unknown) {
       let errorMsg = "Có lỗi xảy ra.";
       if (axios.isAxiosError(err)) {
@@ -688,11 +807,41 @@ export default function CustomizePage() {
       }));
   };
 
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [templateForm, setTemplateForm] = useState({ name: "", description: "", previewImage: "" });
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const isAdmin = typeof window !== 'undefined' && localStorage.getItem('role') === 'admin';
+
   if (loading) return <div>Đang tải dữ liệu...</div>
 
   return (
     <div className="container mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold text-center mb-8">Thiết Kế Thú Nhồi Bông Tùy Chỉnh Của Bạn</h1>
+
+      {/* Nút lưu mẫu thiết kế sẵn cho admin, đặt phía trên canvas */}
+      {isAdmin && (
+        <div className="flex justify-end mb-2">
+          <Button
+            variant="outline"
+            className="border-pink-500 text-pink-600 hover:bg-pink-50"
+            onClick={() => {
+              // Tự động lấy ảnh canvas hiện tại làm preview khi mở modal
+              let preview = "";
+              if (fabricRef.current && fabricRef.current.toDataURL) {
+                try {
+                  preview = fabricRef.current.toDataURL({ format: 'png', quality: 0.8 });
+                } catch (e) { preview = ""; }
+              }
+              setTemplateForm(f => ({ ...f, previewImage: preview }));
+              setShowSaveTemplate(true);
+            }}
+            title="Lưu thành mẫu thiết kế sẵn (chỉ admin)"
+          >
+            <Save className="mr-2 h-4 w-4" />
+            Lưu thành mẫu thiết kế sẵn
+          </Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Phần Xem Trước */}
@@ -755,6 +904,19 @@ export default function CustomizePage() {
                 >
                   <Trash2 className="h-4 w-4 text-red-500" />
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (fabricRef.current) {
+                      const json = fabricRef.current.exportToJSON ? fabricRef.current.exportToJSON() : JSON.stringify(fabricRef.current.toJSON());
+                      setExportedJSON(typeof json === 'string' ? json : JSON.stringify(json, null, 2));
+                      toast.success("Đã xuất JSON thiết kế!");
+                    }
+                  }}
+                >
+                  <Copy className="w-4 h-4 mr-1" /> Xuất JSON
+                </Button>
               </div>
             </div>
 
@@ -789,10 +951,8 @@ export default function CustomizePage() {
               <div>
                 <h3 className="font-medium mb-2">Lựa Chọn Hiện Tại:</h3>
                 <ul className="text-sm text-gray-600 space-y-1">
-                  <li>Thân: {bodyGroups.find((o) => o._id === selectedOptions.body)?.name}</li>
-                  <li>Tai: {categories.find((o) => o._id === selectedOptions.ears)?.name}</li>
+                  <li>Thân: {categories.find((o) => o._id === selectedOptions.body)?.name}</li>
                   <li>Mắt: {categories.find((o) => o._id === selectedOptions.eyes)?.name}</li>
-                  <li>Mũi: {categories.find((o) => o._id === selectedOptions.nose)?.name}</li>
                   <li>Miệng: {categories.find((o) => o._id === selectedOptions.mouth)?.name}</li>
                   <li>Màu Lông: {categories.find((o) => o._id === selectedOptions.furColor)?.name}</li>
                   {selectedOptions.clothing && (
@@ -816,10 +976,24 @@ export default function CustomizePage() {
                 <div className="bg-pink-50 p-4 rounded-lg">
                   <h3 className="font-medium mb-2">Chi Tiết Giá:</h3>
                   <ul className="text-sm text-gray-600 space-y-1">
-                    <li className="flex justify-between">
-                      <span>Giá Cơ Bản:</span>
-                      <span>299.000₫</span>
-                    </li>
+                    {totalPrice === 0 && (
+                      <li className="text-gray-400 italic">Vui lòng chọn các phần để xem giá</li>
+                    )}
+                    {selectedOptions.body && (() => {
+                      const bodyObj = categories.find((o) => o._id === selectedOptions.body);
+                      return bodyObj && bodyObj.price !== undefined ? (
+                        <li className="flex justify-between">
+                          <span>Loại Thân ({bodyObj.name}):</span>
+                          <span>
+                            {bodyObj.price > 0
+                              ? `+${bodyObj.price.toLocaleString('vi-VN')}₫`
+                              : bodyObj.price < 0
+                              ? `${bodyObj.price.toLocaleString('vi-VN')}₫`
+                              : '0₫'}
+                          </span>
+                        </li>
+                      ) : null;
+                    })()}
                     {selectedOptions.size && (() => {
                       const sizeObj = categories.find((o) => o._id === selectedOptions.size);
                       return sizeObj && sizeObj.price !== undefined ? (
@@ -960,9 +1134,9 @@ export default function CustomizePage() {
                       {furColorOptions.map((option) => (
                         <div
                           key={option._id}
-                          onClick={() => handleColorChange(option.image || "")}
+                          onClick={() => handleColorChange(option._id)}
                           className={`w-10 h-10 rounded-full border-2 cursor-pointer transition-all ${
-                            selectedOptions.furColor === option.image
+                            selectedOptions.furColor === option._id
                               ? "ring-2 ring-offset-2 ring-pink-500"
                               : "border-gray-200"
                           }`}
@@ -1139,7 +1313,77 @@ export default function CustomizePage() {
           </Card>
         </div>
       </div>
+      {exportedJSON && (
+        <div className="my-4">
+          <Label>JSON thiết kế (copy để dán vào admin):</Label>
+          <Textarea value={exportedJSON} readOnly rows={8} className="font-mono text-xs" />
+          <Button
+            variant="secondary"
+            size="sm"
+            className="mt-2"
+            onClick={() => { navigator.clipboard.writeText(exportedJSON); toast.success("Đã copy JSON!"); }}
+          >
+            Copy JSON
+          </Button>
+        </div>
+      )}
       <GiftBoxModal open={giftBoxModalOpen} onClose={() => setGiftBoxModalOpen(false)} onSelect={handleGiftBoxSelect} />
+      {isAdmin && (
+        <Dialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Lưu thành mẫu thiết kế sẵn</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Input
+                placeholder="Tên mẫu thiết kế"
+                value={templateForm.name}
+                onChange={e => setTemplateForm(f => ({ ...f, name: e.target.value }))}
+                required
+              />
+              <Input
+                placeholder="Mô tả ngắn"
+                value={templateForm.description}
+                onChange={e => setTemplateForm(f => ({ ...f, description: e.target.value }))}
+              />
+              <ImageUpload
+                currentImage={templateForm.previewImage}
+                onImageUploaded={url => setTemplateForm(f => ({ ...f, previewImage: url }))}
+                folder="designs"
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={async () => {
+                  setSavingTemplate(true);
+                  const userId = localStorage.getItem('userId') || 'admin';
+                  const body = {
+                    userId,
+                    designName: templateForm.name,
+                    description: templateForm.description,
+                    previewImage: templateForm.previewImage,
+                    canvasJSON: fabricRef.current?.toJSON() || {},
+                    parts: selectedOptions,
+                    isPublic: true
+                  };
+                  await fetch('http://localhost:5000/api/designs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                  });
+                  setSavingTemplate(false);
+                  setShowSaveTemplate(false);
+                  toast.success('Đã lưu mẫu thiết kế sẵn!');
+                }}
+                disabled={savingTemplate || !templateForm.name}
+              >
+                {savingTemplate ? 'Đang lưu...' : 'Lưu mẫu'}
+              </Button>
+              <Button variant="outline" onClick={() => setShowSaveTemplate(false)}>Hủy</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

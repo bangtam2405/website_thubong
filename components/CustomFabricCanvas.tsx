@@ -119,6 +119,56 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
       }
       if (data && data.objects && Array.isArray(data.objects)) {
         fabricCanvasRef.current.loadFromJSON(data, () => {
+          // Đảm bảo body luôn cố định sau khi load JSON
+          const objs = fabricCanvasRef.current.getObjects();
+          let bodyFound = false;
+          objs.forEach((obj: any, idx: number) => {
+            // Nếu partType là 'body', hoặc nếu không có partType thì assume object đầu tiên là body
+            if (obj.partType === 'body' || (!obj.partType && idx === 0)) {
+              obj.set({
+                partType: 'body', // Đảm bảo luôn có partType
+                selectable: false,
+                evented: false,
+                lockMovementX: true,
+                lockMovementY: true,
+                lockScalingX: true,
+                lockScalingY: true,
+                lockRotation: true
+              });
+              fabricCanvasRef.current.sendToBack(obj);
+              bodyFound = true;
+            }
+            // Lưu trạng thái vị trí/scale/angle cho các part khác (nếu có partId)
+            if (obj.partId && obj.partType) {
+              const state = {
+                left: obj.left,
+                top: obj.top,
+                scaleX: obj.scaleX,
+                scaleY: obj.scaleY,
+                angle: obj.angle,
+              };
+              partStatesRef.current[obj.partId] = state;
+              partStatesRef.current[obj.partType] = state;
+              if (!partStatesRef.current[`${obj.partType}_initial`]) {
+                partStatesRef.current[`${obj.partType}_initial`] = state;
+              }
+            }
+          });
+          // Nếu không tìm thấy body, thử lock object đầu tiên (fallback)
+          if (!bodyFound && objs.length > 0) {
+            const obj = objs[0];
+            obj.set({
+              partType: 'body',
+              selectable: false,
+              evented: false,
+              lockMovementX: true,
+              lockMovementY: true,
+              lockScalingX: true,
+              lockScalingY: true,
+              lockRotation: true
+            });
+            fabricCanvasRef.current.sendToBack(obj);
+          }
           fabricCanvasRef.current.renderAll()
           setHasLoadedFromJSON(true)
           setJustRestored(true)
@@ -150,14 +200,16 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
     if (!fabricCanvas) return;
     const saveState = (e: any) => {
       const obj = e.target;
-      if (obj && obj.partId) {
-        partStatesRef.current[obj.partId] = {
+      if (obj && obj.partId && obj.partType) {
+        const state = {
           left: obj.left,
           top: obj.top,
           scaleX: obj.scaleX,
           scaleY: obj.scaleY,
           angle: obj.angle,
         };
+        partStatesRef.current[obj.partId] = state;
+        partStatesRef.current[obj.partType] = state; // Lưu theo loại part
       }
     };
     fabricCanvas.on('object:modified', saveState);
@@ -209,10 +261,9 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
     if (canvasJSON) return;
     const fabricCanvas = fabricCanvasRef.current
     if (!fabricCanvas) return
-    
-    console.log("CustomFabricCanvas useEffect triggered");
-    console.log("selectedOptions:", selectedOptions);
-    
+
+    console.log('[CustomFabricCanvas] selectedOptions:', selectedOptions);
+
     fabricCanvas.clear()
     if (backgroundImage) {
       fabric.Image.fromURL(backgroundImage, (img: any) => {
@@ -271,17 +322,35 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
           // Scale body cho vừa canvas
           const scaleX = 500 / img.width
           const scaleY = 650 / img.height
-          fabricImage.set({ left: 0, top: 0, scaleX, scaleY, selectable: false, evented: false, partType: 'body' })
+          fabricImage.set({
+            left: 0,
+            top: 0,
+            scaleX,
+            scaleY,
+            selectable: false,
+            evented: false,
+            partType: 'body',
+            lockMovementX: true,
+            lockMovementY: true,
+            lockScalingX: true,
+            lockScalingY: true,
+            lockRotation: true
+          })
           
           // Áp dụng màu lông nếu có
           if (selectedOptions.furColor) {
-            fabricImage.filters = fabricImage.filters || [];
-            fabricImage.filters.push(new fabric.Image.filters.BlendColor({
-              color: selectedOptions.furColor,
-              mode: 'tint',
-              alpha: 0.7
-            }));
-            fabricImage.applyFilters();
+            // Lấy object màu lông từ categories
+            const colorCat = categories.find(cat => cat._id === selectedOptions.furColor);
+            const colorHex = colorCat?.image;
+            if (colorHex && /^#([0-9A-F]{3}){1,2}$/i.test(colorHex)) {
+              fabricImage.filters = fabricImage.filters || [];
+              fabricImage.filters.push(new fabric.Image.filters.BlendColor({
+                color: colorHex,
+                mode: 'tint',
+                alpha: 0.7
+              }));
+              fabricImage.applyFilters();
+            }
           }
 
           fabricCanvas.add(fabricImage)
@@ -299,12 +368,26 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
             partId: id,
           })
           // Nếu đã có trạng thái cũ thì apply lại
-          if (partStatesRef.current[id]) {
-            fabricImage.set({ ...partStatesRef.current[id] })
+          let state = partStatesRef.current[id];
+          if (!state && partStatesRef.current[`${type}_initial`]) {
+            // Nếu chưa có state cho id mới, ưu tiên lấy vị trí gốc từ JSON
+            state = { ...partStatesRef.current[`${type}_initial`] };
+            partStatesRef.current[id] = state;
+          } else if (!state && partStatesRef.current[type]) {
+            // Nếu không có vị trí gốc, lấy vị trí cuối cùng của partType
+            state = { ...partStatesRef.current[type] };
+            partStatesRef.current[id] = state;
+          }
+          if (state) {
+            fabricImage.set({ ...state });
+            // Đảm bảo luôn lưu lại state cho id mới (kể cả khi chỉ đổi option)
+            partStatesRef.current[id] = { ...state };
           }
           fabricCanvas.add(fabricImage)
           fabricCanvas.bringToFront(fabricImage)
           fabricCanvas.setActiveObject(fabricImage)
+          // Clear active object để tránh border xanh và tránh fabric tự động reset vị trí
+          fabricCanvas.discardActiveObject();
         }
         fabricCanvas.renderAll()
       }
@@ -422,6 +505,39 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
     });
     canvas.renderAll();
   }, [customTexts]);
+
+  // Ngăn không cho chọn, kéo, scale, xoay body trong mọi trường hợp
+  useEffect(() => {
+    const fabricCanvas = fabricCanvasRef.current;
+    if (!fabricCanvas) return;
+    const preventBodySelect = (e: any) => {
+      if (e.target && e.target.partType === 'body') {
+        fabricCanvas.discardActiveObject();
+        fabricCanvas.renderAll();
+      }
+    };
+    const preventBodyMove = (e: any) => {
+      if (e.target && e.target.partType === 'body') {
+        e.target.left = 0;
+        e.target.top = 0;
+        fabricCanvas.discardActiveObject();
+        fabricCanvas.renderAll();
+        return false;
+      }
+    };
+    fabricCanvas.on('mouse:down', preventBodySelect);
+    fabricCanvas.on('object:selected', preventBodySelect);
+    fabricCanvas.on('object:moving', preventBodyMove);
+    fabricCanvas.on('object:scaling', preventBodyMove);
+    fabricCanvas.on('object:rotating', preventBodyMove);
+    return () => {
+      fabricCanvas.off('mouse:down', preventBodySelect);
+      fabricCanvas.off('object:selected', preventBodySelect);
+      fabricCanvas.off('object:moving', preventBodyMove);
+      fabricCanvas.off('object:scaling', preventBodyMove);
+      fabricCanvas.off('object:rotating', preventBodyMove);
+    };
+  }, []);
 
   return (
     <canvas ref={canvasRef} width={500} height={650} className="rounded-lg" />

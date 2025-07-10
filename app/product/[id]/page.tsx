@@ -14,12 +14,13 @@ import { toast } from "sonner"
 import type { Product } from "@/types/product"
 
 type Review = {
-  _id: string
-  user: string
-  rating: number
-  comment: string
-  date: string
-}
+  _id: string;
+  user: { username?: string; email?: string } | string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  media?: string[];
+};
 
 type CartItem = {
   _id: string
@@ -45,32 +46,26 @@ export default function ProductDetail() {
         const res = await axios.get(`http://localhost:5000/api/products/${params.id}`)
         setProduct(res.data)
         setSelectedImage(res.data.image)
-        // Giả lập dữ liệu đánh giá
-        setReviews([
-          {
-            _id: "1",
-            user: "Nguyễn Văn A",
-            rating: 5,
-            comment: "Sản phẩm rất đẹp, chất lượng tốt, giao hàng nhanh!",
-            date: "2024-03-15"
-          },
-          {
-            _id: "2",
-            user: "Trần Thị B",
-            rating: 4,
-            comment: "Thú nhồi bông dễ thương, con bé nhà mình rất thích!",
-            date: "2024-03-14"
-          }
-        ])
       } catch (error) {
         console.error("Error fetching product:", error)
       } finally {
         setLoading(false)
       }
     }
-
     fetchProduct()
   }, [params.id])
+
+  // Lấy đánh giá thực tế từ API
+  useEffect(() => {
+    if (!params.id) return;
+    axios.get(`http://localhost:5000/api/reviews/product/${params.id}`)
+      .then(res => setReviews(res.data))
+      .catch(() => setReviews([]));
+  }, [params.id]);
+
+  // Tính điểm trung bình và tổng số đánh giá
+  const reviewCount = reviews.length;
+  const avgRating = reviewCount > 0 ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount) : 0;
 
   const handleAddToCart = () => {
     if (product) {
@@ -163,13 +158,16 @@ export default function ProductDetail() {
                   <Star
                     key={i}
                     className={`h-5 w-5 ${
-                      i < Math.floor(product.rating)
+                      i < Math.round(avgRating)
                         ? "text-yellow-400 fill-yellow-400"
                         : "text-gray-300"
                     }`}
                   />
                 ))}
-                <span className="ml-2 text-gray-600">({product.reviews} đánh giá)</span>
+                <span className="ml-2 text-gray-600">({reviewCount} đánh giá)</span>
+                {reviewCount > 0 && (
+                  <span className="ml-2 text-pink-600 font-semibold">{avgRating.toFixed(1)} / 5</span>
+                )}
               </div>
               <span className="text-gray-600">Đã bán {product.sold}</span>
             </div>
@@ -299,10 +297,10 @@ export default function ProductDetail() {
                 <Card key={review._id} className="p-6">
                   <div className="flex items-center gap-4 mb-4">
                     <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                      {review.user[0]}
+                      {typeof review.user === 'object' ? (review.user.username || review.user.email) : review.user[0]}
                     </div>
                     <div>
-                      <div className="font-semibold">{review.user}</div>
+                      <div className="font-semibold">{typeof review.user === 'object' ? (review.user.username || review.user.email) : review.user}</div>
                       <div className="flex items-center gap-2">
                         <div className="flex">
                           {[...Array(5)].map((_, i) => (
@@ -316,16 +314,69 @@ export default function ProductDetail() {
                             />
                           ))}
                         </div>
-                        <span className="text-sm text-gray-600">{review.date}</span>
+                        <span className="text-sm text-gray-600">{new Date(review.createdAt).toLocaleDateString()}</span>
                       </div>
                     </div>
                   </div>
-                  <p className="text-gray-700">{review.comment}</p>
+                  <p className="text-gray-700 mb-2">{review.comment}</p>
+                  {/* Hiển thị media nếu có */}
+                  {Array.isArray(review.media) && review.media.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {review.media.map((url: string, idx: number) =>
+                        url.match(/\.(jpg|jpeg|png)$/i) ? (
+                          <div key={idx} className="relative w-24 h-24">
+                            <Image src={url} alt={`media-${idx}`} fill className="object-cover rounded border" />
+                          </div>
+                        ) : url.match(/\.mp4$/i) ? (
+                          <div key={idx} className="relative w-32 h-24">
+                            <video src={url} controls className="w-32 h-24 object-cover rounded border" />
+                          </div>
+                        ) : null
+                      )}
+                    </div>
+                  )}
                 </Card>
               ))}
             </div>
           </TabsContent>
         </Tabs>
+      </div>
+
+      {/* Đánh giá sản phẩm */}
+      <div className="mt-10">
+        <h2 className="text-xl font-bold mb-4">Đánh giá sản phẩm</h2>
+        {reviewCount === 0 && <div className="text-gray-500 italic">Chưa có đánh giá nào cho sản phẩm này.</div>}
+        <div className="space-y-6">
+          {reviews.map(r => (
+            <div key={r._id} className="bg-gray-50 rounded-lg p-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className={`h-4 w-4 ${i < r.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`} />
+                ))}
+                <span className="ml-2 text-sm text-gray-700 font-medium">
+                  {typeof r.user === 'object' ? (r.user.username || r.user.email) : r.user}
+                </span>
+                <span className="ml-2 text-xs text-gray-400">{new Date(r.createdAt).toLocaleDateString()}</span>
+              </div>
+              <div className="text-gray-800 text-base mb-2">{r.comment}</div>
+              {Array.isArray(r.media) && r.media.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {r.media.map((url: string, idx: number) =>
+                    url.match(/\.(jpg|jpeg|png)$/i) ? (
+                      <div key={idx} className="relative w-24 h-24">
+                        <Image src={url} alt={`media-${idx}`} fill className="object-cover rounded border" />
+                      </div>
+                    ) : url.match(/\.mp4$/i) ? (
+                      <div key={idx} className="relative w-32 h-24">
+                        <video src={url} controls className="w-32 h-24 object-cover rounded border" />
+                      </div>
+                    ) : null
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

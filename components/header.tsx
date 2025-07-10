@@ -23,38 +23,37 @@ import { useSession, signOut } from "next-auth/react"
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const { data: session, status } = useSession();
-  const [localUser, setLocalUser] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
   const pathname = usePathname();
   const { items } = useCart();
   const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   useEffect(() => {
-    if (!session?.user) {
-      // Nếu không có session NextAuth, lấy user từ localStorage
-      const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-      if (userStr) {
-        try {
-          setLocalUser(JSON.parse(userStr));
-        } catch {}
-      } else {
-        setLocalUser(null);
-      }
-    } else {
-      setLocalUser(null);
-    }
-  }, [session]);
-
-  const user = session?.user || localUser;
-
-  useEffect(() => {
-    const handleUserUpdated = () => {
-      setLocalUser(useCurrentUser());
+    // Hàm cập nhật user từ localStorage
+    const updateUser = () => {
+      const userStr = localStorage.getItem("user");
+      setUser(userStr ? JSON.parse(userStr) : null);
     };
-    window.addEventListener("user-updated", handleUserUpdated);
-    // Luôn cập nhật user mỗi khi route thay đổi
-    setLocalUser(useCurrentUser());
-    return () => window.removeEventListener("user-updated", handleUserUpdated);
-  }, [pathname]);
+    updateUser();
+    window.addEventListener("user-updated", updateUser);
+    return () => window.removeEventListener("user-updated", updateUser);
+  }, []);
+
+  const handleLogout = () => {
+    // Xóa toàn bộ thông tin user khỏi localStorage
+    localStorage.removeItem('token');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('username');
+    localStorage.removeItem('role');
+    localStorage.removeItem('user');
+    localStorage.removeItem('email');
+    localStorage.removeItem('avatar');
+    // ...xóa thêm nếu có
+    signOut(); // NextAuth
+    window.location.href = "/login";
+  };
 
   return (
     <header className="sticky top-0 z-50">
@@ -152,7 +151,7 @@ export default function Header() {
                         <Link href="/orders" className="w-full">Đơn Hàng Của Tôi</Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => signOut()} className="text-red-500 cursor-pointer">Đăng Xuất</DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleLogout} className="text-red-500 cursor-pointer">Đăng Xuất</DropdownMenuItem>
                     </>
                   ) : (
                     <>

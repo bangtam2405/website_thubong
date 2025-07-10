@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { uploadImage } from '@/lib/cloudinary';
+import { uploadImage, uploadVideo } from '@/lib/cloudinary';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,20 +20,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Kiểm tra loại file
-    if (!file.type.startsWith('image/')) {
+    // Kiểm tra loại file và kích thước
+    const isImage = file.type === 'image/jpeg' || file.type === 'image/png';
+    const isVideo = file.type === 'video/mp4';
+    if (!isImage && !isVideo) {
       console.error('Invalid file type:', file.type);
       return NextResponse.json(
-        { error: 'File must be an image' },
+        { error: 'File must be jpg, png, or mp4' },
         { status: 400 }
       );
     }
-
-    // Kiểm tra kích thước file (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      console.error('File too large:', file.size);
+    if (isImage && file.size > 5 * 1024 * 1024) {
+      console.error('Image too large:', file.size);
       return NextResponse.json(
-        { error: 'File too large. Maximum 5MB allowed' },
+        { error: 'Image too large. Maximum 5MB allowed' },
+        { status: 400 }
+      );
+    }
+    if (isVideo && file.size > 20 * 1024 * 1024) {
+      console.error('Video too large:', file.size);
+      return NextResponse.json(
+        { error: 'Video too large. Maximum 20MB allowed' },
         { status: 400 }
       );
     }
@@ -44,14 +51,17 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes);
 
     console.log('Uploading to Cloudinary...');
-    // Upload lên Cloudinary
-    const imageUrl = await uploadImage(buffer, folder);
-
-    console.log('Upload successful:', imageUrl);
+    let fileUrl = '';
+    if (isImage) {
+      fileUrl = await uploadImage(buffer, folder);
+    } else if (isVideo) {
+      fileUrl = await uploadVideo(buffer, folder);
+    }
+    console.log('Upload successful:', fileUrl);
     return NextResponse.json({
       success: true,
-      url: imageUrl,
-      message: 'Image uploaded successfully'
+      url: fileUrl,
+      message: 'File uploaded successfully'
     });
 
   } catch (error) {
