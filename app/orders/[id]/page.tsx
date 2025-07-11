@@ -54,6 +54,8 @@ export default function OrderDetailPage() {
   const [reviewingProduct, setReviewingProduct] = useState<string | null>(null);
   const [userReviews, setUserReviews] = useState<any[]>([]);
   const [reviewLoading, setReviewLoading] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => { setIsClient(true); }, []);
 
   // Lấy danh sách review của user cho các sản phẩm trong đơn
   useEffect(() => {
@@ -133,11 +135,11 @@ export default function OrderDetailPage() {
           </div>
           <div className="flex items-center gap-2">
             <span className="font-semibold">Ngày đặt:</span>
-            <span>{new Date(order.createdAt).toLocaleString()}</span>
+            <span>{isClient ? new Date(order.createdAt).toLocaleString() : new Date(order.createdAt).toISOString()}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="font-semibold">Tổng tiền:</span>
-            <span className="text-pink-600 text-lg font-bold">{order.totalPrice?.toLocaleString()}₫</span>
+            <span className="text-pink-600 text-lg font-bold">{isClient ? order.totalPrice?.toLocaleString() + '₫' : order.totalPrice + '₫'}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="font-semibold">Khách hàng:</span>

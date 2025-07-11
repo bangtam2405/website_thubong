@@ -7,7 +7,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-pink-500">ThúBôngXinh</h3>
+            <h3 className="text-lg font-bold text-pink-500">Thú Bông Xinh</h3>
             <p className="text-gray-600 text-sm">
               Tạo thú nhồi bông tùy chỉnh của riêng bạn với công cụ thiết kế tương tác. Chọn tai, mắt, màu lông, quần áo
               và nhiều hơn nữa!

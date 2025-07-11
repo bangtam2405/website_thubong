@@ -24,11 +24,13 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const { data: session, status } = useSession();
   const [user, setUser] = useState<any>(null);
+  const [isClient, setIsClient] = useState(false);
   const pathname = usePathname();
   const { items } = useCart();
   const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   useEffect(() => {
+    setIsClient(true);
     // Hàm cập nhật user từ localStorage
     const updateUser = () => {
       const userStr = localStorage.getItem("user");
@@ -65,13 +67,13 @@ export default function Header() {
             <div className="flex-shrink-0">
               <Link href="/" className="flex items-center">
                 <Image
-                  src="/placeholder.svg?height=50&width=50"
+                  src="/logo2.svg"
                   alt="ThúBôngXinh Logo"
                   width={50}
                   height={50}
                   className="mr-2"
                 />
-                <span className="text-2xl font-bold text-pink-500">Gấu Studio</span>
+                <span className="text-2xl font-bold text-pink-500">Thú Bông Xinh</span>
               </Link>
             </div>
 
@@ -131,46 +133,50 @@ export default function Header() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {user ? (
-                    <>
-                      <DropdownMenuLabel>Xin chào, {user.name || user.username || user.email}</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem>
-                        <Link href="/wishlist" className="w-full flex items-center">
-                          <Heart className="h-4 w-4 mr-2" />
-                          Danh sách yêu thích
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Link href="/my-designs" className="w-full">Xem Thiết Kế Đã Lưu</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Link href="/profile" className="w-full">Hồ Sơ</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Link href="/orders" className="w-full">Đơn Hàng Của Tôi</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleLogout} className="text-red-500 cursor-pointer">Đăng Xuất</DropdownMenuItem>
-                    </>
+                  {isClient ? (
+                    user ? (
+                      <>
+                        <DropdownMenuLabel>Xin chào, {user.name || user.username || user.email}</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem>
+                          <Link href="/wishlist" className="w-full flex items-center">
+                            <Heart className="h-4 w-4 mr-2" />
+                            Danh sách yêu thích
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Link href="/my-designs" className="w-full">Xem Thiết Kế Đã Lưu</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Link href="/profile" className="w-full">Hồ Sơ</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Link href="/orders" className="w-full">Đơn Hàng Của Tôi</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleLogout} className="text-red-500 cursor-pointer">Đăng Xuất</DropdownMenuItem>
+                      </>
+                    ) : (
+                      <>
+                        <DropdownMenuLabel>Tài Khoản Của Tôi</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem>
+                          <Link href="/login" className="w-full">Đăng Nhập</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Link href="/register" className="w-full">Đăng Ký</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem>
+                          <Link href="/profile" className="w-full">Hồ Sơ</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Link href="/orders" className="w-full">Đơn Hàng Của Tôi</Link>
+                        </DropdownMenuItem>
+                      </>
+                    )
                   ) : (
-                    <>
-                      <DropdownMenuLabel>Tài Khoản Của Tôi</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem>
-                        <Link href="/login" className="w-full">Đăng Nhập</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Link href="/register" className="w-full">Đăng Ký</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem>
-                        <Link href="/profile" className="w-full">Hồ Sơ</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Link href="/orders" className="w-full">Đơn Hàng Của Tôi</Link>
-                      </DropdownMenuItem>
-                    </>
+                    <DropdownMenuLabel>Đang tải...</DropdownMenuLabel>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -206,7 +212,7 @@ export default function Header() {
               PHỤ KIỆN
             </Link>
             <Link href="/new" className="text-white font-medium px-3 py-2 hover:bg-pink-500 rounded">
-              HÀNG MỚI VỀ
+              MẪU THIẾT KẾ
             </Link>
           </nav>
         </div>

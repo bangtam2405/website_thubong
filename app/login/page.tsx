@@ -19,6 +19,11 @@ export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { data: session, status } = useSession()
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     if (status === "authenticated" && session?.user) {
@@ -163,7 +168,9 @@ export default function AuthPage() {
                 <div className="grid gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" placeholder="m@example.com" required />
+                    {isClient && (
+                      <Input id="email" type="email" placeholder="m@example.com" required />
+                    )}
                   </div>
                   <div className="grid gap-2">
                     <div className="flex items-center justify-between">
@@ -172,7 +179,9 @@ export default function AuthPage() {
                         Quên mật khẩu?
                       </Link>
                     </div>
-                    <Input id="password" type="password" required />
+                    {isClient && (
+                      <Input id="password" type="password" required />
+                    )}
                   </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox id="remember" />
@@ -198,39 +207,55 @@ export default function AuthPage() {
                 <div className="grid gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="register-fullname">Họ tên</Label>
-                    <Input id="register-fullname" type="text" placeholder="Nguyễn Văn A" required />
+                    {isClient && (
+                      <Input id="register-fullname" type="text" placeholder="Nguyễn Văn A" required />
+                    )}
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="register-email">Email</Label>
-                    <Input id="register-email" type="email" placeholder="m@example.com" required />
+                    {isClient && (
+                      <Input id="register-email" type="email" placeholder="m@example.com" required />
+                    )}
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="register-phone">Số điện thoại</Label>
-                    <Input id="register-phone" type="tel" placeholder="0123456789" required />
+                    {isClient && (
+                      <Input id="register-phone" type="tel" placeholder="0123456789" required />
+                    )}
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="register-dob">Ngày sinh</Label>
-                    <Input id="register-dob" type="date" required />
+                    {isClient && (
+                      <Input id="register-dob" type="date" required />
+                    )}
                   </div>
                   <div className="grid gap-2">
                     <Label>Giới tính</Label>
-                    <div className="flex gap-4">
-                      <label><input type="radio" name="register-gender" value="male" defaultChecked /> Nam</label>
-                      <label><input type="radio" name="register-gender" value="female" /> Nữ</label>
-                      <label><input type="radio" name="register-gender" value="other" /> Khác</label>
-                    </div>
+                    {isClient && (
+                      <div className="flex gap-4">
+                        <label><input type="radio" name="register-gender" value="male" defaultChecked /> Nam</label>
+                        <label><input type="radio" name="register-gender" value="female" /> Nữ</label>
+                        <label><input type="radio" name="register-gender" value="other" /> Khác</label>
+                      </div>
+                    )}
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="register-address">Địa chỉ</Label>
-                    <Input id="register-address" type="text" placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành" required />
+                    {isClient && (
+                      <Input id="register-address" type="text" placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành" required />
+                    )}
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="register-password">Mật Khẩu</Label>
-                    <Input id="register-password" type="password" required />
+                    {isClient && (
+                      <Input id="register-password" type="password" required />
+                    )}
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="confirm-password">Xác Nhận Mật Khẩu</Label>
-                    <Input id="confirm-password" type="password" required />
+                    {isClient && (
+                      <Input id="confirm-password" type="password" required />
+                    )}
                   </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox id="terms" required />

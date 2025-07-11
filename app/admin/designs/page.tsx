@@ -19,8 +19,9 @@ export default function AdminDesignTemplatesPage() {
 
   async function fetchDesigns() {
     setLoading(true);
-    const res = await fetch("http://localhost:5000/api/designs?isPublic=true");
-    const data = await res.json();
+    const res = await fetch("http://localhost:5000/api/designs?userId=admin");
+    let data = await res.json();
+    // Không lọc isPublic nữa, chỉ lấy userId === 'admin'
     setDesigns(data);
     setLoading(false);
   }
@@ -83,7 +84,6 @@ function DesignTemplateForm({ design, onSuccess, onCancel }: { design?: any, onS
     previewImage: design?.previewImage || "",
     canvasJSON: design?.canvasJSON || {},
     parts: design?.parts || {},
-    isPublic: true,
     userId: design?.userId || "admin", // hoặc lấy từ context nếu có auth
     _id: design?._id,
   });
@@ -104,7 +104,7 @@ function DesignTemplateForm({ design, onSuccess, onCancel }: { design?: any, onS
     setSaving(true);
     const method = form._id ? "PUT" : "POST";
     const url = form._id ? "http://localhost:5000/api/designs" : "http://localhost:5000/api/designs";
-    const body = { ...form };
+    const body = { ...form, isPublic: false };
     if (method === "PUT") body.id = form._id;
     await fetch(url, {
       method,

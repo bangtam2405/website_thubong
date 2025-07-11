@@ -20,6 +20,9 @@ interface ProductListPageProps {
 export default function ProductListPage({ params }: ProductListPageProps) {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => { setIsClient(true); }, []);
 
   const handleAddToWishlist = async (product: Product) => {
     try {
@@ -76,7 +79,7 @@ export default function ProductListPage({ params }: ProductListPageProps) {
     fetchProducts()
   }, [params.type])
 
-  if (loading) {
+  if (!isClient) {
     return <div className="container mx-auto py-12">Đang tải...</div>
   }
 

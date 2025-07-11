@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-// import { getMongoClient } from "@/lib/mongodb"; // <-- Để user tự setup
-// import { ObjectId } from "mongodb";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  // const { id } = params;
-  // const client = await getMongoClient();
-  // const db = client.db();
-  // const designs = db.collection("designs");
-  // const design = await designs.findOne({ _id: new ObjectId(id) });
-  // return NextResponse.json(design);
-  return NextResponse.json({ success: true, message: "GET /api/designs/[id] - implement backend logic" });
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const res = await fetch(`http://localhost:5000/api/designs/${id}`);
+  if (!res.ok) {
+    return NextResponse.json({ success: false, error: "Không tìm thấy thiết kế" }, { status: 404 });
+  }
+  const data = await res.json();
+  return NextResponse.json(data);
 } 

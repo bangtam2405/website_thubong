@@ -2,6 +2,8 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Gift, Palette, ShoppingBag, Star } from "lucide-react"
 import Image from "next/image"
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
+import ReviewSection from "@/components/ReviewSection";
 
 // Hàm fetch sản phẩm nổi bật từ backend
 async function getFeaturedProducts() {
@@ -35,6 +37,14 @@ export default async function Home() {
                 <Button size="lg" variant="outline" className="border-pink-200 text-pink-500 hover:bg-pink-50">
                   Xem Bộ Sưu Tập
                 </Button>
+              </div>
+              {/* Nút dẫn tới cộng đồng thiết kế */}
+              <div className="mt-2">
+                <Link href="/community-designs">
+                  <Button size="sm" variant="ghost" className="text-pink-600 hover:bg-pink-100">
+                    <Palette className="mr-2 h-4 w-4" /> Cộng đồng thiết kế
+                  </Button>
+                </Link>
               </div>
               <div className="flex items-center gap-4">
                 <div className="flex -space-x-2">
@@ -148,23 +158,7 @@ export default async function Home() {
       </section>
 
       {/* Review Section */}
-      <section className="py-12 bg-pink-50">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-2xl font-bold mb-6">Khách Hàng Nói Gì?</h2>
-          <div className="flex flex-col md:flex-row gap-8 justify-center">
-            {[
-              { name: "Lan", review: "Gấu bông rất đẹp, chất lượng tuyệt vời!", avatar: "/placeholder-user.jpg" },
-              { name: "Minh", review: "Dịch vụ nhanh, mình rất hài lòng!", avatar: "/placeholder-user.jpg" },
-            ].map((r, i) => (
-              <div key={i} className="bg-white rounded-lg shadow p-6 flex-1">
-                <img src={r.avatar} alt={r.name} className="w-12 h-12 rounded-full mx-auto mb-2" />
-                <p className="italic text-gray-700 mb-2">"{r.review}"</p>
-                <span className="font-semibold text-pink-500">{r.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <ReviewSection />
 
       {/* CTA Section */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-pink-100">

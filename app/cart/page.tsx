@@ -9,8 +9,10 @@ import { Trash2, Plus, Minus, ArrowRight } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { useCart } from "@/contexts/CartContext"
 import { useRouter } from "next/navigation"
+import { useNavigation } from "react-day-picker"
 
 export default function CartPage() {
+  // const navigate = useNavigation
   const { items, removeFromCart, updateQuantity } = useCart()
   const [promoCode, setPromoCode] = useState("")
   const [promoApplied, setPromoApplied] = useState(false)

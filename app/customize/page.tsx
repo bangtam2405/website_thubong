@@ -22,6 +22,7 @@ import GiftBoxModal from '@/components/GiftBoxModal'
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import ImageUpload from "@/components/ImageUpload";
+import { useRouter } from 'next/navigation';
 
 interface Category {
   _id: string
@@ -69,6 +70,20 @@ function robustMergeOptions(base: SelectedOptions, update: Partial<SelectedOptio
 }
 
 export default function CustomizePage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const edit = searchParams.get('edit');
+  const from = searchParams.get('from');
+  const [design, setDesign] = useState<any>(null);
+
+  useEffect(() => {
+    if (edit) {
+      fetch(`/api/designs/${edit}`)
+        .then(res => res.json())
+        .then(setDesign);
+    }
+  }, [edit]);
+
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("body")
@@ -103,7 +118,6 @@ export default function CustomizePage() {
     { name: "Be", value: "#F5F5DC" },
   ];
 
-  const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
   const editType = searchParams.get("type"); // "product" hoặc "design"
   const templateId = searchParams.get("templateId");
@@ -132,9 +146,6 @@ export default function CustomizePage() {
   const [giftBoxModalOpen, setGiftBoxModalOpen] = useState(false);
   const [pendingGiftBox, setPendingGiftBox] = useState<any>(null);
   const [selectedGiftBox, setSelectedGiftBox] = useState<GiftBox | null>(null);
-
-  // Thêm state cho export JSON
-  const [exportedJSON, setExportedJSON] = useState<string>("");
 
   // Reset loadedCanvasJSON khi không edit
   useEffect(() => {
@@ -409,56 +420,10 @@ export default function CustomizePage() {
     }
   }
 
-  const handleSaveDesign = async () => {
-    console.log("[DEBUG] Bấm Lưu Thiết Kế");
-    let canvasData = {};
-    if (!fabricRef.current) {
-      console.log("[DEBUG] fabricRef.current chưa sẵn sàng!");
-    } else if (!fabricRef.current.toJSON) {
-      console.log("[DEBUG] fabricRef.current.toJSON không tồn tại!");
-    } else {
-      canvasData = fabricRef.current.toJSON();
-      console.log("[DEBUG] canvasData khi lưu:", canvasData);
-    }
-    toast("Test toast: Đã bấm nút Lưu Thiết Kế");
-    const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
-    if (!userId) {
-      toast.error("Bạn cần đăng nhập để lưu thiết kế!");
-      return;
-    }
-    try {
-      if (editId && editType === 'design' && adminEdit === '1') {
-        // Update mẫu cũ
-        await axios.put("http://localhost:5000/api/designs", {
-          id: editId,
-          userId,
-          designName: selectedOptions.name || "Thiết kế mới",
-          parts: selectedOptions,
-          canvasJSON: JSON.stringify(canvasData),
-          isPublic: true // giữ public
-        });
-        toast.success("Đã cập nhật mẫu thiết kế sẵn!");
-      } else {
-        // Tạo mới
-        await axios.post("http://localhost:5000/api/designs", {
-          userId,
-          designName: selectedOptions.name || "Thiết kế mới",
-          parts: selectedOptions,
-          canvasJSON: JSON.stringify(canvasData),
-        });
-        toast.success("Đã Lưu Thiết Kế. Thiết kế tùy chỉnh của bạn đã được lưu vào tài khoản.");
-      }
-    } catch (err: unknown) {
-      let errorMsg = "Có lỗi xảy ra.";
-      if (axios.isAxiosError(err)) {
-        errorMsg = err.response?.data?.error || err.message;
-      } else if (err instanceof Error) {
-        errorMsg = err.message;
-      }
-      toast.error(errorMsg);
-      console.error("Lỗi khi lưu thiết kế:", err);
-    }
-  }
+  // 1. State cho modal lưu thiết kế
+  const [showSaveDesignModal, setShowSaveDesignModal] = useState(false);
+  const [saveDesignForm, setSaveDesignForm] = useState({ name: '', description: '', previewImage: '' });
+  const [savingDesign, setSavingDesign] = useState(false);
 
   const handleAddToCart = () => {
     if (!fabricRef.current) {
@@ -753,12 +718,17 @@ export default function CustomizePage() {
       .finally(() => setLoading(false))
   }, [])
 
+  const [userId, setUserId] = useState<string | null>(null);
+  const [origin, setOrigin] = useState<string>("");
   useEffect(() => {
-    const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
-    if (!userId) {
-      window.location.href = "/login";
+    if (typeof window !== 'undefined') {
+      setUserId(localStorage.getItem('userId'));
+      setOrigin(window.location.origin);
     }
   }, []);
+
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => { setIsClient(true); }, []);
 
   // Sau khi render CustomFabricCanvas, lắng nghe sự kiện chọn object để hiển thị UI chỉnh sửa text
   useEffect(() => {
@@ -819,6 +789,8 @@ export default function CustomizePage() {
       <h1 className="text-3xl font-bold text-center mb-8">Thiết Kế Thú Nhồi Bông Tùy Chỉnh Của Bạn</h1>
 
       {/* Nút lưu mẫu thiết kế sẵn cho admin, đặt phía trên canvas */}
+      {/* XÓA: Nút và modal Lưu thành mẫu thiết kế sẵn (chỉ admin) */}
+      {/* Tìm và xoá đoạn:
       {isAdmin && (
         <div className="flex justify-end mb-2">
           <Button
@@ -842,6 +814,9 @@ export default function CustomizePage() {
           </Button>
         </div>
       )}
+      */}
+
+      {from === 'shared' && <div className="bg-yellow-100 p-2 mb-2">Bạn đang chỉnh sửa bản sao từ thiết kế chia sẻ</div>}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Phần Xem Trước */}
@@ -903,19 +878,6 @@ export default function CustomizePage() {
                   className="bg-red-50 hover:bg-red-100 border-red-200 hover:border-red-300"
                 >
                   <Trash2 className="h-4 w-4 text-red-500" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (fabricRef.current) {
-                      const json = fabricRef.current.exportToJSON ? fabricRef.current.exportToJSON() : JSON.stringify(fabricRef.current.toJSON());
-                      setExportedJSON(typeof json === 'string' ? json : JSON.stringify(json, null, 2));
-                      toast.success("Đã xuất JSON thiết kế!");
-                    }
-                  }}
-                >
-                  <Copy className="w-4 h-4 mr-1" /> Xuất JSON
                 </Button>
               </div>
             </div>
@@ -985,11 +947,7 @@ export default function CustomizePage() {
                         <li className="flex justify-between">
                           <span>Loại Thân ({bodyObj.name}):</span>
                           <span>
-                            {bodyObj.price > 0
-                              ? `+${bodyObj.price.toLocaleString('vi-VN')}₫`
-                              : bodyObj.price < 0
-                              ? `${bodyObj.price.toLocaleString('vi-VN')}₫`
-                              : '0₫'}
+                            {isClient ? bodyObj.price.toLocaleString('vi-VN') + '₫' : bodyObj.price + '₫'}
                           </span>
                         </li>
                       ) : null;
@@ -999,7 +957,7 @@ export default function CustomizePage() {
                       return sizeObj && sizeObj.price !== undefined ? (
                         <li className="flex justify-between">
                           <span>Kích Thước ({sizeObj.name}):</span>
-                          <span>{sizeObj.price > 0 ? `+${sizeObj.price.toLocaleString('vi-VN')}₫` : sizeObj.price < 0 ? `${sizeObj.price.toLocaleString('vi-VN')}₫` : '0₫'}</span>
+                          <span>{isClient ? sizeObj.price.toLocaleString('vi-VN') + '₫' : sizeObj.price + '₫'}</span>
                         </li>
                       ) : null;
                     })()}
@@ -1008,7 +966,7 @@ export default function CustomizePage() {
                       return materialObj && materialObj.price !== undefined ? (
                         <li className="flex justify-between">
                           <span>Chất Liệu ({materialObj.name}):</span>
-                          <span>{materialObj.price > 0 ? `+${materialObj.price.toLocaleString('vi-VN')}₫` : materialObj.price < 0 ? `${materialObj.price.toLocaleString('vi-VN')}₫` : '0₫'}</span>
+                          <span>{isClient ? materialObj.price.toLocaleString('vi-VN') + '₫' : materialObj.price + '₫'}</span>
                         </li>
                       ) : null;
                     })()}
@@ -1050,7 +1008,9 @@ export default function CustomizePage() {
                     )}
                     <li className="flex justify-between font-bold border-t mt-2 pt-2">
                       <span>Tổng:</span>
-                      <span>{(totalPrice + (selectedGiftBox?.price || 0)).toLocaleString('vi-VN')}₫</span>
+                      <span>
+                        {isClient ? (totalPrice + (selectedGiftBox?.price || 0)).toLocaleString('vi-VN') + '₫' : (totalPrice + (selectedGiftBox?.price || 0)) + '₫'}
+                      </span>
                     </li>
                   </ul>
                 </div>
@@ -1231,10 +1191,20 @@ export default function CustomizePage() {
                   onClick={handleAddToCart}
                 >
                   <ShoppingCart className="mr-2 h-4 w-4" />
-                  Thêm Vào Giỏ Hàng - {(totalPrice + (selectedGiftBox?.price || 0)).toLocaleString('vi-VN')}₫
+                  Thêm Vào Giỏ Hàng - {isClient ? (totalPrice + (selectedGiftBox?.price || 0)).toLocaleString('vi-VN') + '₫' : (totalPrice + (selectedGiftBox?.price || 0)) + '₫'}
                 </Button>
                 <div className="flex gap-4">
-                  <Button variant="outline" className="flex-1" onClick={handleSaveDesign}>
+                  {/* 2. Sửa nút Lưu Thiết Kế để mở modal thay vì lưu ngay */}
+                  <Button variant="outline" className="flex-1" onClick={() => {
+                    let preview = "";
+                    if (fabricRef.current && fabricRef.current.toDataURL) {
+                      try {
+                        preview = fabricRef.current.toDataURL({ format: 'png', quality: 0.8 });
+                      } catch (e) { preview = ""; }
+                    }
+                    setSaveDesignForm(f => ({ ...f, previewImage: preview }));
+                    setShowSaveDesignModal(true);
+                  }}>
                     <Save className="mr-2 h-4 w-4" />
                     Lưu Thiết Kế
                   </Button>
@@ -1261,6 +1231,7 @@ export default function CustomizePage() {
                       className="flex items-center gap-1 h-10"
                       onClick={() => {
                         if (!newText.trim()) return toast.error("Vui lòng nhập nội dung!");
+                        if (!isClient) return;
                         const id = Date.now().toString();
                         const allCurrentTexts = syncAllTextsFromCanvas();
                         setCustomTexts([...allCurrentTexts, { id, text: newText, fill: '#000', fontSize: 32, fontFamily: 'Arial', left: 250, top: 325 }]);
@@ -1313,21 +1284,84 @@ export default function CustomizePage() {
           </Card>
         </div>
       </div>
-      {exportedJSON && (
-        <div className="my-4">
-          <Label>JSON thiết kế (copy để dán vào admin):</Label>
-          <Textarea value={exportedJSON} readOnly rows={8} className="font-mono text-xs" />
-          <Button
-            variant="secondary"
-            size="sm"
-            className="mt-2"
-            onClick={() => { navigator.clipboard.writeText(exportedJSON); toast.success("Đã copy JSON!"); }}
-          >
-            Copy JSON
-          </Button>
-        </div>
+      {/* 3. Modal nhập tên, mô tả, xem trước hình và xác nhận lưu */}
+      {showSaveDesignModal && (
+        <Dialog open={showSaveDesignModal} onOpenChange={setShowSaveDesignModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Lưu Thiết Kế</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Input
+                placeholder="Tên thiết kế"
+                value={saveDesignForm.name}
+                onChange={e => setSaveDesignForm(f => ({ ...f, name: e.target.value }))}
+                required
+              />
+              <Input
+                placeholder="Mô tả ngắn (không bắt buộc)"
+                value={saveDesignForm.description}
+                onChange={e => setSaveDesignForm(f => ({ ...f, description: e.target.value }))}
+              />
+              {saveDesignForm.previewImage && (
+                <img src={saveDesignForm.previewImage} alt="Preview" className="w-full h-48 object-contain rounded border" />
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={async () => {
+                  setSavingDesign(true);
+                  const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
+                  const role = typeof window !== 'undefined' ? localStorage.getItem('role') : null;
+                  if (!userId) {
+                    toast.error("Bạn cần đăng nhập để lưu thiết kế!");
+                    setSavingDesign(false);
+                    return;
+                  }
+                  let canvasData = {};
+                  if (fabricRef.current && fabricRef.current.toJSON) {
+                    canvasData = fabricRef.current.toJSON();
+                  }
+                  const saveBody = {
+                    userId: role === 'admin' ? 'admin' : userId,
+                    designName: saveDesignForm.name || selectedOptions.name || "Thiết kế mới",
+                    description: saveDesignForm.description,
+                    parts: selectedOptions,
+                    canvasJSON: JSON.stringify(canvasData),
+                    previewImage: saveDesignForm.previewImage
+                  };
+                  try {
+                    await axios.post("http://localhost:5000/api/designs", saveBody);
+                    setShowSaveDesignModal(false);
+                    if (role === 'admin') {
+                      toast.success("Đã lưu mẫu thiết kế sẵn! Mẫu sẽ hiển thị ở trang quản lý mẫu thiết kế.");
+                    } else {
+                      toast.success("Đã Lưu Thiết Kế. Thiết kế tùy chỉnh của bạn đã được lưu vào tài khoản.");
+                    }
+                  } catch (err: unknown) {
+                    let errorMsg = "Có lỗi xảy ra.";
+                    if (axios.isAxiosError(err)) {
+                      errorMsg = err.response?.data?.error || err.message;
+                    } else if (err instanceof Error) {
+                      errorMsg = err.message;
+                    }
+                    toast.error(errorMsg);
+                    console.error("Lỗi khi lưu thiết kế:", err);
+                  }
+                  setSavingDesign(false);
+                }}
+                disabled={savingDesign || !saveDesignForm.name}
+              >
+                {savingDesign ? 'Đang lưu...' : 'Lưu thiết kế'}
+              </Button>
+              <Button variant="outline" onClick={() => setShowSaveDesignModal(false)}>Hủy</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
       <GiftBoxModal open={giftBoxModalOpen} onClose={() => setGiftBoxModalOpen(false)} onSelect={handleGiftBoxSelect} />
+      {/* XÓA: Dialog Lưu thành mẫu thiết kế sẵn (chỉ admin) */}
+      {/* Tìm và xoá đoạn:
       {isAdmin && (
         <Dialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate}>
           <DialogContent>
@@ -1364,7 +1398,7 @@ export default function CustomizePage() {
                     previewImage: templateForm.previewImage,
                     canvasJSON: fabricRef.current?.toJSON() || {},
                     parts: selectedOptions,
-                    isPublic: true
+                    isPublic: false // luôn là false để không lên cộng đồng
                   };
                   await fetch('http://localhost:5000/api/designs', {
                     method: 'POST',
@@ -1384,6 +1418,7 @@ export default function CustomizePage() {
           </DialogContent>
         </Dialog>
       )}
+      */}
     </div>
   )
 }

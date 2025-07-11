@@ -17,7 +17,7 @@ export default function NewProductsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/designs?isPublic=true")
+    fetch("http://localhost:5000/api/designs?userId=admin")
       .then(res => res.json())
       .then(data => setDesignTemplates(data))
       .catch(() => setDesignTemplates([]))
