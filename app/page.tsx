@@ -4,6 +4,7 @@ import { ArrowRight, Gift, Palette, ShoppingBag, Star } from "lucide-react"
 import Image from "next/image"
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import ReviewSection from "@/components/ReviewSection";
+import ChatBox from "../components/ChatBox";
 
 // Hàm fetch sản phẩm nổi bật từ backend
 async function getFeaturedProducts() {
@@ -105,6 +106,7 @@ export default async function Home() {
                     className="mx-auto rounded-lg object-cover"
                   />
                   <h3 className="text-xl font-bold text-gray-900 mt-4">{product.name}</h3>
+                  <p className="text-gray-500 text-xs mt-1">🛒 Đã bán: {product.sold || 0} lượt</p>
                   <p className="text-pink-500 font-semibold mt-2">{product.price?.toLocaleString()}₫</p>
                   <Link href={`/product/${product._id}`}>
                     <Button size="sm" className="mt-4 bg-pink-500 hover:bg-pink-600">Xem Chi Tiết</Button>
@@ -171,6 +173,7 @@ export default async function Home() {
           </Link>
         </div>
       </section>
+      <ChatBox />
     </div>
   )
 }

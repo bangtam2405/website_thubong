@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import axios from "axios"
 import { User } from "lucide-react"
+import ImageUpload from "@/components/ImageUpload";
 
 export default function ProfilePage() {
   const [username, setUsername] = useState("")
   const [email, setEmail] = useState("")
   const [userId, setUserId] = useState("")
+  const [avatar, setAvatar] = useState<string>("");
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -22,8 +24,34 @@ export default function ProfilePage() {
       setUsername(localStorage.getItem("username") || "")
       setEmail(localStorage.getItem("email") || "")
       setUserId(localStorage.getItem("userId") || "")
+      setAvatar(localStorage.getItem("avatar") || "");
     }
   }, [])
+
+  const handleAvatarUploaded = async (url: string) => {
+    setAvatar(url);
+    if (!userId || !url) return;
+    setLoading(true);
+    try {
+      const res = await axios.put("http://localhost:5000/api/auth/profile", {
+        userId,
+        avatar: url,
+        username,
+        email
+      });
+      if (res.data.success) {
+        localStorage.setItem("avatar", url);
+        localStorage.setItem("user", JSON.stringify(res.data.user));
+        window.dispatchEvent(new Event("user-updated"));
+        toast.success("Cập nhật ảnh đại diện thành công!");
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.response?.data?.message || "Cập nhật ảnh đại diện thất bại!");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -63,8 +91,17 @@ export default function ProfilePage() {
   return (
     <div className="container max-w-lg mx-auto py-12">
       <div className="bg-white rounded-2xl shadow-xl p-8 flex flex-col items-center">
-        <div className="bg-pink-100 rounded-full p-4 mb-4">
-          <User className="h-16 w-16 text-pink-500" />
+        <div className="mb-4">
+          {avatar ? (
+            <img src={avatar} alt="Avatar" className="w-24 h-24 rounded-full object-cover border-4 border-pink-200" />
+          ) : (
+            <div className="bg-pink-100 rounded-full p-4">
+              <User className="h-16 w-16 text-pink-500" />
+            </div>
+          )}
+        </div>
+        <div className="mb-6 w-full">
+          <ImageUpload onImageUploaded={handleAvatarUploaded} currentImage={avatar} folder="avatars" />
         </div>
         <h1 className="text-2xl font-bold mb-2">Hồ Sơ Cá Nhân</h1>
         <p className="text-gray-500 mb-6">Quản lý thông tin tài khoản của bạn</p>

@@ -151,7 +151,10 @@ export default function ProductDetail() {
         {/* Phần thông tin */}
         <div className="space-y-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
+            <div className="flex items-center gap-4 mb-2">
+              <h1 className="text-2xl font-bold text-gray-900">{product.name}</h1>
+              <span className="text-gray-500 text-sm">🛒 Đã bán: {product.sold || 0} lượt</span>
+            </div>
             <div className="flex items-center gap-4 mb-4">
               <div className="flex items-center">
                 {[...Array(5)].map((_, i) => (

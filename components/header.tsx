@@ -115,71 +115,63 @@ export default function Header() {
 
             {/* User and cart */}
             <div className="flex items-center space-x-4">
-              <Link href="/cart">
-                <Button variant="ghost" size="icon" className="relative">
-                  <ShoppingCart className="h-6 w-6 text-gray-700" />
-                  {cartCount > 0 && (
-                    <Badge className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs h-5 w-5 flex items-center justify-center p-0 rounded-full animate-bounce">
-                      {cartCount}
-                    </Badge>
-                  )}
-                </Button>
-              </Link>
+              {/* Giỏ hàng */}
+              <Button variant="ghost" size="icon" className="relative" onClick={() => {
+                if (!user) {
+                  alert("Bạn vui lòng đăng nhập để sử dụng giỏ hàng!");
+                  window.location.href = "/login";
+                  return;
+                }
+                window.location.href = "/cart";
+              }}>
+                <ShoppingCart className="h-6 w-6 text-gray-700" />
+                {cartCount > 0 && user && (
+                  <Badge className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs h-5 w-5 flex items-center justify-center p-0 rounded-full animate-bounce">
+                    {cartCount}
+                  </Badge>
+                )}
+              </Button>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <User className="h-6 w-6 text-gray-700" />
+              {/* Nếu chưa đăng nhập thì hiện nút Đăng nhập ra ngoài */}
+              {isClient && !user && (
+                <Link href="/login">
+                  <Button className="bg-pink-500 hover:bg-pink-600 text-white font-semibold px-4 py-2 rounded">
+                    Đăng nhập
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {isClient ? (
-                    user ? (
-                      <>
-                        <DropdownMenuLabel>Xin chào, {user.name || user.username || user.email}</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                          <Link href="/wishlist" className="w-full flex items-center">
-                            <Heart className="h-4 w-4 mr-2" />
-                            Danh sách yêu thích
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Link href="/my-designs" className="w-full">Xem Thiết Kế Đã Lưu</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Link href="/profile" className="w-full">Hồ Sơ</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Link href="/orders" className="w-full">Đơn Hàng Của Tôi</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={handleLogout} className="text-red-500 cursor-pointer">Đăng Xuất</DropdownMenuItem>
-                      </>
-                    ) : (
-                      <>
-                        <DropdownMenuLabel>Tài Khoản Của Tôi</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                          <Link href="/login" className="w-full">Đăng Nhập</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Link href="/register" className="w-full">Đăng Ký</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                          <Link href="/profile" className="w-full">Hồ Sơ</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Link href="/orders" className="w-full">Đơn Hàng Của Tôi</Link>
-                        </DropdownMenuItem>
-                      </>
-                    )
-                  ) : (
-                    <DropdownMenuLabel>Đang tải...</DropdownMenuLabel>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </Link>
+              )}
+
+              {/* Nếu đã đăng nhập thì hiện icon user và menu như cũ */}
+              {isClient && user && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <User className="h-6 w-6 text-gray-700" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Xin chào, {user.name || user.username || user.email}</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem>
+                      <Link href="/wishlist" className="w-full flex items-center">
+                        <Heart className="h-4 w-4 mr-2" />
+                        Danh sách yêu thích
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <Link href="/my-designs" className="w-full">Xem Thiết Kế Đã Lưu</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <Link href="/profile" className="w-full">Hồ Sơ</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <Link href="/orders" className="w-full">Đơn Hàng Của Tôi</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout} className="text-red-500 cursor-pointer">Đăng Xuất</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
 
               {/* Mobile menu button */}
               <div className="md:hidden">

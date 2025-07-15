@@ -27,9 +27,9 @@ export default function NewProductsPage() {
   return (
     <div className="container mx-auto py-12 px-4">
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold mb-4">Hàng Mẫu Thiết Kế Sẵn</h1>
+        <h1 className="text-4xl font-bold mb-4">Mẫu Thiết Kế</h1>
         <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-          Tham khảo các mẫu thiết kế sẵn do admin tạo. Bạn có thể nhấn "Tùy chỉnh" để sáng tạo lại theo ý mình!
+          Hãy cùng tham khảo các mẫu thiết có sẳn để thỏa thích sáng tạo
         </p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

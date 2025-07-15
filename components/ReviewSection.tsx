@@ -1,12 +1,17 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
-import useEmblaCarousel from 'embla-carousel-react';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import Autoplay from 'embla-carousel-autoplay';
 
 export default function ReviewSection() {
   const [topReviews, setTopReviews] = useState<any[] | null>(null);
-  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [emblaApi, setEmblaApi] = useState<any>(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  // Đảm bảo instance plugin chỉ tạo 1 lần
+  const autoplay = useRef<any>(null);
+  if (!autoplay.current) {
+    autoplay.current = Autoplay({ delay: 3000, stopOnInteraction: true, stopOnMouseEnter: true });
+  }
 
   useEffect(() => {
     fetch("http://localhost:5000/api/reviews?rating=5&limit=10")
@@ -15,26 +20,15 @@ export default function ReviewSection() {
       .catch(() => setTopReviews([]));
   }, []);
 
-  // Auto-play thủ công
+  // Chỉ update selectedIndex khi select
   useEffect(() => {
     if (!emblaApi) return;
-    function play() {
-      if (emblaApi) emblaApi.scrollNext();
-    }
-    intervalRef.current = setInterval(play, 3000);
+    const select = () => setSelectedIndex(emblaApi.selectedScrollSnap());
+    emblaApi.on("select", select);
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      emblaApi.off("select", select);
     };
   }, [emblaApi]);
-
-  // Dừng auto-play khi hover
-  function handleMouseEnter() {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-  }
-  function handleMouseLeave() {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (emblaApi) intervalRef.current = setInterval(() => emblaApi.scrollNext(), 3000);
-  }
 
   return (
     <section className="py-12 bg-pink-50">
@@ -49,11 +43,16 @@ export default function ReviewSection() {
             <span className="text-gray-400 italic">Chưa có đánh giá 5★ nào.</span>
           </div>
         ) : (
-          <div ref={emblaRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-            <Carousel className="w-full max-w-2xl mx-auto">
+          <div className="relative group">
+            <Carousel
+              className="w-full max-w-2xl mx-auto"
+              setApi={setEmblaApi}
+              opts={{ loop: true }}
+              plugins={topReviews.length > 1 ? [autoplay.current] : []}
+            >
               <CarouselContent>
                 {topReviews.map((r, i) => (
-                  <CarouselItem key={i} className="px-2">
+                  <CarouselItem key={i} className="w-full flex-shrink-0 flex-grow-0 basis-full px-2 transition-transform duration-500">
                     <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center transition-transform duration-300 hover:scale-105 group">
                       <img src={r.avatar || "/placeholder-user.jpg"} alt={r.name || r.user?.username || r.user?.email || r.user} className="w-14 h-14 rounded-full mx-auto mb-2 border-2 border-pink-200 object-cover" />
                       <div className="flex gap-1 mb-1">
@@ -67,7 +66,30 @@ export default function ReviewSection() {
                   </CarouselItem>
                 ))}
               </CarouselContent>
+              {/* Nút điều hướng thẩm mỹ */}
+              <CarouselPrevious
+                className="-left-6 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 bg-pink-500 text-white shadow-lg hover:scale-110 hover:bg-pink-600 border-none outline-none focus:ring-2 focus:ring-pink-300 z-10"
+              />
+              <CarouselNext
+                className="-right-6 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 bg-pink-500 text-white shadow-lg hover:scale-110 hover:bg-pink-600 border-none outline-none focus:ring-2 focus:ring-pink-300 z-10"
+              />
             </Carousel>
+            {/* Dot indicator */}
+            <div className="flex justify-center gap-2 mt-4">
+              {emblaApi && topReviews.map((_, idx) => (
+                <button
+                  key={idx}
+                  className={`w-3 h-3 rounded-full border border-pink-300 transition-all duration-300 ${selectedIndex === idx ? 'bg-pink-500' : 'bg-white'}`}
+                  onClick={() => {
+                    if (emblaApi && emblaApi.scrollTo) {
+                      emblaApi.scrollTo(idx, true);
+                    }
+                  }}
+                  aria-label={`Chuyển đến đánh giá ${idx + 1}`}
+                  disabled={!emblaApi}
+                />
+              ))}
+            </div>
           </div>
         )}
       </div>

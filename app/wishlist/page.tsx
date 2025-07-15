@@ -159,6 +159,7 @@ export default function WishlistPage() {
               
               <CardContent className="p-4">
                 <h3 className="font-semibold text-lg mb-2 line-clamp-2">{product.name}</h3>
+                <p className="text-gray-500 text-xs mb-1">🛒 Đã bán: {product.sold || 0} lượt</p>
                 <p className="text-gray-600 text-sm mb-3 line-clamp-2">{product.description}</p>
                 
                 <div className="flex items-center justify-between mb-4">

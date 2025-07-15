@@ -451,6 +451,7 @@ function ProductTable({ products, onEdit, onDelete }: { products: any[], onEdit:
             <TableHead>Loại</TableHead>
             <TableHead>Giá</TableHead>
             <TableHead>Tồn kho</TableHead>
+            <TableHead>Đã bán</TableHead>
             <TableHead>Ảnh</TableHead>
             <TableHead>Thao tác</TableHead>
           </TableRow>
@@ -468,6 +469,7 @@ function ProductTable({ products, onEdit, onDelete }: { products: any[], onEdit:
               </TableCell>
               <TableCell>{p.price}₫</TableCell>
               <TableCell>{p.stock}</TableCell>
+              <TableCell>{p.sold || 0}</TableCell>
               <TableCell>
                 <img src={p.image} alt={p.name} className="rounded shadow" width={60} height={60} style={{objectFit:'cover'}} />
               </TableCell>

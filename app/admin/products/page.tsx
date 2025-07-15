@@ -162,6 +162,7 @@ function ProductTable({ products, onEdit, onDelete }: { products: any[], onEdit:
             <TableHead>Giá</TableHead>
             <TableHead>Tồn kho</TableHead>
             <TableHead>Ảnh</TableHead>
+            <TableHead>Đã bán</TableHead>
             <TableHead>Thao tác</TableHead>
           </TableRow>
         </TableHeader>
@@ -181,6 +182,7 @@ function ProductTable({ products, onEdit, onDelete }: { products: any[], onEdit:
               <TableCell>
                 <img src={p.image} alt={p.name} className="rounded shadow" width={60} height={60} style={{objectFit:'cover'}} />
               </TableCell>
+              <TableCell>{p.sold || 0}</TableCell>
               <TableCell>
                 <Button size="icon" variant="ghost" onClick={() => onEdit(p)}><Edit /></Button>
                 <Button size="icon" variant="ghost" onClick={() => onDelete(p._id!)}><Trash2 /></Button>

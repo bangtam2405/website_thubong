@@ -10,6 +10,7 @@ import { CartProvider } from "@/contexts/CartContext"
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { SessionProvider } from "next-auth/react"
 import Providers from "./providers"
+import RouteChangeLoadingProvider from "@/components/RouteChangeLoadingProvider";
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -24,13 +25,13 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  console.log("NEXT_PUBLIC_GOOGLE_CLIENT_ID (frontend):", process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
   return (
     <html lang="vi" className={inter.className} suppressHydrationWarning>
       <body>
         <Providers>
           <div className="flex flex-col min-h-screen">
             <Header />
+            <RouteChangeLoadingProvider />
             <main className="flex-grow">{children}</main>
             <Footer />
           </div>
