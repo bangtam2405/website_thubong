@@ -15,7 +15,12 @@ import type { Product } from "@/types/product"
 
 type Review = {
   _id: string;
-  user: { username?: string; email?: string } | string;
+  user: {
+    username?: string;
+    email?: string;
+    avatar?: string;
+    fullName?: string;
+  } | string;
   rating: number;
   comment: string;
   createdAt: string;
@@ -299,11 +304,19 @@ export default function ProductDetail() {
               {reviews.map((review) => (
                 <Card key={review._id} className="p-6">
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                      {typeof review.user === 'object' ? (review.user.username || review.user.email) : review.user[0]}
+                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                      {typeof review.user === 'object' && review.user.avatar ? (
+                        <img src={review.user.avatar} alt="avatar" className="w-10 h-10 object-cover rounded-full" />
+                      ) : (
+                        <img src="/placeholder-user.jpg" alt="avatar" className="w-10 h-10 object-cover rounded-full" />
+                      )}
                     </div>
                     <div>
-                      <div className="font-semibold">{typeof review.user === 'object' ? (review.user.username || review.user.email) : review.user}</div>
+                      <div className="font-semibold">
+                        {typeof review.user === 'object'
+                          ? (review.user.fullName || review.user.username || review.user.email)
+                          : review.user}
+                      </div>
                       <div className="flex items-center gap-2">
                         <div className="flex">
                           {[...Array(5)].map((_, i) => (
@@ -353,11 +366,20 @@ export default function ProductDetail() {
           {reviews.map(r => (
             <div key={r._id} className="bg-gray-50 rounded-lg p-4 shadow-sm">
               <div className="flex items-center gap-2 mb-1">
+                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                  {typeof r.user === 'object' && r.user.avatar ? (
+                    <img src={r.user.avatar} alt="avatar" className="w-8 h-8 object-cover rounded-full" />
+                  ) : (
+                    <img src="/placeholder-user.jpg" alt="avatar" className="w-8 h-8 object-cover rounded-full" />
+                  )}
+                </div>
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} className={`h-4 w-4 ${i < r.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`} />
                 ))}
                 <span className="ml-2 text-sm text-gray-700 font-medium">
-                  {typeof r.user === 'object' ? (r.user.username || r.user.email) : r.user}
+                  {typeof r.user === 'object'
+                    ? (r.user.fullName || r.user.username || r.user.email)
+                    : r.user}
                 </span>
                 <span className="ml-2 text-xs text-gray-400">{new Date(r.createdAt).toLocaleDateString()}</span>
               </div>

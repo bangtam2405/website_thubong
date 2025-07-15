@@ -40,7 +40,17 @@ export default function CheckoutPage() {
         setItems([])
       }
     }
-  }, [searchParams])
+    // Lấy thông tin user từ localStorage nếu có
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user.fullName) setName(user.fullName);
+        if (user.phone) setPhone(user.phone);
+        if (user.addresses && user.addresses[0] && user.addresses[0].address) setAddress(user.addresses[0].address);
+      } catch {}
+    }
+  }, [searchParams]);
 
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
@@ -56,6 +66,8 @@ export default function CheckoutPage() {
       const userId = localStorage.getItem("userId");
       if (!userId || userId.length !== 24) {
         toast.error("Bạn cần đăng nhập lại để đặt hàng!");
+        localStorage.clear();
+        window.location.href = "/login";
         setLoading(false);
         return;
       }
@@ -108,6 +120,8 @@ export default function CheckoutPage() {
         const userId = localStorage.getItem("userId");
         if (!userId || userId.length !== 24) {
           toast.error("Bạn cần đăng nhập lại để đặt hàng!");
+          localStorage.clear();
+          window.location.href = "/login";
           setLoading(false);
           return;
         }

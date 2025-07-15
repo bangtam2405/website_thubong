@@ -88,6 +88,8 @@ export default function ReviewModal({ open, onClose, productId, orderItemId, onS
       if (files.length > 0) {
         media = await uploadAllFiles();
       }
+      // Thêm log để kiểm tra giá trị orderItemId
+      console.log("Gửi review với orderItem:", orderItemId);
       await axios.post("http://localhost:5000/api/reviews", {
         productId,
         rating,
@@ -114,10 +116,13 @@ export default function ReviewModal({ open, onClose, productId, orderItemId, onS
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md" aria-describedby="review-dialog-desc">
         <DialogHeader>
           <DialogTitle>Đánh giá sản phẩm</DialogTitle>
         </DialogHeader>
+        <p id="review-dialog-desc" className="sr-only">
+          Hãy để lại đánh giá và nhận xét của bạn về sản phẩm này.
+        </p>
         <div className="flex flex-col gap-4 py-2">
           <div className="flex items-center gap-2">
             {[1,2,3,4,5].map(star => (

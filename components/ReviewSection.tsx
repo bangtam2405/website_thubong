@@ -54,14 +54,14 @@ export default function ReviewSection() {
                 {topReviews.map((r, i) => (
                   <CarouselItem key={i} className="w-full flex-shrink-0 flex-grow-0 basis-full px-2 transition-transform duration-500">
                     <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center transition-transform duration-300 hover:scale-105 group">
-                      <img src={r.avatar || "/placeholder-user.jpg"} alt={r.name || r.user?.username || r.user?.email || r.user} className="w-14 h-14 rounded-full mx-auto mb-2 border-2 border-pink-200 object-cover" />
+                      <img src={r.user?.avatar || "/placeholder-user.jpg"} alt={r.user?.fullName || r.user?.username || r.user?.email || "user"} className="w-14 h-14 rounded-full mx-auto mb-2 border-2 border-pink-200 object-cover" />
                       <div className="flex gap-1 mb-1">
                         {[...Array(5)].map((_, idx) => (
                           <span key={idx} className="text-yellow-400 text-lg">★</span>
                         ))}
                       </div>
                       <p className="italic text-gray-700 mb-2 line-clamp-3">"{r.comment || r.review}"</p>
-                      <span className="font-semibold text-pink-500">{r.name || r.user?.username || r.user?.email || r.user}</span>
+                      <span className="font-semibold text-pink-500">{r.user?.fullName || r.user?.username || r.user?.email || "Ẩn danh"}</span>
                     </div>
                   </CarouselItem>
                 ))}
@@ -76,16 +76,16 @@ export default function ReviewSection() {
             </Carousel>
             {/* Dot indicator */}
             <div className="flex justify-center gap-2 mt-4">
-              {emblaApi && topReviews.map((_, idx) => (
+              {[0, 1, 2].map((dotIdx) => (
                 <button
-                  key={idx}
-                  className={`w-3 h-3 rounded-full border border-pink-300 transition-all duration-300 ${selectedIndex === idx ? 'bg-pink-500' : 'bg-white'}`}
+                  key={dotIdx}
+                  className={`w-3 h-3 rounded-full border border-pink-300 transition-all duration-300 ${selectedIndex % 3 === dotIdx ? 'bg-pink-500' : 'bg-white'}`}
                   onClick={() => {
                     if (emblaApi && emblaApi.scrollTo) {
-                      emblaApi.scrollTo(idx, true);
+                      emblaApi.scrollTo(dotIdx, true);
                     }
                   }}
-                  aria-label={`Chuyển đến đánh giá ${idx + 1}`}
+                  aria-label={`Chuyển đến đánh giá ${dotIdx + 1}`}
                   disabled={!emblaApi}
                 />
               ))}
