@@ -9,6 +9,7 @@ import { User } from "lucide-react"
 import ImageUpload from "@/components/ImageUpload";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link"
 
 export default function ProfilePage() {
   const [fullName, setFullName] = useState("");
@@ -192,7 +193,9 @@ export default function ProfilePage() {
                 <button className={`w-full text-left px-2 py-1 rounded ${!showChangePassword ? 'bg-pink-100 text-pink-500 font-semibold' : 'text-gray-600'}`} onClick={() => setShowChangePassword(false)}>Hồ Sơ</button>
               </li>
               <li>
-                <button className="w-full text-left px-2 py-1 rounded text-gray-600" disabled>Đơn Mua</button>
+                <Link href="/orders" className="w-full block text-left px-2 py-1 rounded text-gray-600 hover:bg-pink-50 hover:text-pink-500 transition">
+                  Đơn Hàng
+                </Link>
               </li>
               <li>
                 <button className={`w-full text-left px-2 py-1 rounded ${showChangePassword ? 'bg-pink-100 text-pink-500 font-semibold' : 'text-gray-600'}`} onClick={() => setShowChangePassword(true)}>Đổi Mật Khẩu</button>

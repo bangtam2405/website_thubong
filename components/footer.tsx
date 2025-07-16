@@ -7,10 +7,9 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-pink-500">Thú Bông Xinh</h3>
+            <h3 className="text-lg font-bold text-pink-500">Gấu Xinh</h3>
             <p className="text-gray-600 text-sm">
-              Tạo thú nhồi bông tùy chỉnh của riêng bạn với công cụ thiết kế tương tác. Chọn tai, mắt, màu lông, quần áo
-              và nhiều hơn nữa!
+              Tự tay thiết kế chú gấu bông trong mơ của bạn – từ mắt, mũi, màu lông đến trang phục. Món quà độc đáo, mang dấu ấn riêng!
             </p>
             <div className="flex space-x-4">
               <Link href="#" className="text-gray-400 hover:text-pink-500">
@@ -65,7 +64,7 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/careers" className="text-gray-600 hover:text-pink-500 text-sm">
+                <Link href="/recruitment" className="text-gray-600 hover:text-pink-500 text-sm">
                   Tuyển Dụng
                 </Link>
               </li>

@@ -186,9 +186,6 @@ export default function ProductDetail() {
 
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <span className="text-gray-600">Số lượng tồn kho: <b>{product.stock}</b></span>
-            </div>
-            <div className="flex items-center gap-2">
               <span className="text-gray-600">Số lượng:</span>
               <div className="flex items-center border rounded-lg">
                 <Button

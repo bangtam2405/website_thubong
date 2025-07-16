@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCartShopping, faStar } from '@fortawesome/free-solid-svg-icons';
+import { AddToCartButton } from "@/components/AddToCartButton";
 
 function formatSold(sold: number) {
   if (sold >= 10000) return `${(sold / 1000).toFixed(0)}k+`;
@@ -15,12 +16,27 @@ interface CardProductProps {
   product: {
     _id: string;
     name: string;
-    image?: string;
+    description?: string;
     price: number;
-    sold?: number;
+    image?: string;
+    type?: "teddy" | "accessory" | "collection" | "new" | "custom";
     rating?: number;
     reviews?: number;
+    sold?: number;
+    stock?: number;
     featured?: boolean;
+    specifications?: {
+      body?: string;
+      ears?: string;
+      eyes?: string;
+      furColor?: string;
+      clothing?: string | null;
+      accessories?: string[];
+      size?: string;
+    };
+    createdAt?: string;
+    updatedAt?: string;
+    categoryId?: string;
   };
 }
 
@@ -55,10 +71,23 @@ const CardProduct: React.FC<CardProductProps> = ({ product }) => {
         </div>
       </Link>
       <div className="p-4 pt-0 flex flex-col gap-2">
-        <button className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-2 rounded flex items-center justify-center gap-2">
-          <FontAwesomeIcon icon={faCartShopping} className="h-5 w-5" />
-          Thêm vào giỏ hàng
-        </button>
+        <AddToCartButton product={{
+          _id: product._id,
+          name: product.name,
+          description: product.description || "",
+          price: product.price,
+          image: product.image || "/placeholder.svg",
+          type: product.type || "teddy",
+          rating: typeof product.rating === "number" ? product.rating : 5,
+          reviews: typeof product.reviews === "number" ? product.reviews : 0,
+          sold: typeof product.sold === "number" ? product.sold : 0,
+          stock: typeof product.stock === "number" ? product.stock : 99,
+          featured: !!product.featured,
+          specifications: product.specifications,
+          createdAt: product.createdAt || new Date().toISOString(),
+          updatedAt: product.updatedAt || new Date().toISOString(),
+          categoryId: product.categoryId,
+        }} className="w-full bg-pink-500 hover:bg-pink-600 text-white" />
       </div>
     </div>
   );

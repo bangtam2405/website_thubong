@@ -19,6 +19,9 @@ import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { usePathname } from "next/navigation"
 import { useCart } from "@/contexts/CartContext"
 import { useSession, signOut } from "next-auth/react"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
+import { faHeart, faFolderOpen, faUser, faBoxOpen, faSignOutAlt } from "@fortawesome/free-solid-svg-icons"
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -67,13 +70,13 @@ export default function Header() {
             <div className="flex-shrink-0">
               <Link href="/" className="flex items-center">
                 <Image
-                  src="/logo2.svg"
+                  src="/Logo3.svg"
                   alt="ThúBôngXinh Logo"
                   width={50}
                   height={50}
                   className="mr-2"
                 />
-                <span className="text-2xl font-bold text-pink-500">Thú Bông Xinh</span>
+                <span className="text-2xl font-bold text-pink-500">Gấu Xinh</span>
               </Link>
             </div>
 
@@ -141,34 +144,51 @@ export default function Header() {
                 </Link>
               )}
 
-              {/* Nếu đã đăng nhập thì hiện icon user và menu như cũ */}
+              {/* Nếu đã đăng nhập thì hiện avatar và menu */}
               {isClient && user && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <User className="h-6 w-6 text-gray-700" />
+                    <Button variant="ghost" size="icon" className="p-0">
+                      <Avatar>
+                        <AvatarImage src={user.avatar || "/placeholder-user.jpg"} alt={user.fullName || user.name || user.username || "avatar"} />
+                        <AvatarFallback>{(user.fullName || user.name || user.username || "U").charAt(0).toUpperCase()}</AvatarFallback>
+                      </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Xin chào, {user.name || user.username || user.email}</DropdownMenuLabel>
+                    <DropdownMenuLabel>
+                      Xin chào, {user.fullName || user.name || user.username || "Người dùng"}
+                    </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem>
-                      <Link href="/wishlist" className="w-full flex items-center">
-                        <Heart className="h-4 w-4 mr-2" />
+                      <Link href="/wishlist" className="w-full flex items-center gap-2">
+                        <FontAwesomeIcon icon={faHeart} className="h-4 w-4 text-pink-500" />
                         Danh sách yêu thích
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem>
-                      <Link href="/my-designs" className="w-full">Xem Thiết Kế Đã Lưu</Link>
+                      <Link href="/my-designs" className="w-full flex items-center gap-2">
+                        <FontAwesomeIcon icon={faFolderOpen} className="h-4 w-4 text-pink-500" />
+                        Xem Thiết Kế Đã Lưu
+                      </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem>
-                      <Link href="/profile" className="w-full">Hồ Sơ</Link>
+                      <Link href="/profile" className="w-full flex items-center gap-2">
+                        <FontAwesomeIcon icon={faUser} className="h-4 w-4 text-pink-500" />
+                        Hồ Sơ
+                      </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem>
-                      <Link href="/orders" className="w-full">Đơn Hàng Của Tôi</Link>
+                      <Link href="/orders" className="w-full flex items-center gap-2">
+                        <FontAwesomeIcon icon={faBoxOpen} className="h-4 w-4 text-pink-500" />
+                        Đơn Hàng Của Tôi
+                      </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout} className="text-red-500 cursor-pointer">Đăng Xuất</DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleLogout} className="cursor-pointer flex items-center gap-2">
+                      <FontAwesomeIcon icon={faSignOutAlt} className="h-4 w-4 text-pink-500" />
+                      Đăng Xuất
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}

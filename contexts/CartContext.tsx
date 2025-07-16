@@ -54,11 +54,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems((currentItems) => {
       const existingItem = currentItems.find((item) => item._id === product._id)
       if (existingItem) {
-        return currentItems.map((item) =>
-          item._id === product._id ? { ...item, quantity: item.quantity + quantity } : item
-        )
+        // Tăng số lượng và đưa sản phẩm lên đầu
+        const updated = currentItems
+          .map((item) => item._id === product._id ? { ...item, quantity: item.quantity + quantity } : item)
+          .filter((item) => item._id !== product._id)
+        return [{ ...existingItem, quantity: existingItem.quantity + quantity }, ...updated]
       }
-      return [...currentItems, { ...product, quantity }]
+      // Thêm mới lên đầu
+      return [{ ...product, quantity }, ...currentItems]
     })
   }
 
