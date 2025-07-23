@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { toast } from "sonner"
 import { CreditCard, QrCode, Wallet2 } from "lucide-react"
+import { useCart } from "@/contexts/CartContext"
 
 // Log the environment variable for debugging
 console.log('NEXT_PUBLIC_BASE_URL:', process.env.NEXT_PUBLIC_BASE_URL);
@@ -21,6 +22,44 @@ interface CartItem {
   type: string
 }
 
+function SuccessModal({ onContinue, orderId }: { onContinue: () => void; orderId: string | null }) {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <style>{`
+        .checkmark {
+          stroke-dasharray: 24;
+          stroke-dashoffset: 24;
+          animation: checkmark-draw 0.7s cubic-bezier(.65,0,.45,1) infinite;
+        }
+        @keyframes checkmark-draw {
+          0% { stroke-dashoffset: 24; opacity: 1; }
+          60% { stroke-dashoffset: 0; opacity: 1; }
+          80% { stroke-dashoffset: 0; opacity: 1; }
+          100% { stroke-dashoffset: 24; opacity: 1; }
+        }
+      `}</style>
+      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+        <svg className="w-24 h-24 text-green-500 mx-auto mb-6" fill="none" viewBox="0 0 48 48">
+          <circle cx="24" cy="24" r="22" stroke="currentColor" strokeWidth="4" fill="none" />
+          <path className="checkmark" d="M15 25l7 7 11-13" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        </svg>
+        <h2 className="text-3xl font-bold text-gray-800 mb-4">Đặt hàng thành công!</h2>
+        <p className="text-gray-600 mb-6">
+          Cảm ơn bạn đã tin tưởng. Đơn hàng của bạn đang được xử lý và sẽ sớm được giao đến bạn.
+        </p>
+        <div className="space-y-3">
+           <Button 
+            className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 rounded-lg text-lg"
+            onClick={onContinue}
+          >
+            Tiếp tục mua sắm
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function CheckoutPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -30,6 +69,9 @@ export default function CheckoutPage() {
   const [address, setAddress] = useState("")
   const [payment, setPayment] = useState("cod")
   const [loading, setLoading] = useState(false)
+  const { removeItemsFromCart } = useCart();
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [lastOrderId, setLastOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     const itemsParam = searchParams.get("items")
@@ -149,21 +191,26 @@ export default function CheckoutPage() {
           setLoading(false);
           return;
         }
+        const order = await res.json();
+        // Xóa sản phẩm khỏi giỏ hàng
+        removeItemsFromCart(items.map(i => i._id));
+        setLastOrderId(order._id || null);
+        setShowSuccessModal(true);
+        setLoading(false);
+        return;
       } catch (err) {
         toast.error("Có lỗi khi lưu đơn hàng!");
         setLoading(false);
         return;
       }
-      setTimeout(() => {
-        setLoading(false)
-        toast.success("Đặt hàng thành công! Cảm ơn bạn đã mua hàng.")
-        router.push("/")
-      }, 2000)
     }
   }
 
   return (
     <div className="container mx-auto py-12 px-4 max-w-3xl">
+      {showSuccessModal && (
+        <SuccessModal onContinue={() => router.push("/")} orderId={lastOrderId} />
+      )}
       <h1 className="text-3xl font-bold mb-8 text-center">Thanh Toán Đơn Hàng</h1>
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <h2 className="text-xl font-semibold mb-4">Sản phẩm đã chọn</h2>

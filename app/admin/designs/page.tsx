@@ -1,132 +1,129 @@
 "use client";
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import ImageUpload from "@/components/ImageUpload";
-import { Plus, Edit, Trash2, Eye } from "lucide-react";
+import DesignTabs from "@/components/DesignTabs";
+import { Design } from "@/types/design";
+import { Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
-export default function AdminDesignTemplatesPage() {
-  const [designs, setDesigns] = useState<any[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [editDesign, setEditDesign] = useState<any>(null);
+export default function AdminDesignsPage() {
+  const [designTemplates, setDesignTemplates] = useState<Design[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchDesigns();
+    fetch("http://localhost:5000/api/designs?userId=admin")
+      .then(res => res.json())
+      .then(data => setDesignTemplates(data))
+      .catch(() => setDesignTemplates([]))
+      .finally(() => setLoading(false));
   }, []);
 
-  async function fetchDesigns() {
-    setLoading(true);
-    const res = await fetch("http://localhost:5000/api/designs?userId=admin");
-    let data = await res.json();
-    // Không lọc isPublic nữa, chỉ lấy userId === 'admin'
-    setDesigns(data);
-    setLoading(false);
-  }
-
-  async function handleDelete(id: string) {
-    if (window.confirm("Bạn có chắc chắn muốn xóa mẫu thiết kế này?")) {
-      await fetch(`http://localhost:5000/api/designs/${id}`, { method: "DELETE" });
-      fetchDesigns();
-    }
-  }
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa mẫu thiết kế này?")) return;
+    setDeletingId(id);
+    await fetch(`http://localhost:5000/api/designs/${id}`, { method: "DELETE" });
+    setDesignTemplates(prev => prev.filter(item => item._id !== id));
+    setDeletingId(null);
+  };
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Quản lý mẫu thiết kế sẵn</CardTitle>
-            <CardDescription>Thêm, sửa, xóa, upload ảnh, mô tả, đặt public cho mẫu thiết kế sẵn.</CardDescription>
-          </div>
-          <Button onClick={() => { setEditDesign(null); setShowForm(true); }}>
-            <Plus className="w-4 h-4 mr-2" /> Thêm mẫu thiết kế
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {showForm && (
-            <DesignTemplateForm
-              design={editDesign}
-              onSuccess={() => { setShowForm(false); fetchDesigns(); }}
-              onCancel={() => setShowForm(false)}
-            />
+    <div className="container mx-auto py-10 px-4">
+      <h1 className="text-2xl font-bold mb-6 text-pink-600">Bảng điều khiển quản trị</h1>
+      <DesignTabs />
+      <div className="bg-white rounded-xl shadow p-8">
+        <h2 className="text-xl font-bold mb-4 text-pink-500">Quản lý mẫu thiết kế</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {loading && (
+            <div className="col-span-full text-center text-gray-400">Đang tải dữ liệu...</div>
           )}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-            {loading ? <div>Đang tải...</div> : designs.length === 0 ? <div>Chưa có mẫu thiết kế nào.</div> : designs.map((d) => (
-              <div key={d._id} className="bg-white rounded-xl shadow p-4 flex flex-col">
-                <img src={d.previewImage || "/placeholder.svg"} alt={d.designName} className="rounded mb-2 w-full h-40 object-cover" />
-                <div className="font-bold text-lg mb-1">{d.designName}</div>
-                <div className="text-gray-500 text-sm mb-2 line-clamp-2">{d.description}</div>
-                <div className="flex gap-2 mt-auto">
-                  <a href={`/customize?edit=${d._id}&type=design&adminEdit=1`} target="_blank" rel="noopener noreferrer">
-                    <Button size="icon" variant="ghost"><Edit /></Button>
-                  </a>
-                  <Button size="icon" variant="ghost" onClick={() => handleDelete(d._id)}><Trash2 /></Button>
-                  <a href={`/customize?templateId=${d._id}`} target="_blank" rel="noopener noreferrer">
-                    <Button size="icon" variant="outline"><Eye /></Button>
-                  </a>
+          {!loading && designTemplates.length === 0 && (
+            <div className="col-span-full text-center text-gray-400">Chưa có mẫu thiết kế sẵn nào.</div>
+          )}
+          {designTemplates.map((item) => (
+            <div key={item._id} className="overflow-hidden group bg-gray-50 rounded-xl border shadow-sm flex flex-col">
+              <div className="relative">
+                <div className="aspect-square overflow-hidden rounded-t-xl">
+                  <Image
+                    src={item.previewImage || "/placeholder.svg"}
+                    alt={item.designName}
+                    width={300}
+                    height={300}
+                    className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
+                  />
                 </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              <div className="p-4 flex-1 flex flex-col">
+                <h3 className="font-semibold text-lg mb-1">{item.designName}</h3>
+                <p className="text-sm text-gray-500 mb-2 line-clamp-2">{item.description}</p>
+                <div className="mt-auto flex gap-2">
+                  <Link href={`/customize?templateId=${item._id}`} className="w-full">
+                    <Button variant="outline" className="w-full">
+                      Tùy chỉnh
+                    </Button>
+                  </Link>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="ml-2 border border-pink-200 text-pink-500 hover:bg-pink-50 rounded-full"
+                        onClick={() => setConfirmId(item._id)}
+                        title="Xóa thiết kế"
+                        disabled={deletingId === item._id}
+                      >
+                        <Trash2 size={18} />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-pink-600">Xác nhận xóa mẫu thiết kế</AlertDialogTitle>
+                        <AlertDialogDescription>Bạn có chắc chắn muốn xóa mẫu thiết kế này? Hành động này không thể hoàn tác.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="border-pink-200 text-pink-500 hover:bg-pink-50" onClick={() => setConfirmId(null)}>Hủy</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-pink-500 hover:bg-pink-600 text-white"
+                          onClick={async () => {
+                            setDeletingId(item._id);
+                            try {
+                              await fetch(`http://localhost:5000/api/designs/${item._id}`, { method: "DELETE" });
+                              setDesignTemplates(prev => prev.filter(d => d._id !== item._id));
+                              toast.success("Đã xóa mẫu thiết kế!");
+                            } catch {
+                              toast.error("Xóa mẫu thiết kế thất bại!");
+                            } finally {
+                              setDeletingId(null);
+                              setConfirmId(null);
+                            }
+                          }}
+                          disabled={deletingId === item._id}
+                        >
+                          {deletingId === item._id ? "Đang xóa..." : "Xóa"}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
-  );
-}
-
-function DesignTemplateForm({ design, onSuccess, onCancel }: { design?: any, onSuccess: () => void, onCancel: () => void }) {
-  const [form, setForm] = useState<any>({
-    designName: design?.designName || "",
-    description: design?.description || "",
-    previewImage: design?.previewImage || "",
-    canvasJSON: design?.canvasJSON || {},
-    parts: design?.parts || {},
-    userId: design?.userId || "admin", // hoặc lấy từ context nếu có auth
-    _id: design?._id,
-  });
-  const [saving, setSaving] = useState(false);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleImageUploaded = (url: string) => {
-    setForm({ ...form, previewImage: url });
-  };
-
-  // TODO: Thêm UI nhập/lấy canvasJSON (tạm thời nhập JSON thô)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    const method = form._id ? "PUT" : "POST";
-    const url = form._id ? "http://localhost:5000/api/designs" : "http://localhost:5000/api/designs";
-    const body = { ...form, isPublic: false };
-    if (method === "PUT") body.id = form._id;
-    await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    setSaving(false);
-    onSuccess();
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4 mb-6 bg-pink-50 p-4 rounded-xl shadow">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Input name="designName" value={form.designName} onChange={handleChange} placeholder="Tên mẫu thiết kế" required />
-        <Input name="description" value={form.description} onChange={handleChange} placeholder="Mô tả ngắn" />
-      </div>
-      <ImageUpload onImageUploaded={handleImageUploaded} currentImage={form.previewImage} folder="designs" />
-      <Textarea name="canvasJSON" value={typeof form.canvasJSON === 'string' ? form.canvasJSON : JSON.stringify(form.canvasJSON, null, 2)} onChange={e => setForm({ ...form, canvasJSON: e.target.value })} placeholder="Dán JSON canvas thiết kế ở đây" rows={6} />
-      <div className="flex gap-2 mt-2">
-        <Button type="submit" disabled={saving}>{saving ? "Đang lưu..." : (form._id ? "Cập nhật" : "Thêm mới")}</Button>
-        <Button type="button" variant="outline" onClick={onCancel}>Hủy</Button>
-      </div>
-    </form>
   );
 } 

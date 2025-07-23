@@ -14,6 +14,18 @@ import { useRouter } from "next/navigation"
 import ImageUpload from "@/components/ImageUpload"
 import { AdminTabContext } from "./layout"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 // Định nghĩa kiểu cho một tháng doanh thu
 type MonthRevenue = {
@@ -27,8 +39,18 @@ type MonthRevenue = {
 function StatsTab() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [fromDate, setFromDate] = useState<string>("");
-  const [toDate, setToDate] = useState<string>("");
+  // Mặc định: từ ngày này tháng trước đến ngày hiện tại
+  function getDefaultFromDate() {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    return d.toISOString().slice(0, 10);
+  }
+  function getDefaultToDate() {
+    const d = new Date();
+    return d.toISOString().slice(0, 10);
+  }
+  const [fromDate, setFromDate] = useState<string>(getDefaultFromDate());
+  const [toDate, setToDate] = useState<string>(getDefaultToDate());
 
   const fetchStats = () => {
     setLoading(true);
@@ -74,11 +96,11 @@ function StatsTab() {
       <div className="flex gap-4 mb-4 items-end">
         <div>
           <label className="block text-sm font-medium mb-1">Từ ngày</label>
-          <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="border rounded px-2 py-1" />
+          <input type="date" value={fromDate || getDefaultFromDate()} onChange={e => setFromDate(e.target.value)} className="border rounded px-2 py-1" />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Đến ngày</label>
-          <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="border rounded px-2 py-1" />
+          <input type="date" value={toDate || getDefaultToDate()} onChange={e => setToDate(e.target.value)} className="border rounded px-2 py-1" />
         </div>
         <Button onClick={fetchStats} className="h-10">Lọc</Button>
       </div>
@@ -300,19 +322,31 @@ function UsersTab() {
 
 // Sản phẩm
 function ProductsTab() {
-  const [products, setProducts] = useState<any[]>([])
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [showEditForm, setShowEditForm] = useState(false)
-  const [editProduct, setEditProduct] = useState<any>(null)
-  const router = useRouter()
+  const [products, setProducts] = useState<any[]>([]);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editProduct, setEditProduct] = useState<any>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
-    fetchProducts()
-  }, [])
+    fetchProducts();
+  }, []);
 
   async function fetchProducts() {
-    const res = await instance.get("http://localhost:5000/api/products")
-    setProducts(res.data)
+    const res = await instance.get("http://localhost:5000/api/products");
+    setProducts(res.data);
+  }
+
+  async function handleDelete(id: string) {
+    const token = localStorage.getItem("token");
+    const headers = { Authorization: `Bearer ${token}` };
+    setDeletingId(id);
+    await instance.delete(`http://localhost:5000/api/products/${id}`, { headers });
+    await fetchProducts();
+    setDeletingId(null);
+    setConfirmId(null);
   }
 
   return (
@@ -331,8 +365,8 @@ function ProductsTab() {
           {showAddForm && (
             <ProductForm
               onSuccess={() => {
-                setShowAddForm(false)
-                fetchProducts()
+                setShowAddForm(false);
+                fetchProducts();
               }}
               onCancel={() => setShowAddForm(false)}
             />
@@ -341,35 +375,31 @@ function ProductsTab() {
             <ProductForm
               product={editProduct}
               onSuccess={() => {
-                setShowEditForm(false)
-                setEditProduct(null)
-                fetchProducts()
+                setShowEditForm(false);
+                setEditProduct(null);
+                fetchProducts();
               }}
               onCancel={() => {
-                setShowEditForm(false)
-                setEditProduct(null)
+                setShowEditForm(false);
+                setEditProduct(null);
               }}
             />
           )}
           <ProductTable
             products={products}
             onEdit={(product: any) => {
-              setEditProduct(product)
-              setShowEditForm(true)
+              setEditProduct(product);
+              setShowEditForm(true);
             }}
-            onDelete={async (id: string) => {
-              const token = localStorage.getItem("token");
-              const headers = { Authorization: `Bearer ${token}` };
-              if (window.confirm("Bạn có chắc chắn muốn xóa sản phẩm này?")) {
-                await instance.delete(`http://localhost:5000/api/products/${id}`, { headers });
-                fetchProducts();
-              }
-            }}
+            confirmId={confirmId}
+            setConfirmId={setConfirmId}
+            deletingId={deletingId}
+            onDelete={handleDelete}
           />
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 function ProductForm({ product, onSuccess, onCancel }: { product?: any, onSuccess: () => void, onCancel: () => void }) {
@@ -441,7 +471,7 @@ function ProductForm({ product, onSuccess, onCancel }: { product?: any, onSucces
   );
 }
 
-function ProductTable({ products, onEdit, onDelete }: { products: any[], onEdit: (product: any) => void, onDelete: (id: string) => void }) {
+function ProductTable({ products, onEdit, onDelete, confirmId, setConfirmId, deletingId }: { products: any[], onEdit: (product: any) => void, onDelete: (id: string) => void, confirmId: string | null, setConfirmId: (id: string | null) => void, deletingId: string | null }) {
   return (
     <div className="overflow-x-auto">
       <Table className="mt-4 bg-white rounded-xl shadow">
@@ -475,7 +505,36 @@ function ProductTable({ products, onEdit, onDelete }: { products: any[], onEdit:
               </TableCell>
               <TableCell>
                 <Button size="icon" variant="ghost" onClick={() => onEdit(p)}><Edit /></Button>
-                <Button size="icon" variant="ghost" onClick={() => onDelete(p._id!)}><Trash2 /></Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="ml-2 border border-pink-200 text-pink-500 hover:bg-pink-50 rounded-full"
+                      onClick={() => setConfirmId(p._id)}
+                      title="Xóa sản phẩm"
+                      disabled={deletingId === p._id}
+                    >
+                      <Trash2 size={18} />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Bạn có chắc chắn muốn xóa sản phẩm này?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Hành động này sẽ xóa sản phẩm vĩnh viễn và không thể khôi phục.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel onClick={() => setConfirmId(null)} className="border border-pink-200 text-pink-500 hover:bg-pink-50 rounded px-6 py-2 font-semibold">Hủy</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-pink-500 hover:bg-pink-600 text-white rounded px-6 py-2 font-semibold"
+                        onClick={() => onDelete(p._id)}
+                        disabled={deletingId === p._id}
+                      >Xóa</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </TableCell>
             </TableRow>
           ))}
@@ -487,15 +546,21 @@ function ProductTable({ products, onEdit, onDelete }: { products: any[], onEdit:
 
 // Danh mục (Kho hàng)
 function CategoriesTab() {
-  const [categories, setCategories] = useState<any[]>([])
-  const [search, setSearch] = useState("")
-  const [categoryFilter, setCategoryFilter] = useState("all")
-  const [loading, setLoading] = useState(true)
-  const router = useRouter()
+  const [categories, setCategories] = useState<any[]>([]);
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
-    instance.get("http://localhost:5000/api/categories").then(res => setCategories(res.data)).finally(() => setLoading(false))
-  }, [])
+    (async () => {
+      const res = await instance.get("http://localhost:5000/api/categories");
+      setCategories(res.data);
+      setLoading(false);
+    })();
+  }, []);
 
   function getAllDescendantIds(categories: any[], parentId: any): any[] {
     const directChildren = categories.filter((cat: any) => cat.parent === parentId);
@@ -509,8 +574,8 @@ function CategoriesTab() {
     return categories.filter((cat: any) => cat.parent === parentId);
   }
 
-  const mainCategories = categories.filter((cat: any) => cat.parent === null)
-  const options = categories.filter((cat: any) => cat.parent && cat.parent !== null)
+  const mainCategories = categories.filter((cat: any) => cat.parent === null);
+  const options = categories.filter((cat: any) => cat.parent && cat.parent !== null);
 
   let filteredOptions = options;
   if (categoryFilter !== "all") {
@@ -523,6 +588,15 @@ function CategoriesTab() {
     filteredOptions = options.filter((opt: any) =>
       opt.name?.toLowerCase().includes(search.toLowerCase())
     );
+  }
+
+  async function handleDeleteCategory(id: string) {
+    setDeletingId(id);
+    await instance.delete(`http://localhost:5000/api/categories/${id}`);
+    const res = await instance.get("http://localhost:5000/api/categories");
+    setCategories(res.data);
+    setDeletingId(null);
+    setConfirmId(null);
   }
 
   return (
@@ -570,19 +644,36 @@ function CategoriesTab() {
                     <Button size="icon" variant="ghost" onClick={() => router.push(`/admin/edit-product/${parent._id}`)}>
                       <Edit />
                     </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={async () => {
-                        if (window.confirm(`Bạn có chắc chắn muốn xóa danh mục gốc "${parent.name}" và tất cả danh mục con của nó?`)) {
-                          await instance.delete(`http://localhost:5000/api/categories/${parent._id}`)
-                          const res = await instance.get("http://localhost:5000/api/categories")
-                          setCategories(res.data)
-                        }
-                      }}
-                    >
-                      <Trash2 />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="ml-2 border border-pink-200 text-pink-500 hover:bg-pink-50 rounded-full"
+                          onClick={() => setConfirmId(parent._id)}
+                          title="Xóa danh mục gốc"
+                          disabled={deletingId === parent._id}
+                        >
+                          <Trash2 size={18} />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Bạn có chắc chắn muốn xóa danh mục gốc này?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Hành động này sẽ xóa danh mục gốc và tất cả danh mục con của nó vĩnh viễn.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel onClick={() => setConfirmId(null)} className="border border-pink-200 text-pink-500 hover:bg-pink-50 rounded px-6 py-2 font-semibold">Hủy</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-pink-500 hover:bg-pink-600 text-white rounded px-6 py-2 font-semibold"
+                            onClick={() => handleDeleteCategory(parent._id)}
+                            disabled={deletingId === parent._id}
+                          >Xóa</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
                 {/* Lặp qua các con trực tiếp của parent */}
@@ -595,72 +686,147 @@ function CategoriesTab() {
                         <div className="grid grid-cols-1 gap-3">
                           {/* Thêm nút xóa cho child (cấp 2) ngay cả khi có con */}
                           <div className="flex items-center gap-3 border rounded p-2 bg-yellow-50">
-                            <Image src={child.image || '/placeholder.svg'} alt={child.name} width={48} height={48} className="rounded" />
+                            {(child.color || child.hex || child.code || (child.meta && (child.meta.color || child.meta.hex))) ? (
+                              <div
+                                className="w-10 h-10 rounded-full border shadow"
+                                style={{ background: child.color || child.hex || child.code || (child.meta && (child.meta.color || child.meta.hex)) }}
+                                title={child.color || child.hex || child.code || (child.meta && (child.meta.color || child.meta.hex))}
+                              />
+                            ) : (
+                              <Image src={child.image || '/placeholder.svg'} alt={child.name} width={48} height={48} className="rounded" />
+                            )}
                             <div className="flex-1">
                               <div className="font-medium">{child.name} (Danh mục cha)</div>
                               <div className="text-xs text-gray-500">Giá: {child.price ? child.price + '$' : '---'}</div>
                             </div>
                             <Button size="icon" variant="ghost" onClick={() => router.push(`/admin/edit-category/${child._id}`)}><Edit /></Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={async () => {
-                                if (window.confirm(`Bạn có chắc chắn muốn xóa danh mục "${child.name}" và tất cả danh mục con của nó?`)) {
-                                  await instance.delete(`http://localhost:5000/api/categories/${child._id}`)
-                                  const res = await instance.get("http://localhost:5000/api/categories")
-                                  setCategories(res.data)
-                                }
-                              }}
-                            >
-                              <Trash2 />
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="ml-2 border border-pink-200 text-pink-500 hover:bg-pink-50 rounded-full"
+                                  onClick={() => setConfirmId(child._id)}
+                                  title="Xóa danh mục"
+                                  disabled={deletingId === child._id}
+                                >
+                                  <Trash2 size={18} />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Bạn có chắc chắn muốn xóa danh mục này?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Hành động này sẽ xóa danh mục này và tất cả danh mục con của nó vĩnh viễn.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel onClick={() => setConfirmId(null)} className="border border-pink-200 text-pink-500 hover:bg-pink-50 rounded px-6 py-2 font-semibold">Hủy</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="bg-pink-500 hover:bg-pink-600 text-white rounded px-6 py-2 font-semibold"
+                                    onClick={() => handleDeleteCategory(child._id)}
+                                    disabled={deletingId === child._id}
+                                  >Xóa</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                           {/* Hiển thị các danh mục con (cấp 3) */}
                           {getChildren(categories, child._id).map((grandchild: any) => (
                             <div key={grandchild._id} className="flex items-center gap-3 border rounded p-2 bg-white">
-                              <Image src={grandchild.image || '/placeholder.svg'} alt={grandchild.name} width={48} height={48} className="rounded" />
+                              {(grandchild.color || grandchild.hex || grandchild.code || (grandchild.meta && (grandchild.meta.color || grandchild.meta.hex))) ? (
+                                <div
+                                  className="w-10 h-10 rounded-full border shadow"
+                                  style={{ background: grandchild.color || grandchild.hex || grandchild.code || (grandchild.meta && (grandchild.meta.color || grandchild.meta.hex)) }}
+                                  title={grandchild.color || grandchild.hex || grandchild.code || (grandchild.meta && (grandchild.meta.color || grandchild.meta.hex))}
+                                />
+                              ) : (
+                                <Image src={grandchild.image || '/placeholder.svg'} alt={grandchild.name} width={48} height={48} className="rounded" />
+                              )}
                               <div className="flex-1">
                                 <div className="font-medium">{grandchild.name}</div>
                                 <div className="text-xs text-gray-500">Giá: {grandchild.price ? grandchild.price + '$' : '---'}</div>
                               </div>
                               <Button size="icon" variant="ghost" onClick={() => router.push(`/admin/edit-category/${grandchild._id}`)}><Edit /></Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={async () => {
-                                  if (window.confirm("Bạn có chắc chắn muốn xóa?")) {
-                                    await instance.delete(`http://localhost:5000/api/categories/${grandchild._id}`)
-                                    const res = await instance.get("http://localhost:5000/api/categories")
-                                    setCategories(res.data)
-                                  }
-                                }}
-                              >
-                                <Trash2 />
-                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="ml-2 border border-pink-200 text-pink-500 hover:bg-pink-50 rounded-full"
+                                    onClick={() => setConfirmId(grandchild._id)}
+                                    title="Xóa danh mục"
+                                    disabled={deletingId === grandchild._id}
+                                  >
+                                    <Trash2 size={18} />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Bạn có chắc chắn muốn xóa danh mục này?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Hành động này sẽ xóa danh mục này vĩnh viễn.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel onClick={() => setConfirmId(null)} className="border border-pink-200 text-pink-500 hover:bg-pink-50 rounded px-6 py-2 font-semibold">Hủy</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      className="bg-pink-500 hover:bg-pink-600 text-white rounded px-6 py-2 font-semibold"
+                                      onClick={() => handleDeleteCategory(grandchild._id)}
+                                      disabled={deletingId === grandchild._id}
+                                    >Xóa</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </div>
                           ))}
                         </div>
                       ) : (
                         <div className="flex items-center gap-3 border rounded p-2 bg-white">
-                          <Image src={child.image || '/placeholder.svg'} alt={child.name} width={48} height={48} className="rounded" />
+                          {(child.color || child.hex || child.code || (child.meta && (child.meta.color || child.meta.hex))) ? (
+                            <div
+                              className="w-10 h-10 rounded-full border shadow"
+                              style={{ background: child.color || child.hex || child.code || (child.meta && (child.meta.color || child.meta.hex)) }}
+                              title={child.color || child.hex || child.code || (child.meta && (child.meta.color || child.meta.hex))}
+                            />
+                          ) : (
+                            <Image src={child.image || '/placeholder.svg'} alt={child.name} width={48} height={48} className="rounded" />
+                          )}
                           <div className="flex-1">
                             <div className="font-medium">{child.name}</div>
                             <div className="text-xs text-gray-500">Giá: {child.price ? child.price + '$' : '---'}</div>
                           </div>
                           <Button size="icon" variant="ghost" onClick={() => router.push(`/admin/edit-category/${child._id}`)}><Edit /></Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={async () => {
-                              if (window.confirm("Bạn có chắc chắn muốn xóa?")) {
-                                await instance.delete(`http://localhost:5000/api/categories/${child._id}`)
-                                const res = await instance.get("http://localhost:5000/api/categories")
-                                setCategories(res.data)
-                              }
-                            }}
-                          >
-                            <Trash2 />
-                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="ml-2 border border-pink-200 text-pink-500 hover:bg-pink-50 rounded-full"
+                                onClick={() => setConfirmId(child._id)}
+                                title="Xóa danh mục"
+                                disabled={deletingId === child._id}
+                              >
+                                <Trash2 size={18} />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Bạn có chắc chắn muốn xóa danh mục này?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Hành động này sẽ xóa danh mục này vĩnh viễn.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setConfirmId(null)} className="border border-pink-200 text-pink-500 hover:bg-pink-50 rounded px-6 py-2 font-semibold">Hủy</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-pink-500 hover:bg-pink-600 text-white rounded px-6 py-2 font-semibold"
+                                  onClick={() => handleDeleteCategory(child._id)}
+                                  disabled={deletingId === child._id}
+                                >Xóa</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       )}
                     </div>
@@ -675,7 +841,7 @@ function CategoriesTab() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 // GiftBoxTab: Quản lý hộp quà
@@ -684,6 +850,8 @@ function GiftBoxTab() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [editGiftBox, setEditGiftBox] = useState<any>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -696,6 +864,14 @@ function GiftBoxTab() {
     const data = await res.json();
     setGiftBoxes(data);
     setLoading(false);
+  }
+
+  async function handleDelete(id: string) {
+    setDeletingId(id);
+    await fetch(`http://localhost:5000/api/giftboxes/${id}`, { method: "DELETE" });
+    await fetchGiftBoxes();
+    setDeletingId(null);
+    setConfirmId(null);
   }
 
   return (
@@ -740,12 +916,10 @@ function GiftBoxTab() {
               setEditGiftBox(giftBox);
               setShowEditForm(true);
             }}
-            onDelete={async (id: string) => {
-              if (window.confirm("Bạn có chắc chắn muốn xóa hộp quà này?")) {
-                await fetch(`http://localhost:5000/api/giftboxes/${id}`, { method: "DELETE" });
-                fetchGiftBoxes();
-              }
-            }}
+            confirmId={confirmId}
+            setConfirmId={setConfirmId}
+            deletingId={deletingId}
+            onDelete={handleDelete}
             loading={loading}
           />
         </CardContent>
@@ -804,7 +978,7 @@ function GiftBoxForm({ giftBox, onSuccess, onCancel }: { giftBox?: any, onSucces
   );
 }
 
-function GiftBoxTable({ giftBoxes, onEdit, onDelete, loading }: { giftBoxes: any[], onEdit: (giftBox: any) => void, onDelete: (id: string) => void, loading: boolean }) {
+function GiftBoxTable({ giftBoxes, onEdit, onDelete, loading, confirmId, setConfirmId, deletingId }: { giftBoxes: any[], onEdit: (giftBox: any) => void, onDelete: (id: string) => void, loading: boolean, confirmId: string | null, setConfirmId: (id: string | null) => void, deletingId: string | null }) {
   return (
     <div className="overflow-x-auto">
       <Table className="mt-4 bg-white rounded-xl shadow">
@@ -828,11 +1002,40 @@ function GiftBoxTable({ giftBoxes, onEdit, onDelete, loading }: { giftBoxes: any
               <TableCell className="font-medium">{g.name}</TableCell>
               <TableCell>{g.price}₫</TableCell>
               <TableCell>{g.quantity}</TableCell>
-              <TableCell><img src={g.image} alt={g.name} className="rounded shadow" width={60} height={60} style={{objectFit:'cover'}} /></TableCell>
+              <TableCell><img src={g.image} alt={g.name} className="rounded shadow" width={60} height={60} style={{ objectFit: 'cover' }} /></TableCell>
               <TableCell>{g.description}</TableCell>
               <TableCell>
                 <Button size="icon" variant="ghost" onClick={() => onEdit(g)}><Edit /></Button>
-                <Button size="icon" variant="ghost" onClick={() => onDelete(g._id)}><Trash2 /></Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="ml-2 border border-pink-200 text-pink-500 hover:bg-pink-50 rounded-full"
+                      onClick={() => setConfirmId(g._id)}
+                      title="Xóa hộp quà"
+                      disabled={deletingId === g._id}
+                    >
+                      <Trash2 size={18} />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Bạn có chắc chắn muốn xóa hộp quà này?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Hành động này sẽ xóa hộp quà vĩnh viễn và không thể khôi phục.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel onClick={() => setConfirmId(null)} className="border border-pink-200 text-pink-500 hover:bg-pink-50 rounded px-6 py-2 font-semibold">Hủy</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-pink-500 hover:bg-pink-600 text-white rounded px-6 py-2 font-semibold"
+                        onClick={() => onDelete(g._id)}
+                        disabled={deletingId === g._id}
+                      >Xóa</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </TableCell>
             </TableRow>
           ))}

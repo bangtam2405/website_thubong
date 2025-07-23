@@ -3,10 +3,44 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { CheckCircle, XCircle, Loader2 } from "lucide-react"
 import { useEffect, useState, Suspense } from "react"
 import axios from "@/lib/axiosConfig"
+import { useCart } from "@/contexts/CartContext"
+import { Button } from "@/components/ui/button"
+
+function SuccessModal({ onContinue, orderId }: { onContinue: () => void; orderId: string | null }) {
+  const router = useRouter()
+  
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center transform transition-all animate-in zoom-in-75">
+        <CheckCircle className="w-24 h-24 text-green-500 mx-auto mb-6 animate-pulse" />
+        <h2 className="text-3xl font-bold text-gray-800 mb-4">Đặt hàng thành công!</h2>
+        <p className="text-gray-600 mb-6">
+          Cảm ơn bạn đã tin tưởng. Đơn hàng của bạn đang được xử lý và sẽ sớm được giao đến bạn.
+        </p>
+        <div className="space-y-3">
+           <Button 
+            className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 rounded-lg text-lg"
+            onClick={onContinue}
+          >
+            Tiếp tục mua sắm
+          </Button>
+          <Button 
+            variant="outline"
+            className="w-full font-bold py-3 rounded-lg text-lg"
+            onClick={() => router.push(orderId ? `/orders/${orderId}`: '/orders')}
+          >
+            Xem chi tiết đơn hàng
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function PaymentResult() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { removeItemsFromCart } = useCart()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isSuccess, setIsSuccess] = useState(false)
@@ -26,6 +60,20 @@ function PaymentResult() {
         const response = await axios.get(`/api/payment/vnpay-return${queryString}`)
         if (response.data.code === "00") {
           setIsSuccess(true)
+          // Xóa sản phẩm trong giỏ hàng
+          const orderId = vnp_TxnRef;
+          if(orderId) {
+             try {
+              const orderDetails = await axios.get(`http://localhost:5000/api/orders/detail/${orderId}`);
+              const productIds = orderDetails.data.products.map((p: any) => p.product._id);
+              if (productIds.length > 0) {
+                 removeItemsFromCart(productIds);
+              }
+             } catch (orderError) {
+                console.error("Lỗi khi lấy chi tiết đơn hàng hoặc xóa sản phẩm:", orderError);
+             }
+          }
+
         } else {
           setError(response.data.message || "Xác thực thanh toán thất bại")
         }
@@ -36,7 +84,7 @@ function PaymentResult() {
       }
     }
     verifyPayment()
-  }, [])
+  }, [removeItemsFromCart, vnp_TxnRef])
 
   if (loading) {
     return (
@@ -62,11 +110,7 @@ function PaymentResult() {
         }
       `}</style>
       {isSuccess ? (
-        <>
-          <CheckCircle className="w-20 h-20 text-green-500 mb-4 icon-animate" />
-          <h1 className="text-3xl font-bold text-green-600 mb-2">Thanh toán thành công!</h1>
-          <p className="mb-6 text-lg text-gray-700">Cảm ơn bạn đã mua hàng. Đơn hàng đã được xác nhận.</p>
-        </>
+        <SuccessModal onContinue={() => router.push('/')} orderId={vnp_TxnRef} />
       ) : (
         <>
           <XCircle className="w-20 h-20 text-red-500 mb-4 icon-animate" />
@@ -75,7 +119,7 @@ function PaymentResult() {
         </>
       )}
 
-      <div className="bg-white rounded-lg shadow-md p-6 w-full max-w-md mb-6">
+      {!isSuccess && <div className="bg-white rounded-lg shadow-md p-6 w-full max-w-md mb-6">
         <h2 className="text-xl font-semibold mb-4 border-b pb-2">Thông tin giao dịch</h2>
         <div className="space-y-2 text-gray-700">
           <div><b>Mã đơn hàng:</b> {vnp_TxnRef}</div>
@@ -85,14 +129,15 @@ function PaymentResult() {
           <div><b>Nội dung:</b> {vnp_OrderInfo}</div>
           { vnp_TransactionNo && <div><b>Mã giao dịch (VNPay):</b> {vnp_TransactionNo}</div>}
         </div>
-      </div>
+      </div>}
 
-      <button
+      
+      {!isSuccess && <button
         className="px-6 py-3 bg-pink-600 text-white rounded-lg font-semibold hover:bg-pink-700 transition-transform transform hover:scale-105"
         onClick={() => router.push("/")}
       >
         Về trang chủ
-      </button>
+      </button>}
     </div>
   )
 }

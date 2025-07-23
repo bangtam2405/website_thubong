@@ -1,18 +1,20 @@
 "use client"
 import { ReactNode, useState, createContext } from "react";
-import { Gift, User, ShoppingBag, List, Users, LayoutDashboard, Star } from "lucide-react";
+import { Gift, User, ShoppingBag, List, Users, LayoutDashboard, Star, Palette, ClipboardList, Boxes } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 export const AdminTabContext = createContext({ tab: "stats", setTab: (t: string) => {} });
 
+const iconClass = "text-pink-400";
 const menu = [
-  { label: "Đơn hàng", value: "orders", icon: <List size={20} /> },
-  { label: "Khách hàng", value: "users", icon: <Users size={20} /> },
-  { label: "Sản phẩm", value: "products", icon: <ShoppingBag size={20} /> },
-  { label: "Kho phụ kiện", value: "categories", icon: <List size={20} /> },
-  { label: "Hộp quà", value: "giftboxes", icon: <Gift size={20} /> },
-  { label: "Đánh giá", value: "reviews", icon: <Star size={20} className="text-yellow-400" /> },
-  { label: "Thống kê", value: "stats", icon: <LayoutDashboard size={20} /> },
+  { label: "Đơn hàng", value: "orders", icon: <ClipboardList size={20} className={iconClass} /> },
+  { label: "Khách hàng", value: "users", icon: <Users size={20} className={iconClass} /> },
+  { label: "Sản phẩm", value: "products", icon: <ShoppingBag size={20} className={iconClass} /> },
+  { label: "Kho phụ kiện", value: "categories", icon: <Boxes size={20} className={iconClass} /> },
+  { label: "Hộp quà", value: "giftboxes", icon: <Gift size={20} className={iconClass} /> },
+  { label: "Thiết kế", value: "community-designs", icon: <Palette size={20} className={iconClass} /> },
+  { label: "Đánh giá", value: "reviews", icon: <Star size={20} className={iconClass} /> },
+  { label: "Thống kê", value: "stats", icon: <LayoutDashboard size={20} className={iconClass} /> },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -25,6 +27,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     if (pathname.startsWith('/admin/products')) return 'products';
     if (pathname.startsWith('/admin/categories')) return 'categories';
     if (pathname.startsWith('/admin/giftboxes')) return 'giftboxes';
+    if (pathname.startsWith('/admin/designs') || pathname.startsWith('/admin/community-designs')) return 'community-designs';
     if (pathname.startsWith('/admin/reviews')) return 'reviews';
     return 'stats';
   };
@@ -39,7 +42,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             {menu.map(item => (
               <a
                 key={item.value}
-                href={`/admin/${item.value === 'stats' ? '' : item.value}`}
+                href={item.value === 'stats' ? '/admin' : (item.value === 'community-designs' ? '/admin/designs' : `/admin/${item.value}`)}
                 className={`flex items-center gap-3 px-6 py-3 w-full text-left text-gray-700 hover:bg-pink-50 transition font-medium ${activeTab === item.value ? 'bg-pink-100 text-pink-600' : ''}`}
                 onClick={() => setTab(item.value)}
               >

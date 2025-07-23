@@ -56,17 +56,31 @@ type SelectedOptions = {
   accessories: string[];
   name: string;
   size: string;
+  // Add index signature at the end
+  [key: string]: any;
 };
 
-// Utility: merge only non-empty fields from update into base, but never set a field to empty string if it was already set
-function robustMergeOptions(base: SelectedOptions, update: Partial<SelectedOptions>): SelectedOptions {
-  const result: SelectedOptions = { ...base };
-  for (const key in update) {
-    if (update[key as keyof SelectedOptions] !== undefined && update[key as keyof SelectedOptions] !== "") {
-      result[key as keyof SelectedOptions] = update[key as keyof SelectedOptions] as any;
+// Hàm merge robust để đảm bảo đủ key
+function robustMergeOptions(defaults: SelectedOptions, loaded: any): SelectedOptions {
+  const merged = { ...defaults };
+  Object.keys(defaults).forEach(key => {
+    if (Array.isArray(defaults[key])) {
+      if (Array.isArray(loaded[key])) {
+        merged[key] = loaded[key].map((item: any) =>
+          typeof item === 'object' && item !== null && item._id ? item._id : item
+        );
+      } else {
+        merged[key] = [];
+      }
+    } else if (typeof loaded[key] === 'object' && loaded[key] !== null && loaded[key]._id) {
+      merged[key] = loaded[key]._id;
+    } else if (loaded[key] !== null && loaded[key] !== undefined) {
+      merged[key] = loaded[key];
+    } else {
+      merged[key] = defaults[key];
     }
-  }
-  return result;
+  });
+  return merged;
 }
 
 export default function CustomizePage() {
@@ -155,6 +169,16 @@ export default function CustomizePage() {
     }
   }, [editId]);
 
+  // Reset designLoaded về false mỗi khi editId thay đổi
+  useEffect(() => {
+    setDesignLoaded(false);
+  }, [editId]);
+
+  // Reset designLoaded về false mỗi khi categories thay đổi
+  useEffect(() => {
+    setDesignLoaded(false);
+  }, [categories]);
+
   // Kiểm tra trạng thái đăng nhập
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -228,6 +252,14 @@ export default function CustomizePage() {
       }
     }
 
+    // Cộng giá mắt nếu có
+    if (selectedOptions.eyes) {
+      const selectedEyes = categories.find((item) => item._id === selectedOptions.eyes);
+      if (typeof selectedEyes?.price === 'number') {
+        price += selectedEyes.price;
+      }
+    }
+
     // Cộng giá kích thước nếu có
     if (selectedOptions.size) {
       const selectedSize = categories.find((item) => item._id === selectedOptions.size);
@@ -289,50 +321,60 @@ export default function CustomizePage() {
     }
   }, [selectedOptions])
 
+  const [designLoaded, setDesignLoaded] = useState(false);
+
+  // Sửa useEffect setSelectedOptions từ thiết kế mẫu
   useEffect(() => {
-    if (editId) {
-      if (editType === 'product') {
-        axios.get(`http://localhost:5000/api/products/${editId}`)
-          .then(productRes => {
-            const product = productRes.data;
-            if (product.isCustom && product.customData) {
-              if (product.customData.parts) {
-                setSelectedOptions(prev => robustMergeOptions({ ...defaultSelectedOptions, ...prev }, product.customData.parts));
-              } else {
-                setSelectedOptions(prev => ({ ...defaultSelectedOptions, ...prev }));
+    if (editId && categories.length > 0 && !loading && !designLoaded) {
+      axios.get(`/api/designs/${editId}`)
+        .then(res => {
+          if (res.data) {
+            let parts = res.data.parts;
+            console.log('DEBUG API /api/designs/:id response parts:', parts);
+            if (parts) {
+              if (!parts.body) {
+                console.warn('CẢNH BÁO: API trả về parts.body là rỗng! Thiết kế này đã bị lưu sai hoặc backend chưa sửa đúng.');
               }
-              if (product.customData.canvasJSON) {
-                const canvasData = typeof product.customData.canvasJSON === 'string'
-                  ? JSON.parse(product.customData.canvasJSON)
-                  : product.customData.canvasJSON;
-                setLoadedCanvasJSON(canvasData);
-              }
+              const merged = robustMergeOptions(defaultSelectedOptions, parts);
+              setSelectedOptions(merged);
+              // Thêm log để debug
+              const bodyParent = categories.find(cat => cat.name === "Thân" && cat.parent === null);
+              const bodyOptions = bodyParent
+                ? categories.filter(cat => cat.parent === bodyParent._id)
+                : [];
+              console.log('DEBUG selectedOptions.body:', merged.body);
+              console.log('DEBUG bodyOptions:', bodyOptions.map(o => ({_id: o._id, name: o.name})));
+              setHasEditedAfterLoad(false);
+            } else {
+              setSelectedOptions({ ...defaultSelectedOptions });
+              setHasEditedAfterLoad(false);
             }
-          })
-          .catch(productError => {
-            console.error("Không tìm thấy custom product:", productError);
-          });
-      } else {
-        axios.get(`http://localhost:5000/api/designs/${editId}`)
-          .then(res => {
-            if (res.data && res.data.canvasJSON) {
-              if (res.data.parts) {
-                setSelectedOptions(prev => robustMergeOptions({ ...defaultSelectedOptions, ...prev }, res.data.parts));
-              } else {
-                setSelectedOptions(prev => ({ ...defaultSelectedOptions, ...prev }));
-              }
+            if (res.data.canvasJSON) {
               const canvasData = typeof res.data.canvasJSON === 'string'
                 ? JSON.parse(res.data.canvasJSON)
                 : res.data.canvasJSON;
               setLoadedCanvasJSON(canvasData);
             }
-          })
-          .catch(designError => {
-            console.error("Không tìm thấy design:", designError);
-          });
-      }
+            setDesignLoaded(true);
+          }
+        })
+        .catch(designError => {
+          console.error("Không tìm thấy design:", designError);
+        });
     }
-  }, [editId, editType]);
+  }, [editId, categories, loading, designLoaded]);
+
+  // Debug: In ra selectedOptions và categories
+  useEffect(() => {
+    console.log("selectedOptions:", selectedOptions);
+    console.log("selectedOptions.eyes:", selectedOptions.eyes);
+    // Log các object mắt trong categories
+    console.log("categories (eyes):", categories.filter(c => c.name && c.name.toLowerCase().includes("mắt")));
+    // Log selectedOptions.mouth và các object miệng trong categories
+    console.log("selectedOptions.mouth:", selectedOptions.mouth);
+    console.log("categories (mouth):", categories.filter(c => c.name && c.name.toLowerCase().includes("miệng")));
+    console.log("categories:", categories);
+  }, [selectedOptions, categories]);
 
   // Load template nếu có templateId
   useEffect(() => {
@@ -352,8 +394,9 @@ export default function CustomizePage() {
     }
   }, [templateId]);
 
-  // Update handleOptionSelect to only update the selected part
+  // Sửa handleOptionSelect: không reset loadedCanvasJSON nếu đã từng chỉnh sửa
   const handleOptionSelect = (category: string, optionId: string) => {
+    // Chỉ reset loadedCanvasJSON nếu chưa từng chỉnh sửa sau khi load
     if (loadedCanvasJSON && !hasEditedAfterLoad) {
       setLoadedCanvasJSON(null);
       setHasEditedAfterLoad(true);
@@ -686,14 +729,25 @@ export default function CustomizePage() {
   const furColorOptions = getOptionsByGroupName("Màu Lông");
 
   function mapGroupToOptionKey(group: any) {
-    if (group.type === "accessory" || group.name.toLowerCase().includes("phụ kiện")) return "accessories";
-    if (group.type === "body" || group.name.toLowerCase().includes("loại thân")) return "body";
-    if (group.type === "ear" || group.name.toLowerCase().includes("tai")) return "ears";
-    if (group.type === "eye" || group.name.toLowerCase().includes("mắt")) return "eyes";
-    if (group.type === "nose" || group.name.toLowerCase().includes("mũi")) return "nose";
-    if (group.type === "mouth" || group.name.toLowerCase().includes("miệng")) return "mouth";
-    if (group.type === "furColor" || group.name.toLowerCase().includes("màu lông")) return "furColor";
-    if (group.type === "clothing" || group.name.toLowerCase().includes("quần áo")) return "clothing";
+    // Ưu tiên type nếu đúng chuẩn
+    if (group.type === "accessory") return "accessories";
+    if (group.type === "body") return "body";
+    if (group.type === "ear") return "ears";
+    if (group.type === "eye") return "eyes";
+    if (group.type === "nose") return "nose";
+    if (group.type === "mouth") return "mouth";
+    if (group.type === "furColor") return "furColor";
+    if (group.type === "clothing") return "clothing";
+    // Nếu type không chuẩn, so sánh tên không dấu
+    const name = group.name?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '').toLowerCase() || '';
+    if (name.includes("phukien")) return "accessories";
+    if (name.includes("loaithan") || name === "than") return "body";
+    if (name.includes("tai")) return "ears";
+    if (name.includes("mat")) return "eyes";
+    if (name.includes("mui")) return "nose";
+    if (name.includes("mieng")) return "mouth";
+    if (name.includes("maulong")) return "furColor";
+    if (name.includes("quanao")) return "clothing";
     return group.type;
   }
 
@@ -952,6 +1006,17 @@ export default function CustomizePage() {
                         </li>
                       ) : null;
                     })()}
+                    {selectedOptions.eyes && (() => {
+                      const eyesObj = categories.find((o) => o._id === selectedOptions.eyes);
+                      return eyesObj && eyesObj.price !== undefined ? (
+                        <li className="flex justify-between">
+                          <span>Mắt ({eyesObj.name}):</span>
+                          <span>
+                            {isClient ? eyesObj.price.toLocaleString('vi-VN') + '₫' : eyesObj.price + '₫'}
+                          </span>
+                        </li>
+                      ) : null;
+                    })()}
                     {selectedOptions.size && (() => {
                       const sizeObj = categories.find((o) => o._id === selectedOptions.size);
                       return sizeObj && sizeObj.price !== undefined ? (
@@ -1041,7 +1106,13 @@ export default function CustomizePage() {
                           className={`border rounded-lg p-3 cursor-pointer transition-all ${
                             selectedOptions.body === option._id ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
                           }`}
-                          onClick={() => setSelectedOptions(prev => ({ ...prev, body: option._id }))}
+                          onClick={() => {
+                            setSelectedOptions(prev => {
+                              const next = { ...prev, body: option._id };
+                              console.log('DEBUG [onClick] Chọn thân:', option._id, 'selectedOptions.body:', next.body);
+                              return next;
+                            });
+                          }}
                         >
                           <Image
                             src={option.image || "/placeholder.svg"}
@@ -1118,7 +1189,7 @@ export default function CustomizePage() {
                               <div
                                 key={option._id}
                                 className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                                  (selectedOptions as any)[mapGroupToOptionKey(group)] === option._id ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
+                                  String((selectedOptions as any)[mapGroupToOptionKey(group)]) === String(option._id) ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
                                 }`}
                                 onClick={() => handleOptionSelect(mapGroupToOptionKey(group), option._id)}
                               >
@@ -1322,6 +1393,13 @@ export default function CustomizePage() {
                   if (fabricRef.current && fabricRef.current.toJSON) {
                     canvasData = fabricRef.current.toJSON();
                   }
+                  // Đảm bảo parts.body là _id thực sự
+                  if (!selectedOptions.body) {
+                    toast.error("Bạn phải chọn loại thân cho thiết kế!");
+                    setSavingDesign(false);
+                    return;
+                  }
+                  // Có thể kiểm tra thêm các trường khác nếu muốn
                   const saveBody = {
                     userId: role === 'admin' ? 'admin' : userId,
                     designName: saveDesignForm.name || selectedOptions.name || "Thiết kế mới",

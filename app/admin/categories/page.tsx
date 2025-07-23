@@ -8,6 +8,18 @@ import { Plus, Edit, Trash2 } from "lucide-react"
 import Image from "next/image"
 import instance from "@/lib/axiosConfig"
 import { useRouter } from "next/navigation"
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<any[]>([])
@@ -15,6 +27,8 @@ export default function CategoriesPage() {
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [loading, setLoading] = useState(true)
   const router = useRouter()
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     instance.get("http://localhost:5000/api/categories").then(res => setCategories(res.data)).finally(() => setLoading(false))
@@ -93,19 +107,49 @@ export default function CategoriesPage() {
                     <Button size="icon" variant="ghost" onClick={() => router.push(`/admin/edit-product/${parent._id}`)}>
                       <Edit />
                     </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={async () => {
-                        if (window.confirm(`Bạn có chắc chắn muốn xóa danh mục gốc "${parent.name}" và tất cả danh mục con của nó?`)) {
-                          await instance.delete(`http://localhost:5000/api/categories/${parent._id}`)
-                          const res = await instance.get("http://localhost:5000/api/categories")
-                          setCategories(res.data)
-                        }
-                      }}
-                    >
-                      <Trash2 />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="ml-2 border border-pink-200 text-pink-500 hover:bg-pink-50 rounded-full"
+                          onClick={() => setConfirmId(parent._id)}
+                          title="Xóa danh mục"
+                          disabled={deletingId === parent._id}
+                        >
+                          <Trash2 size={18} />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="text-pink-600">Xác nhận xóa danh mục</AlertDialogTitle>
+                          <AlertDialogDescription>Bạn có chắc chắn muốn xóa danh mục gốc "{parent.name}" và tất cả danh mục con của nó? Hành động này không thể hoàn tác.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel className="border-pink-200 text-pink-500 hover:bg-pink-50" onClick={() => setConfirmId(null)}>Hủy</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-pink-500 hover:bg-pink-600 text-white"
+                            onClick={async () => {
+                              setDeletingId(parent._id);
+                              try {
+                                await instance.delete(`http://localhost:5000/api/categories/${parent._id}`)
+                                const res = await instance.get("http://localhost:5000/api/categories")
+                                setCategories(res.data)
+                                toast.success("Đã xóa danh mục!");
+                              } catch {
+                                toast.error("Xóa danh mục thất bại!");
+                              } finally {
+                                setDeletingId(null);
+                                setConfirmId(null);
+                              }
+                            }}
+                            disabled={deletingId === parent._id}
+                          >
+                            {deletingId === parent._id ? "Đang xóa..." : "Xóa"}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
                 {/* Lặp qua các con trực tiếp của parent */}
@@ -124,19 +168,42 @@ export default function CategoriesPage() {
                               <div className="text-xs text-gray-500">Giá: {child.price ? child.price + '$' : '---'}</div>
                             </div>
                             <Button size="icon" variant="ghost" onClick={() => router.push(`/admin/edit-category/${child._id}`)}><Edit /></Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={async () => {
-                                if (window.confirm(`Bạn có chắc chắn muốn xóa danh mục "${child.name}" và tất cả danh mục con của nó?`)) {
-                                  await instance.delete(`http://localhost:5000/api/categories/${child._id}`)
-                                  const res = await instance.get("http://localhost:5000/api/categories")
-                                  setCategories(res.data)
-                                }
-                              }}
-                            >
-                              <Trash2 />
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button size="icon" variant="ghost" onClick={() => setConfirmId(child._id)}>
+                                  <Trash2 />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle className="text-pink-600">Xác nhận xóa danh mục</AlertDialogTitle>
+                                  <AlertDialogDescription>Bạn có chắc chắn muốn xóa danh mục "{child.name}" và tất cả danh mục con của nó? Hành động này không thể hoàn tác.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel className="border-pink-200 text-pink-500 hover:bg-pink-50" onClick={() => setConfirmId(null)}>Hủy</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="bg-pink-500 hover:bg-pink-600 text-white"
+                                    onClick={async () => {
+                                      setDeletingId(child._id);
+                                      try {
+                                        await instance.delete(`http://localhost:5000/api/categories/${child._id}`)
+                                        const res = await instance.get("http://localhost:5000/api/categories")
+                                        setCategories(res.data)
+                                        toast.success("Đã xóa danh mục!");
+                                      } catch {
+                                        toast.error("Xóa danh mục thất bại!");
+                                      } finally {
+                                        setDeletingId(null);
+                                        setConfirmId(null);
+                                      }
+                                    }}
+                                    disabled={deletingId === child._id}
+                                  >
+                                    {deletingId === child._id ? "Đang xóa..." : "Xóa"}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                           {/* Hiển thị các danh mục con (cấp 3) */}
                           {getChildren(categories, child._id).map((grandchild: any) => (
@@ -147,19 +214,42 @@ export default function CategoriesPage() {
                                 <div className="text-xs text-gray-500">Giá: {grandchild.price ? grandchild.price + '$' : '---'}</div>
                               </div>
                               <Button size="icon" variant="ghost" onClick={() => router.push(`/admin/edit-category/${grandchild._id}`)}><Edit /></Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={async () => {
-                                  if (window.confirm("Bạn có chắc chắn muốn xóa?")) {
-                                    await instance.delete(`http://localhost:5000/api/categories/${grandchild._id}`)
-                                    const res = await instance.get("http://localhost:5000/api/categories")
-                                    setCategories(res.data)
-                                  }
-                                }}
-                              >
-                                <Trash2 />
-                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button size="icon" variant="ghost" onClick={() => setConfirmId(grandchild._id)}>
+                                    <Trash2 />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle className="text-pink-600">Xác nhận xóa danh mục</AlertDialogTitle>
+                                    <AlertDialogDescription>Bạn có chắc chắn muốn xóa danh mục "{grandchild.name}"? Hành động này không thể hoàn tác.</AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel className="border-pink-200 text-pink-500 hover:bg-pink-50" onClick={() => setConfirmId(null)}>Hủy</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      className="bg-pink-500 hover:bg-pink-600 text-white"
+                                      onClick={async () => {
+                                        setDeletingId(grandchild._id);
+                                        try {
+                                          await instance.delete(`http://localhost:5000/api/categories/${grandchild._id}`)
+                                          const res = await instance.get("http://localhost:5000/api/categories")
+                                          setCategories(res.data)
+                                          toast.success("Đã xóa danh mục!");
+                                        } catch {
+                                          toast.error("Xóa danh mục thất bại!");
+                                        } finally {
+                                          setDeletingId(null);
+                                          setConfirmId(null);
+                                        }
+                                      }}
+                                      disabled={deletingId === grandchild._id}
+                                    >
+                                      {deletingId === grandchild._id ? "Đang xóa..." : "Xóa"}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </div>
                           ))}
                         </div>
@@ -171,19 +261,42 @@ export default function CategoriesPage() {
                             <div className="text-xs text-gray-500">Giá: {child.price ? child.price + '$' : '---'}</div>
                           </div>
                           <Button size="icon" variant="ghost" onClick={() => router.push(`/admin/edit-category/${child._id}`)}><Edit /></Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={async () => {
-                              if (window.confirm("Bạn có chắc chắn muốn xóa?")) {
-                                await instance.delete(`http://localhost:5000/api/categories/${child._id}`)
-                                const res = await instance.get("http://localhost:5000/api/categories")
-                                setCategories(res.data)
-                              }
-                            }}
-                          >
-                            <Trash2 />
-                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="icon" variant="ghost" onClick={() => setConfirmId(child._id)}>
+                                <Trash2 />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle className="text-pink-600">Xác nhận xóa danh mục</AlertDialogTitle>
+                                <AlertDialogDescription>Bạn có chắc chắn muốn xóa danh mục "{child.name}"? Hành động này không thể hoàn tác.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel className="border-pink-200 text-pink-500 hover:bg-pink-50" onClick={() => setConfirmId(null)}>Hủy</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-pink-500 hover:bg-pink-600 text-white"
+                                  onClick={async () => {
+                                    setDeletingId(child._id);
+                                    try {
+                                      await instance.delete(`http://localhost:5000/api/categories/${child._id}`)
+                                      const res = await instance.get("http://localhost:5000/api/categories")
+                                      setCategories(res.data)
+                                      toast.success("Đã xóa danh mục!");
+                                    } catch {
+                                      toast.error("Xóa danh mục thất bại!");
+                                    } finally {
+                                      setDeletingId(null);
+                                      setConfirmId(null);
+                                    }
+                                  }}
+                                  disabled={deletingId === child._id}
+                                >
+                                  {deletingId === child._id ? "Đang xóa..." : "Xóa"}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       )}
                     </div>

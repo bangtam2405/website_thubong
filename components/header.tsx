@@ -41,6 +41,25 @@ export default function Header() {
     };
     updateUser();
     window.addEventListener("user-updated", updateUser);
+
+    // Đồng bộ profile mới nhất nếu đã đăng nhập
+    const token = localStorage.getItem("token");
+    const userId = localStorage.getItem("userId");
+    if (token && userId) {
+      fetch("http://localhost:5000/api/auth/me", {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.success && data.user) {
+            localStorage.setItem("user", JSON.stringify(data.user));
+            localStorage.setItem("avatar", data.user.avatar || "");
+            localStorage.setItem("fullName", data.user.fullName || "");
+            window.dispatchEvent(new Event("user-updated"));
+          }
+        })
+        .catch(() => {});
+    }
     return () => window.removeEventListener("user-updated", updateUser);
   }, []);
 

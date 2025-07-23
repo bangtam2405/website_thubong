@@ -107,13 +107,16 @@ function ProductForm({ product, onSuccess, onCancel }: { product?: any, onSucces
     e.preventDefault();
     const token = localStorage.getItem("token");
     const headers = { Authorization: `Bearer ${token}` };
+    // Ép kiểu stock về number
+    const submitForm = { ...form, stock: Number(form.stock) };
     if (isEdit) {
-      await instance.put(`http://localhost:5000/api/products/${product!._id}`, form, { headers });
+      await instance.put(`http://localhost:5000/api/products/${product!._id}`, submitForm, { headers });
     } else {
-      await instance.post("http://localhost:5000/api/products", form, { headers });
+      await instance.post("http://localhost:5000/api/products", submitForm, { headers });
     }
     onSuccess();
   };
+  const [imageError, setImageError] = useState("");
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 mb-6 bg-pink-50 p-4 rounded-xl shadow">
@@ -125,7 +128,6 @@ function ProductForm({ product, onSuccess, onCancel }: { product?: any, onSucces
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input name="stock" value={form.stock} onChange={handleChange} placeholder="Tồn kho" type="number" min={0} required />
         <select name="categoryId" value={form.categoryId} onChange={handleChange} className="border rounded px-2 py-2 w-full">
-          <option value="">Chọn danh mục nhỏ nhất</option>
           {categories.filter((cat:any)=>cat.quantity!==undefined).map((cat:any)=>(
             <option key={cat._id} value={cat._id}>{cat.name}</option>
           ))}
@@ -135,7 +137,16 @@ function ProductForm({ product, onSuccess, onCancel }: { product?: any, onSucces
         onImageUploaded={handleImageUploaded}
         currentImage={form.image}
         folder="products"
+        onError={setImageError}
       />
+      {imageError && (
+        <div className="text-red-600 text-sm mt-1">{imageError}</div>
+      )}
+      {form.image && (
+        <div className="text-green-600 text-sm mt-1">
+          Ảnh đã chọn: {form.image.split('/').pop()}
+        </div>
+      )}
       <select name="type" value={form.type} onChange={handleChange} className="border rounded px-2 py-2 w-full">
         <option value="teddy">Teddy</option>
         <option value="accessory">Phụ Kiện</option>
@@ -180,7 +191,11 @@ function ProductTable({ products, onEdit, onDelete }: { products: any[], onEdit:
               <TableCell>{p.price}₫</TableCell>
               <TableCell>{p.stock}</TableCell>
               <TableCell>
-                <img src={p.image} alt={p.name} className="rounded shadow" width={60} height={60} style={{objectFit:'cover'}} />
+                {p.image ? (
+                  <img src={p.image} alt={p.name} className="rounded shadow border-2 border-green-400" width={60} height={60} style={{objectFit:'cover'}} />
+                ) : (
+                  <span className="text-gray-400 italic">Chưa có ảnh</span>
+                )}
               </TableCell>
               <TableCell>{p.sold || 0}</TableCell>
               <TableCell>

@@ -1,15 +1,18 @@
 "use client"
 
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
+import ImageUploadLoader from "./ui/ImageUploadLoader";
 
 interface ImageUploadProps {
   onImageUploaded: (url: string) => void;
   currentImage?: string;
   folder?: string;
+  onError?: (msg: string) => void;
 }
 
-const ImageUpload: React.FC<ImageUploadProps> = ({ onImageUploaded, currentImage, folder }) => {
+const ImageUpload: React.FC<ImageUploadProps> = ({ onImageUploaded, currentImage, folder, onError }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -20,6 +23,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onImageUploaded, currentImage
     if (folder) formData.append('folder', folder);
 
     try {
+      setLoading(true);
       const res = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
@@ -27,16 +31,23 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onImageUploaded, currentImage
       const data = await res.json();
       if (data.success && data.url) {
         onImageUploaded(data.url); // Cập nhật avatar
+        if (onError) onError(""); // Xóa lỗi cũ nếu có
       } else {
-        alert('Upload ảnh thất bại!');
+        if (onError) onError('Upload ảnh thất bại!');
       }
+      setLoading(false);
     } catch (err) {
-      alert('Lỗi upload ảnh!');
+      if (onError) onError('Lỗi upload ảnh!');
+      setLoading(false);
     }
   };
 
   return (
     <div className="flex flex-col items-center">
+      {loading ? (
+        <div className="my-4"><ImageUploadLoader /></div>
+      ) : (
+      <>
       {/* Không hiển thị avatar ở đây nữa */}
       <button
         type="button"
@@ -56,6 +67,8 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onImageUploaded, currentImage
         Dung lượng file tối đa 1 MB<br />
         Định dạng: .JPEG, .PNG
       </div>
+      </>
+      )}
     </div>
   );
 };

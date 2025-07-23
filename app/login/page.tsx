@@ -96,9 +96,9 @@ export default function AuthPage() {
 
       // Chuyển hướng theo role
       if (role === "admin") {
-        window.location.href = "/admin"
+        router.push("/admin")
       } else {
-        window.location.href = "/"
+        router.push("/")
       }
     } catch (error: any) {
       const msg = error?.response?.data?.msg || "Lỗi đăng nhập"
