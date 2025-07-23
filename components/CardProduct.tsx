@@ -66,7 +66,7 @@ const CardProduct: React.FC<CardProductProps> = ({ product }) => {
             <span className="text-xs text-gray-600">Đã bán {formatSold(product.sold || 0)}</span>
           </div>
           <div className="text-lg font-semibold text-pink-600 text-center">
-            {product.price.toLocaleString('vi-VN')}₫
+            {Number(product.price).toLocaleString('vi-VN')}₫
           </div>
         </div>
       </Link>

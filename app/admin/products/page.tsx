@@ -94,7 +94,8 @@ function ProductForm({ product, onSuccess, onCancel }: { product?: any, onSucces
     image: product?.image || "",
     type: product?.type || "teddy",
     stock: product?.stock || 0,
-    categoryId: product?.categoryId || "",
+    size: product?.specifications?.size || "28cm",
+    color: product?.specifications?.color || "Hồng",
     _id: product?._id,
   });
   const isEdit = !!product;
@@ -107,8 +108,12 @@ function ProductForm({ product, onSuccess, onCancel }: { product?: any, onSucces
     e.preventDefault();
     const token = localStorage.getItem("token");
     const headers = { Authorization: `Bearer ${token}` };
-    // Ép kiểu stock về number
-    const submitForm = { ...form, stock: Number(form.stock) };
+    // Ép kiểu stock về number, truyền specifications.size và color
+    const submitForm = {
+      ...form,
+      stock: Number(form.stock),
+      specifications: { size: form.size, color: form.color },
+    };
     if (isEdit) {
       await instance.put(`http://localhost:5000/api/products/${product!._id}`, submitForm, { headers });
     } else {
@@ -127,11 +132,28 @@ function ProductForm({ product, onSuccess, onCancel }: { product?: any, onSucces
       <Input name="description" value={form.description} onChange={handleChange} placeholder="Mô tả" />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input name="stock" value={form.stock} onChange={handleChange} placeholder="Tồn kho" type="number" min={0} required />
-        <select name="categoryId" value={form.categoryId} onChange={handleChange} className="border rounded px-2 py-2 w-full">
-          {categories.filter((cat:any)=>cat.quantity!==undefined).map((cat:any)=>(
-            <option key={cat._id} value={cat._id}>{cat.name}</option>
-          ))}
-        </select>
+        <div className="flex gap-2">
+          <select name="size" value={form.size} onChange={handleChange} className="border rounded px-2 py-2 w-1/2">
+            <option value="28cm">28cm</option>
+            <option value="40cm">40cm</option>
+            <option value="60cm">60cm</option>
+            <option value="80cm">80cm</option>
+          </select>
+          <select name="color" value={form.color} onChange={handleChange} className="border rounded px-2 py-2 w-1/2">
+            <option value="Hồng">Hồng</option>
+            <option value="Xanh">Xanh</option>
+            <option value="Xanh bơ">Xanh bơ</option>
+            <option value="Xám">Xám</option>
+            <option value="Trắng">Trắng</option>
+            <option value="Nâu">Nâu</option>
+            <option value="Đen">Đen</option>
+            <option value="Trắng Đen">Trắng Đen</option>
+            <option value="Cam">Cam</option>
+            <option value="Vàng">Vàng</option>
+            <option value="Đỏ">Đỏ</option>
+            <option value="Tím">Tím</option>
+          </select>
+        </div>
       </div>
       <ImageUpload 
         onImageUploaded={handleImageUploaded}
@@ -188,7 +210,7 @@ function ProductTable({ products, onEdit, onDelete }: { products: any[], onEdit:
                  p.type === "giftbox" ? "Hộp quà" :
                  "Bộ sưu tập"}
               </TableCell>
-              <TableCell>{p.price}₫</TableCell>
+              <TableCell>{Number(p.price).toLocaleString('vi-VN')}₫</TableCell>
               <TableCell>{p.stock}</TableCell>
               <TableCell>
                 {p.image ? (

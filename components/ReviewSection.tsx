@@ -33,7 +33,7 @@ export default function ReviewSection() {
   return (
     <section className="py-12 bg-pink-50">
       <div className="max-w-4xl mx-auto text-center">
-        <h2 className="text-2xl font-bold mb-6">Khách Hàng Nói Gì?</h2>
+        <h2 className="text-2xl font-bold mb-6" style={{color: '#e3497a'}}>Sự Hài Lòng Của Khách Hàng</h2>
         {topReviews === null ? (
           <div className="h-40 flex items-center justify-center">
             <span className="text-gray-400">Đang tải đánh giá...</span>

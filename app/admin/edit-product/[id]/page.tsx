@@ -22,6 +22,8 @@ export default function EditProductPage() {
   const [price, setPrice] = useState("")
   const [image, setImage] = useState("")
   const [stock, setStock] = useState("")
+  const [size, setSize] = useState("");
+  const [color, setColor] = useState("");
 
   useEffect(() => {
     if (id) {
@@ -35,6 +37,8 @@ export default function EditProductPage() {
           setPrice(productData.price ? String(productData.price) : "");
           setImage(productData.image || "");
           setStock(productData.stock ? String(productData.stock) : "");
+          setSize(productData.specifications?.size || "28cm");
+          setColor(productData.specifications?.color || "Hồng");
         })
         .catch(err => {
           console.error("Failed to fetch product:", err);
@@ -55,6 +59,7 @@ export default function EditProductPage() {
       price: price ? Number(price) : undefined,
       image,
       stock: stock ? Number(stock) : undefined,
+      specifications: { size, color },
     };
 
     try {
@@ -90,6 +95,35 @@ export default function EditProductPage() {
         <div>
           <Label htmlFor="stock">Tồn kho</Label>
           <Input id="stock" value={stock} onChange={e => setStock(e.target.value)} placeholder="Số lượng tồn kho" type="number" />
+        </div>
+        <div className="flex gap-2">
+          <div className="w-1/2">
+            <Label htmlFor="size">Kích thước</Label>
+            <select id="size" value={size} onChange={e => setSize(e.target.value)} className="border rounded px-2 py-2 w-full">
+              <option value="28cm">28cm</option>
+              <option value="40cm">40cm</option>
+              <option value="60cm">60cm</option>
+              <option value="80cm">80cm</option>
+            </select>
+          </div>
+          <div className="w-1/2">
+            <Label htmlFor="color">Màu sắc</Label>
+            <select id="color" value={color} onChange={e => setColor(e.target.value)} className="border rounded px-2 py-2 w-full">
+              <option value="Hồng">Hồng</option>
+              <option value="Xanh">Xanh</option>
+              <option value="Xanh bơ">Xanh bơ</option>
+              <option value="Xám">Xám</option>
+              <option value="Trắng">Trắng</option>
+              <option value="Nâu">Nâu</option>
+              <option value="Đen">Đen</option>
+              <option value="Trắng Đen">Trắng Đen</option>
+              <option value="Cam">Cam</option>
+              <option value="Vàng">Vàng</option>
+              <option value="Đỏ">Đỏ</option>
+              <option value="Tím">Tím</option>
+              <option value="Kem">Kem</option>
+            </select>
+          </div>
         </div>
         <div>
           <Label htmlFor="image">Link ảnh</Label>

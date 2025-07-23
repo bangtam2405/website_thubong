@@ -13,7 +13,7 @@ export default function HomeFeaturesSection() {
     >
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900">Cách Thức Hoạt Động</h2>
+          <h2 className="text-3xl font-bold" style={{color: '#e3497a'}}>Cách Thức Hoạt Động</h2>
           <p className="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">
             Tạo ra thú nhồi bông hoàn hảo của bạn thật dễ dàng và thú vị với quy trình đơn giản của chúng tôi
           </p>

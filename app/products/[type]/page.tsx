@@ -145,7 +145,7 @@ export default function ProductListPage({ params }: ProductListPageProps) {
               </Link>
               <p className="text-gray-500 text-xs mb-1">🛒 Đã bán: {product.sold || 0} lượt</p>
               <p className="text-gray-500 text-sm mb-4 line-clamp-2">{product.description}</p>
-              <p className="text-lg font-bold text-pink-500">{product.price.toFixed(2)}$</p>
+              <p className="text-lg font-bold text-pink-500">{Number(product.price).toLocaleString('vi-VN')}₫</p>
             </CardContent>
             <CardFooter className="p-4 pt-0">
               <div className="flex gap-2 w-full">

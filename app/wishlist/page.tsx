@@ -164,7 +164,7 @@ export default function WishlistPage() {
                 
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-xl font-bold text-pink-600">
-                    {product.price.toLocaleString('vi-VN')}₫
+                    {Number(product.price).toLocaleString('vi-VN')}₫
                   </span>
                   <div className="flex items-center gap-1">
                     <span className="text-yellow-500">★</span>

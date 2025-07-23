@@ -22,6 +22,7 @@ import { useSession, signOut } from "next-auth/react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faHeart, faFolderOpen, faUser, faBoxOpen, faSignOutAlt } from "@fortawesome/free-solid-svg-icons"
+import { useRouter } from "next/navigation"
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -31,6 +32,35 @@ export default function Header() {
   const pathname = usePathname();
   const { items } = useCart();
   const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const router = useRouter();
+  const [search, setSearch] = useState("");
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [loadingSuggest, setLoadingSuggest] = useState(false);
+  // Debounce search
+  useEffect(() => {
+    if (!search) {
+      setSuggestions([]);
+      setShowDropdown(false);
+      return;
+    }
+    setLoadingSuggest(true);
+    const timeout = setTimeout(() => {
+      fetch(`http://localhost:5000/api/products?search=${encodeURIComponent(search)}`)
+        .then(res => res.json())
+        .then(data => {
+          // Lọc type
+          const filtered = Array.isArray(data)
+            ? data.filter((p:any) => ["teddy","accessory","collection"].includes(p.type))
+            : [];
+          setSuggestions(filtered);
+          setShowDropdown(true);
+        })
+        .catch(() => setSuggestions([]))
+        .finally(() => setLoadingSuggest(false));
+    }, 350);
+    return () => clearTimeout(timeout);
+  }, [search]);
 
   useEffect(() => {
     setIsClient(true);
@@ -100,17 +130,52 @@ export default function Header() {
             </div>
 
             {/* Search bar */}
-            <div className="hidden md:block flex-grow max-w-md mx-4">
+            <div className="hidden md:block flex-grow max-w-md mx-4 relative">
               <div className="relative">
                 <Input
                   type="text"
                   placeholder="Nhập sản phẩm cần tìm"
                   className="w-full border-gray-300 rounded-md pl-10 pr-4"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  onFocus={() => search && setShowDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
                 />
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Button className="absolute right-0 top-0 h-full rounded-l-none bg-pink-500 hover:bg-pink-600">
+                <Button className="absolute right-0 top-0 h-full rounded-l-none bg-pink-500 hover:bg-pink-600"
+                  onClick={() => {
+                    if (suggestions.length > 0) {
+                      router.push(`/product/${suggestions[0]._id}`)
+                    } else if (search) {
+                      router.push(`/products?search=${encodeURIComponent(search)}`)
+                    }
+                  }}
+                >
                   <Search className="h-4 w-4" />
                 </Button>
+                {/* Dropdown gợi ý */}
+                {showDropdown && (
+                  <div className="absolute left-0 right-0 mt-1 bg-white border rounded shadow-lg z-50 max-h-80 overflow-y-auto">
+                    {loadingSuggest ? (
+                      <div className="p-4 text-center text-gray-400">Đang tìm kiếm...</div>
+                    ) : suggestions.length === 0 ? (
+                      <div className="p-4 text-center text-gray-400">Không tìm thấy sản phẩm</div>
+                    ) : suggestions.map((item) => (
+                      <div
+                        key={item._id}
+                        className="flex items-center gap-3 px-4 py-2 hover:bg-pink-50 cursor-pointer"
+                        onMouseDown={() => router.push(`/product/${item._id}`)}
+                      >
+                        <img src={item.image || "/placeholder.jpg"} alt={item.name} className="w-10 h-10 rounded object-cover border" />
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900">{item.name}</div>
+                          <div className="text-xs text-gray-500">{item.type === "teddy" ? "Teddy" : item.type === "accessory" ? "Phụ kiện" : "Bộ sưu tập"}</div>
+                        </div>
+                        <div className="text-pink-600 font-semibold">{Number(item.price).toLocaleString('vi-VN')}₫</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

@@ -1,0 +1,22 @@
+.text-type {
+  display: inline-block;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+}
+.text-type__content {
+  display: inline;
+}
+.text-type__cursor {
+  display: inline-block;
+  margin-left: 2px;
+  color: #ec4899;
+  font-weight: bold;
+  font-size: 1em;
+  transition: opacity 0.2s;
+}
+.text-type__cursor--hidden {
+  opacity: 0;
+} 

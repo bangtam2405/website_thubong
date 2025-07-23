@@ -18,8 +18,45 @@ async function getFeaturedProducts() {
   return res.json();
 }
 
+// Hàm fetch ngẫu nhiên mẫu thiết kế
+async function getRandomDesigns(count: number) {
+  const res = await fetch("http://localhost:5000/api/designs?userId=admin", { cache: "no-store" });
+  if (!res.ok) return [];
+  const designs = await res.json();
+  return designs.sort(() => 0.5 - Math.random()).slice(0, count);
+}
+
+// Hàm fetch ngẫu nhiên sản phẩm theo loại
+async function getRandomProductsByType(type: string, count: number) {
+  const res = await fetch(`http://localhost:5000/api/products?type=${type}`, { cache: "no-store" });
+  if (!res.ok) return [];
+  const products = await res.json();
+  // Lấy ngẫu nhiên count sản phẩm
+  return products.sort(() => 0.5 - Math.random()).slice(0, count);
+}
+
+
+
 export default async function Home() {
-  const featuredProducts = await getFeaturedProducts();
+  const [collections, teddies, accessories, designs] = await Promise.all([
+    getRandomProductsByType("collection", 2),
+    getRandomProductsByType("teddy", 2),
+    getRandomProductsByType("accessory", 2),
+    getRandomDesigns(3),
+  ]);
+  const featuredProducts = [
+    ...designs.map((d: any) => ({
+      _id: d._id,
+      name: d.designName,
+      image: d.previewImage,
+      price: d.price || 0,
+      type: "design",
+      sold: 0,
+    })),
+    ...collections,
+    ...teddies,
+    ...accessories,
+  ];
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -30,7 +67,7 @@ export default async function Home() {
       {/* CTA Section */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-pink-100">
         <div className="max-w-7xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">Sẵn Sàng Tạo Ra Thú Nhồi Bông Độc Đáo Của Bạn?</h2>
+          <h2 className="text-3xl font-bold mb-6" style={{color: '#e3497a'}}>Sẵn Sàng Tạo Ra Thú Nhồi Bông Độc Đáo Của Bạn?</h2>
           <Link href="/customize">
             <Button size="lg" className="bg-pink-500 hover:bg-pink-600 animate-pulse shadow-pink-200 shadow-lg">
               Bắt Đầu Thiết Kế Ngay
@@ -40,5 +77,5 @@ export default async function Home() {
       </section>
       <ChatBox />
     </div>
-  )
+  );
 }

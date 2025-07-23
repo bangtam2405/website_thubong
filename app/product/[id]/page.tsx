@@ -125,133 +125,93 @@ export default function ProductDetail() {
   }
 
   return (
-    <div className="container mx-auto py-12 px-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Phần hình ảnh */}
-        <div className="space-y-4">
-          <div className="aspect-square relative rounded-lg overflow-hidden">
+    <div className="container mx-auto py-8 px-2 md:px-4">
+      <div className="bg-white rounded-2xl shadow-lg p-4 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Cột trái: Ảnh sản phẩm */}
+        <div className="flex flex-col items-center justify-center">
+          <div className="relative w-full aspect-square max-w-md rounded-xl overflow-hidden border-2 border-pink-100 shadow">
             <Image
-              src={selectedImage || product.image}
+              src={product.image}
               alt={product.name}
               fill
               className="object-cover"
             />
           </div>
-          <div className="grid grid-cols-4 gap-4">
-            <div 
-              className="aspect-square relative rounded-lg overflow-hidden cursor-pointer border-2 border-pink-500"
-              onClick={() => setSelectedImage(product.image)}
-            >
-              <Image
-                src={product.image}
-                alt={product.name}
-                fill
-                className="object-cover"
-              />
-            </div>
-            {/* Thêm các hình ảnh khác nếu có */}
-          </div>
         </div>
-
-        {/* Phần thông tin */}
-        <div className="space-y-6">
+        {/* Cột phải: Thông tin sản phẩm */}
+        <div className="flex flex-col gap-4 justify-between">
           <div>
-            <div className="flex items-center gap-4 mb-2">
-              <h1 className="text-2xl font-bold text-gray-900">{product.name}</h1>
-              <span className="text-gray-500 text-sm">🛒 Đã bán: {product.sold || 0} lượt</span>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-2xl md:text-3xl font-bold text-pink-700 leading-tight">{product.name}</h1>
+              <Badge className="bg-pink-100 text-pink-600 font-semibold">
+                {product.type === "teddy"
+                  ? "Teddy"
+                  : product.type === "accessory"
+                  ? "Phụ kiện"
+                  : product.type === "collection"
+                  ? "Bộ sưu tập"
+                  : product.type === "custom"
+                  ? "Tùy chỉnh"
+                  : product.type}
+              </Badge>
             </div>
-            <div className="flex items-center gap-4 mb-4">
-              <div className="flex items-center">
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    className={`h-5 w-5 ${
-                      i < Math.round(avgRating)
-                        ? "text-yellow-400 fill-yellow-400"
-                        : "text-gray-300"
-                    }`}
-                  />
-                ))}
-                <span className="ml-2 text-gray-600">({reviewCount} đánh giá)</span>
-                {reviewCount > 0 && (
-                  <span className="ml-2 text-pink-600 font-semibold">{avgRating.toFixed(1)} / 5</span>
-                )}
-              </div>
-              <span className="text-gray-600">Đã bán {product.sold}</span>
+            <div className="flex items-center gap-2 mb-2">
+              {[...Array(5)].map((_, i) => (
+                <Star
+                  key={i}
+                  className={`h-5 w-5 ${i < Math.round(avgRating) ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`}
+                />
+              ))}
+              <span className="ml-2 text-gray-600 text-sm">({reviewCount} đánh giá)</span>
+              {reviewCount > 0 && (
+                <span className="ml-2 text-pink-600 font-semibold">{avgRating.toFixed(1)} / 5</span>
+              )}
             </div>
-            <div className="text-3xl font-bold text-pink-600 mb-4">
+            <div className="text-3xl font-bold text-pink-600 mb-2">
               {product.price.toLocaleString('vi-VN')}₫
             </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mb-4">
               <span className="text-gray-600">Số lượng:</span>
               <div className="flex items-center border rounded-lg">
                 <Button
                   variant="ghost"
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
                   className="px-3"
-                >
-                  -
-                </Button>
+                >-</Button>
                 <span className="px-4">{quantity}</span>
                 <Button
                   variant="ghost"
                   onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
                   className="px-3"
                   disabled={quantity >= product.stock}
-                >
-                  +
-                </Button>
+                >+</Button>
               </div>
+              <span className="ml-2 text-gray-500 text-xs">Còn lại: {product.stock}</span>
             </div>
-
-            <div className="flex gap-4">
-              <Button 
-                className="flex-1 bg-pink-600 hover:bg-pink-700"
-                onClick={handleAddToCart}
-              >
-                <ShoppingCart className="mr-2 h-5 w-5" />
-                Thêm vào giỏ
+            <div className="flex gap-3 mb-4">
+              <Button className="flex-1 bg-pink-600 hover:bg-pink-700" onClick={handleAddToCart}>
+                <ShoppingCart className="mr-2 h-5 w-5" />Mua ngay
               </Button>
               <Button variant="outline" className="flex-1" onClick={handleAddToWishlist}>
-                <Heart className="mr-2 h-5 w-5" />
-                Yêu thích
+                <Heart className="mr-2 h-5 w-5" />Yêu thích
               </Button>
-              <Button variant="outline">
-                <Share2 className="h-5 w-5" />
-              </Button>
+              <Button variant="outline"><Share2 className="h-5 w-5" /></Button>
             </div>
-          </div>
-
-          <div className="border-t pt-6">
-            <div className="grid grid-cols-3 gap-4">
-              <div className="flex items-center gap-2">
-                <Truck className="h-5 w-5 text-gray-600" />
-                <span className="text-sm text-gray-600">Miễn phí vận chuyển</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-gray-600" />
-                <span className="text-sm text-gray-600">Bảo hành chính hãng</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <RefreshCw className="h-5 w-5 text-gray-600" />
-                <span className="text-sm text-gray-600">Đổi trả trong 30 ngày</span>
-              </div>
+            <div className="flex flex-wrap gap-4 mb-2">
+              <div className="flex items-center gap-2"><Truck className="h-5 w-5 text-pink-400" /><span className="text-sm text-gray-600">Miễn phí vận chuyển</span></div>
+              <div className="flex items-center gap-2"><Shield className="h-5 w-5 text-pink-400" /><span className="text-sm text-gray-600">Bảo hành chính hãng</span></div>
+              <div className="flex items-center gap-2"><RefreshCw className="h-5 w-5 text-pink-400" /><span className="text-sm text-gray-600">Đổi trả 30 ngày</span></div>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Phần mô tả và đánh giá */}
-      <div className="mt-12">
+      {/* Tabs mô tả và đánh giá */}
+      <div className="mt-10 bg-white rounded-2xl shadow p-6">
         <Tabs defaultValue="description">
           <TabsList className="mb-8">
             <TabsTrigger value="description">Mô tả sản phẩm</TabsTrigger>
             <TabsTrigger value="reviews">Đánh giá ({reviews.length})</TabsTrigger>
           </TabsList>
-          
           <TabsContent value="description" className="space-y-4">
             <div className="prose max-w-none">
               <p>{product.description}</p>
@@ -259,24 +219,25 @@ export default function ProductDetail() {
               <ul className="space-y-2">
                 <li className="flex justify-between py-2 border-b">
                   <span className="text-gray-600">Loại sản phẩm</span>
-                  <span>{product.type}</span>
+                  <span>
+                    {product.type === "teddy"
+                      ? "Teddy"
+                      : product.type === "accessory"
+                      ? "Phụ kiện"
+                      : product.type === "collection"
+                      ? "Bộ sưu tập"
+                      : product.type === "custom"
+                      ? "Tùy chỉnh"
+                      : product.type}
+                  </span>
                 </li>
-                <li className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Chất liệu</span>
-                  <span>Bông cao cấp</span>
-                </li>
-                <li className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Kích thước</span>
-                  <span>30cm x 20cm</span>
-                </li>
-                <li className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Trọng lượng</span>
-                  <span>500g</span>
-                </li>
+                <li className="flex justify-between py-2 border-b"><span className="text-gray-600">Chất liệu</span><span>Bông cao cấp</span></li>
+                <li className="flex justify-between py-2 border-b"><span className="text-gray-600">Màu sắc</span><span>{product.specifications?.color || "Hồng"}</span></li>
+                <li className="flex justify-between py-2 border-b"><span className="text-gray-600">Kích thước</span><span>{product.specifications?.size || "28cm"}</span></li>
+                {/* <li className="flex justify-between py-2 border-b"><span className="text-gray-600">Trọng lượng</span><span>500g</span></li> */}
               </ul>
             </div>
           </TabsContent>
-
           <TabsContent value="reviews" className="space-y-6">
             <div className="flex items-center gap-8 mb-8">
               <div className="text-center">
@@ -285,18 +246,13 @@ export default function ProductDetail() {
                   {[...Array(5)].map((_, i) => (
                     <Star
                       key={i}
-                      className={`h-5 w-5 ${
-                        i < Math.floor(product.rating)
-                          ? "text-yellow-400 fill-yellow-400"
-                          : "text-gray-300"
-                      }`}
+                      className={`h-5 w-5 ${i < Math.floor(product.rating) ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`}
                     />
                   ))}
                 </div>
                 <div className="text-sm text-gray-600">{product.reviews} đánh giá</div>
               </div>
             </div>
-
             <div className="space-y-6">
               {reviews.map((review) => (
                 <Card key={review._id} className="p-6">
@@ -319,11 +275,7 @@ export default function ProductDetail() {
                           {[...Array(5)].map((_, i) => (
                             <Star
                               key={i}
-                              className={`h-4 w-4 ${
-                                i < review.rating
-                                  ? "text-yellow-400 fill-yellow-400"
-                                  : "text-gray-300"
-                              }`}
+                              className={`h-4 w-4 ${i < review.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`}
                             />
                           ))}
                         </div>
@@ -353,52 +305,6 @@ export default function ProductDetail() {
             </div>
           </TabsContent>
         </Tabs>
-      </div>
-
-      {/* Đánh giá sản phẩm */}
-      <div className="mt-10">
-        <h2 className="text-xl font-bold mb-4">Đánh giá sản phẩm</h2>
-        {reviewCount === 0 && <div className="text-gray-500 italic">Chưa có đánh giá nào cho sản phẩm này.</div>}
-        <div className="space-y-6">
-          {reviews.map(r => (
-            <div key={r._id} className="bg-gray-50 rounded-lg p-4 shadow-sm">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                  {typeof r.user === 'object' && r.user.avatar ? (
-                    <img src={r.user.avatar} alt="avatar" className="w-8 h-8 object-cover rounded-full" />
-                  ) : (
-                    <img src="/placeholder-user.jpg" alt="avatar" className="w-8 h-8 object-cover rounded-full" />
-                  )}
-                </div>
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className={`h-4 w-4 ${i < r.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`} />
-                ))}
-                <span className="ml-2 text-sm text-gray-700 font-medium">
-                  {typeof r.user === 'object'
-                    ? (r.user.fullName || r.user.username || r.user.email)
-                    : r.user}
-                </span>
-                <span className="ml-2 text-xs text-gray-400">{new Date(r.createdAt).toLocaleDateString()}</span>
-              </div>
-              <div className="text-gray-800 text-base mb-2">{r.comment}</div>
-              {Array.isArray(r.media) && r.media.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {r.media.map((url: string, idx: number) =>
-                    url.match(/\.(jpg|jpeg|png)$/i) ? (
-                      <div key={idx} className="relative w-24 h-24">
-                        <Image src={url} alt={`media-${idx}`} fill className="object-cover rounded border" />
-                      </div>
-                    ) : url.match(/\.mp4$/i) ? (
-                      <div key={idx} className="relative w-32 h-24">
-                        <video src={url} controls className="w-32 h-24 object-cover rounded border" />
-                      </div>
-                    ) : null
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   )

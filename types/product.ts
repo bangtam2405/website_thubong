@@ -18,6 +18,7 @@ export type Product = {
     clothing?: string | null
     accessories?: string[]
     size?: string
+    color?: string
   }
   createdAt: string
   updatedAt: string
