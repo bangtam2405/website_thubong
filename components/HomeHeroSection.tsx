@@ -13,10 +13,10 @@ export default function HomeHeroSection() {
     fetch("http://localhost:5000/api/reviews?limit=5")
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data) && data.length > 1) {
-          setReview({ rating: data[1].rating, comment: data[5].comment });
-        } else if (Array.isArray(data) && data.length > 0) {
-          setReview({ rating: data[0].rating, comment: data[0].comment });
+        if (Array.isArray(data) && data.length > 0) {
+          // Lấy ngẫu nhiên 1 review trong mảng
+          const idx = Math.floor(Math.random() * data.length);
+          setReview({ rating: data[idx].rating, comment: data[idx].comment });
         }
       });
   }, []);

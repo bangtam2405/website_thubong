@@ -13,6 +13,7 @@ interface ImageUploadProps {
 const ImageUpload: React.FC<ImageUploadProps> = ({ onImageUploaded, currentImage, folder, onError }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
+  const [uploaded, setUploaded] = useState(false);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -24,6 +25,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onImageUploaded, currentImage
 
     try {
       setLoading(true);
+      setUploaded(false);
       const res = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
@@ -31,6 +33,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onImageUploaded, currentImage
       const data = await res.json();
       if (data.success && data.url) {
         onImageUploaded(data.url); // Cập nhật avatar
+        setUploaded(true);
         if (onError) onError(""); // Xóa lỗi cũ nếu có
       } else {
         if (onError) onError('Upload ảnh thất bại!');
@@ -48,7 +51,13 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onImageUploaded, currentImage
         <div className="my-4"><ImageUploadLoader /></div>
       ) : (
       <>
-      {/* Không hiển thị avatar ở đây nữa */}
+      {currentImage && (
+        <img
+          src={currentImage}
+          alt="Ảnh hiện tại"
+          className="w-20 h-20 rounded-full border mb-2 object-cover"
+        />
+      )}
       <button
         type="button"
         className="px-4 py-2 rounded border border-gray-300 bg-white hover:bg-pink-50 text-gray-700 font-medium mb-2"

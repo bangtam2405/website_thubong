@@ -3,7 +3,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Plus, Edit, Trash2 } from "lucide-react"
+import { Plus, Edit, Trash2, Search } from "lucide-react"
 import instance from "@/lib/axiosConfig"
 import ImageUpload from "@/components/ImageUpload"
 import { useRouter } from "next/navigation"
@@ -15,6 +15,7 @@ export default function ProductsPage() {
   const [showEditForm, setShowEditForm] = useState(false)
   const [editProduct, setEditProduct] = useState<any>(null)
   const router = useRouter()
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     fetchProducts()
@@ -24,6 +25,16 @@ export default function ProductsPage() {
     const res = await instance.get("http://localhost:5000/api/products")
     setProducts(res.data)
   }
+
+  const filteredProducts = products.filter(p => {
+    const s = search.trim().toLowerCase();
+    if (!s) return true;
+    return (
+      (p.name && p.name.toLowerCase().includes(s)) ||
+      (p.type && p.type.toLowerCase().includes(s)) ||
+      (p.description && p.description.toLowerCase().includes(s))
+    );
+  });
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -38,6 +49,20 @@ export default function ProductsPage() {
           </Button>
         </CardHeader>
         <CardContent>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="relative w-full max-w-xs">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <Search className="w-5 h-5" />
+              </span>
+              <input
+                type="text"
+                className="pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-pink-200 outline-none w-full"
+                placeholder="Tìm kiếm tên, loại sản phẩm"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
           {showAddForm && (
             <ProductForm
               onSuccess={() => {
@@ -62,7 +87,7 @@ export default function ProductsPage() {
             />
           )}
           <ProductTable
-            products={products}
+            products={filteredProducts}
             onEdit={(product: any) => {
               setEditProduct(product)
               setShowEditForm(true)

@@ -3,7 +3,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Plus, Edit, Trash2 } from "lucide-react"
+import { Plus, Edit, Trash2, Search } from "lucide-react"
 import ImageUpload from "@/components/ImageUpload"
 import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
@@ -14,6 +14,7 @@ export default function GiftBoxesPage() {
   const [showEditForm, setShowEditForm] = useState(false);
   const [editGiftBox, setEditGiftBox] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     fetchGiftBoxes();
@@ -63,8 +64,23 @@ export default function GiftBoxesPage() {
               }}
             />
           )}
+          <div className="flex items-center gap-2 mb-4">
+            <div className="relative w-full max-w-xs">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <Search className="w-5 h-5" />
+              </span>
+              <input
+                type="text"
+                className="pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-pink-200 outline-none w-full"
+                placeholder="Tìm kiếm tên hộp quà"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
           <GiftBoxTable
             giftBoxes={giftBoxes}
+            search={search}
             onEdit={(giftBox: any) => {
               setEditGiftBox(giftBox);
               setShowEditForm(true);
@@ -133,7 +149,15 @@ function GiftBoxForm({ giftBox, onSuccess, onCancel }: { giftBox?: any, onSucces
   );
 }
 
-function GiftBoxTable({ giftBoxes, onEdit, onDelete, loading }: { giftBoxes: any[], onEdit: (giftBox: any) => void, onDelete: (id: string) => void, loading: boolean }) {
+function GiftBoxTable({ giftBoxes, search, onEdit, onDelete, loading }: { giftBoxes: any[], search: string, onEdit: (giftBox: any) => void, onDelete: (id: string) => void, loading: boolean }) {
+  const filteredGiftBoxes = giftBoxes.filter(gb => {
+    const s = search.trim().toLowerCase();
+    if (!s) return true;
+    return (
+      (gb.name && gb.name.toLowerCase().includes(s)) ||
+      (gb.description && gb.description.toLowerCase().includes(s))
+    );
+  });
   return (
     <div className="overflow-x-auto">
       <Table className="mt-4 bg-white rounded-xl shadow">
@@ -150,9 +174,9 @@ function GiftBoxTable({ giftBoxes, onEdit, onDelete, loading }: { giftBoxes: any
         <TableBody>
           {loading ? (
             <TableRow><TableCell colSpan={6} className="text-center">Đang tải...</TableCell></TableRow>
-          ) : giftBoxes.length === 0 ? (
+          ) : filteredGiftBoxes.length === 0 ? (
             <TableRow><TableCell colSpan={6} className="text-center">Không có hộp quà nào.</TableCell></TableRow>
-          ) : giftBoxes.map((g) => (
+          ) : filteredGiftBoxes.map((g) => (
             <TableRow key={g._id}>
               <TableCell className="font-medium">{g.name}</TableCell>
               <TableCell>{g.price}₫</TableCell>

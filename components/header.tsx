@@ -21,7 +21,7 @@ import { useCart } from "@/contexts/CartContext"
 import { useSession, signOut } from "next-auth/react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faHeart, faFolderOpen, faUser, faBoxOpen, faSignOutAlt } from "@fortawesome/free-solid-svg-icons"
+import { faHeart, faFolderOpen, faUser, faBoxOpen, faSignOutAlt, faGift } from "@fortawesome/free-solid-svg-icons"
 import { useRouter } from "next/navigation"
 
 export default function Header() {
@@ -125,7 +125,7 @@ export default function Header() {
                   height={50}
                   className="mr-2"
                 />
-                <span className="text-2xl font-bold text-pink-500">Gấu Xinh</span>
+                <span className="text-2xl font-bold text-pink-500" style={{ fontFamily: 'Pacifico, cursive' }}>Gấu Xinh</span>
               </Link>
             </div>
 
@@ -260,6 +260,12 @@ export default function Header() {
                       <Link href="/profile" className="w-full flex items-center gap-2">
                         <FontAwesomeIcon icon={faUser} className="h-4 w-4 text-pink-500" />
                         Hồ Sơ
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <Link href="/profile/coupons" className="w-full flex items-center gap-2">
+                        <FontAwesomeIcon icon={faGift} className="h-4 w-4 text-pink-500" />
+                        Ưu đãi của tôi
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem>

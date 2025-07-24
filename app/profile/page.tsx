@@ -198,6 +198,11 @@ export default function ProfilePage() {
                 </Link>
               </li>
               <li>
+                <Link href="/profile/coupons" className="w-full block text-left px-2 py-1 rounded text-gray-600 hover:bg-pink-50 hover:text-pink-500 transition">
+                  Ưu đãi của tôi
+                </Link>
+              </li>
+              <li>
                 <button className={`w-full text-left px-2 py-1 rounded ${showChangePassword ? 'bg-pink-100 text-pink-500 font-semibold' : 'text-gray-600'}`} onClick={() => setShowChangePassword(true)}>Đổi Mật Khẩu</button>
               </li>
             </ul>
@@ -232,9 +237,9 @@ export default function ProfilePage() {
                   <div>
                     <label className="block mb-1 font-medium text-sm">Giới tính</label>
                     <div className="flex gap-4 mt-1">
-                      <label className="text-sm"><input type="radio" name="gender" value="male" checked={gender === "male"} onChange={() => setGender("male")} className="accent-pink-500" /> Nam</label>
-                      <label className="text-sm"><input type="radio" name="gender" value="female" checked={gender === "female"} onChange={() => setGender("female")} className="accent-pink-500" /> Nữ</label>
-                      <label className="text-sm"><input type="radio" name="gender" value="other" checked={gender === "other"} onChange={() => setGender("other")} className="accent-pink-500" /> Khác</label>
+                      <label className="text-sm"><input type="radio" name="gender" value="male" checked={gender === "male"} onChange={() => setGender("male")} /> Nam</label>
+                      <label className="text-sm"><input type="radio" name="gender" value="female" checked={gender === "female"} onChange={() => setGender("female")} /> Nữ</label>
+                      <label className="text-sm"><input type="radio" name="gender" value="other" checked={gender === "other"} onChange={() => setGender("other")} /> Khác</label>
                     </div>
                   </div>
                   <div className="md:col-span-2">

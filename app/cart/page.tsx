@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,14 @@ import { Separator } from "@/components/ui/separator"
 import { useCart } from "@/contexts/CartContext"
 import { useRouter } from "next/navigation"
 import { useNavigation } from "react-day-picker"
+import { toast } from "sonner";
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+
+const fetchUserCoupons = async (userId: string) => {
+  const res = await fetch(`/api/coupons/user/${userId}`);
+  if (!res.ok) throw new Error('Lỗi khi lấy mã giảm giá');
+  return res.json();
+};
 
 export default function CartPage() {
   // const navigate = useNavigation
@@ -17,8 +25,36 @@ export default function CartPage() {
   const [promoCode, setPromoCode] = useState("")
   const [promoApplied, setPromoApplied] = useState(false)
   const [promoDiscount, setPromoDiscount] = useState(0)
+  const [promoError, setPromoError] = useState("");
+  const [promoAmount, setPromoAmount] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const router = useRouter()
+  const user = useCurrentUser();
+  const [userCoupons, setUserCoupons] = useState<any[]>([]);
+  const [selectedCoupon, setSelectedCoupon] = useState<string>("");
+  const [couponLoading, setCouponLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    fetchUserCoupons(user.id).then(setUserCoupons).catch(() => setUserCoupons([]));
+  }, [user?.id]);
+
+  // Nếu có mã từ query (?coupon=), tự động điền vào
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const couponParam = url.searchParams.get('coupon');
+    if (couponParam) setPromoCode(couponParam);
+  }, []);
+
+  // Khi chọn mã từ danh sách
+  const handleSelectCoupon = (code: string) => {
+    setPromoCode(code);
+    setSelectedCoupon(code);
+    setPromoApplied(false);
+    setPromoDiscount(0);
+    setPromoAmount(0);
+    setPromoError("");
+  };
 
   // Chọn tất cả
   const allSelected = items.length > 0 && selectedIds.length === items.length
@@ -33,7 +69,7 @@ export default function CartPage() {
 
   const selectedItems = items.filter(i => selectedIds.includes(i._id))
   const total = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const discount = promoApplied ? (total * promoDiscount) / 100 : 0
+  const discount = promoApplied ? promoAmount : 0;
   const finalTotal = total - discount
 
   const handleCheckout = () => {
@@ -44,15 +80,29 @@ export default function CartPage() {
     router.push(`/checkout?items=${encodeURIComponent(JSON.stringify(selectedItems))}`)
   }
 
-  const applyPromoCode = () => {
-    if (promoCode.toLowerCase() === "welcome10") {
-      setPromoApplied(true)
-      setPromoDiscount(10)
-    } else {
-      setPromoApplied(false)
-      setPromoDiscount(0)
+  const applyPromoCode = async () => {
+    setPromoError("");
+    setPromoApplied(false);
+    setPromoDiscount(0);
+    setPromoAmount(0);
+    if (!promoCode) return;
+    try {
+      const res = await fetch("http://localhost:5000/api/coupons/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: promoCode, totalAmount: total })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Mã giảm giá không hợp lệ");
+      setPromoApplied(true);
+      setPromoDiscount(0); // Không dùng % nữa, dùng số tiền giảm
+      setPromoAmount(data.discountAmount || 0);
+      toast.success(data.message || "Áp dụng mã giảm giá thành công!");
+    } catch (err: any) {
+      setPromoError(err.message);
+      toast.error(err.message);
     }
-  }
+  };
 
   return (
     <div className="container mx-auto py-12 px-4">
@@ -144,18 +194,40 @@ export default function CartPage() {
 
             <div className="mt-8 bg-white rounded-2xl shadow-md border border-gray-100 p-6">
               <h2 className="text-xl font-semibold mb-4">Bạn có mã giảm giá?</h2>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Nhập mã giảm giá"
-                  value={promoCode}
-                  onChange={(e) => setPromoCode(e.target.value)}
-                  className="rounded-lg"
-                />
-                <Button onClick={applyPromoCode} className="bg-pink-500 hover:bg-pink-600 rounded-lg">Áp Dụng</Button>
-              </div>
-              {promoApplied && (
-                <p className="text-green-600 text-sm mt-2">Đã áp dụng mã giảm giá! Giảm {promoDiscount}%.</p>
-              )}
+              <>
+                {items.length > 0 && user?.id && (
+                  <div className="mb-6">
+                    <h2 className="font-semibold mb-2 text-pink-600">Chọn mã giảm giá của bạn</h2>
+                    <div className="flex flex-wrap gap-2">
+                      {userCoupons.length === 0 ? (
+                        <span className="text-gray-400">Bạn chưa có mã giảm giá nào.</span>
+                      ) : (
+                        userCoupons.map(c => (
+                          <button
+                            key={c._id}
+                            className={`px-3 py-1 rounded border text-sm font-mono ${promoCode === c.code ? 'bg-pink-500 text-white border-pink-500' : 'border-gray-300 text-pink-600 hover:bg-pink-50'}`}
+                            disabled={!c.isActive || (c.usageLimit && c.usedCount >= c.usageLimit)}
+                            onClick={() => handleSelectCoupon(c.code)}
+                          >
+                            {c.code} ({c.type === 'percentage' ? `${c.value}%` : `${c.value.toLocaleString('vi-VN')}₫`})
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 mt-4">
+                  <Input
+                    placeholder="Nhập mã giảm giá hoặc chọn bên trên"
+                    value={promoCode}
+                    onChange={e => setPromoCode(e.target.value)}
+                    className="max-w-xs"
+                  />
+                  <Button onClick={applyPromoCode} disabled={promoApplied || !promoCode} className="bg-pink-500 hover:bg-pink-600">Áp dụng</Button>
+                  {promoApplied && <span className="text-green-600 ml-2">Đã áp dụng!</span>}
+                  {promoError && <span className="text-red-500 ml-2">{promoError}</span>}
+                </div>
+              </>
             </div>
           </div>
 
@@ -172,7 +244,7 @@ export default function CartPage() {
               </div>
               {promoApplied && (
                 <div className="flex justify-between text-green-600">
-                  <span>Giảm giá ({promoDiscount}%)</span>
+                  <span>Giảm giá</span>
                   <span>-{discount.toLocaleString('vi-VN')}₫</span>
                 </div>
               )}

@@ -13,7 +13,7 @@ interface Category {
   children?: Category[];
 }
 
-export default function CategoryForm() {
+export default function CategoryForm({ onCancel }: { onCancel?: () => void }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [level1, setLevel1] = useState<string>("");
   const [level2, setLevel2] = useState<string>("");
@@ -75,7 +75,7 @@ export default function CategoryForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-6 max-w-2xl mx-auto bg-white p-6 shadow-lg rounded-2xl"
+      className="space-y-6"
     >
       <h2 className="text-xl font-semibold text-gray-800">Thêm danh mục (nhiều cấp, chỉ cho chọn nhóm)</h2>
 
@@ -163,13 +163,22 @@ export default function CategoryForm() {
         />
       </div>
 
-      <div className="pt-4">
+      <div className="pt-4 flex gap-2">
         <button
           type="submit"
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg shadow"
+          className="bg-black hover:bg-gray-900 text-white font-semibold px-6 py-2 rounded-lg shadow"
         >
-          Thêm danh mục
+          Thêm mới
         </button>
+        {onCancel && (
+          <button
+            type="button"
+            className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-6 py-2 rounded-lg shadow"
+            onClick={onCancel}
+          >
+            Hủy
+          </button>
+        )}
       </div>
     </form>
   );

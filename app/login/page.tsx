@@ -25,15 +25,25 @@ export default function AuthPage() {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showRegisterConfirm, setShowRegisterConfirm] = useState(false);
+  const [registerErrors, setRegisterErrors] = useState<{ email?: string; password?: string; confirm?: string }>({});
+  // Thêm state lưu giá trị input
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("");
+  const [registerConfirm, setRegisterConfirm] = useState("");
 
   useEffect(() => { setIsClient(true); }, []);
 
   useEffect(() => {
-    if (status === "authenticated" && session?.user) {
+    // Nếu đã login Google (next-auth) thì redirect
+    if (status === "authenticated" && session?.user && session.user.email) {
       localStorage.setItem("user", JSON.stringify(session.user))
       localStorage.setItem("email", session.user.email || "")
       localStorage.setItem("username", session.user.name || "")
       localStorage.setItem("avatar", session.user.image || "")
+      router.push("/")
+    }
+    // Nếu đã có token (user thường đã login) thì cũng redirect
+    else if (typeof window !== "undefined" && localStorage.getItem("token")) {
       router.push("/")
     }
   }, [status, session, router])
@@ -61,7 +71,7 @@ export default function AuthPage() {
       let userId = "";
       let username = "";
       try {
-        const profileRes = await instance.get("auth/me", {
+        const profileRes = await instance.get("/api/auth/me", {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (profileRes.data && profileRes.data.success && profileRes.data.user) {
@@ -108,9 +118,38 @@ export default function AuthPage() {
     }
   }
 
+  const validateEmail = (email: string) => /^[\w-.]+@([\w-]+\.)+[\w-]{2,}$/.test(email);
+  const validatePassword = (password: string) => /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/.test(password);
+
+  // Validate từng trường khi nhập/chuyển focus
+  const handleRegisterEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setRegisterEmail(value);
+    let error = "";
+    if (!value) error = "Email là bắt buộc";
+    else if (!validateEmail(value)) error = "Email không hợp lệ";
+    setRegisterErrors(prev => ({ ...prev, email: error }));
+  };
+  const handleRegisterPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setRegisterPassword(value);
+    let error = "";
+    if (!value) error = "Mật khẩu là bắt buộc";
+    else if (!validatePassword(value)) error = "Mật khẩu tối thiểu 8 ký tự, có chữ hoa, số và ký tự đặc biệt";
+    setRegisterErrors(prev => ({ ...prev, password: error }));
+  };
+  const handleRegisterConfirmChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setRegisterConfirm(value);
+    let error = "";
+    if (value !== registerPassword) error = "Mật khẩu xác nhận không khớp";
+    setRegisterErrors(prev => ({ ...prev, confirm: error }));
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setRegisterErrors({});
 
     const username = (document.getElementById("name") as HTMLInputElement)?.value || ""
     const email = (document.getElementById("register-email") as HTMLInputElement)?.value || ""
@@ -122,13 +161,28 @@ export default function AuthPage() {
     const gender = (document.querySelector('input[name="register-gender"]:checked') as HTMLInputElement)?.value || "other"
     const address = (document.getElementById("register-address") as HTMLInputElement)?.value || ""
 
-    if (!fullName || !email || !phone || !dob || !address) {
-      toast.error("Vui lòng nhập đầy đủ thông tin!")
-      setIsLoading(false)
-      return
+    let errors: { email?: string; password?: string; confirm?: string } = {};
+    if (!email) {
+      errors.email = "Email là bắt buộc";
+    } else if (!validateEmail(email)) {
+      errors.email = "Email không hợp lệ";
+    }
+    if (!password) {
+      errors.password = "Mật khẩu là bắt buộc";
+    } else if (!validatePassword(password)) {
+      errors.password = "Mật khẩu tối thiểu 8 ký tự, có chữ hoa, số và ký tự đặc biệt";
     }
     if (password !== confirm) {
-      toast.error("Mật khẩu xác nhận không khớp")
+      errors.confirm = "Mật khẩu xác nhận không khớp";
+    }
+    if (Object.keys(errors).length > 0) {
+      setRegisterErrors(errors);
+      setIsLoading(false);
+      return;
+    }
+
+    if (!fullName || !email || !phone || !dob || !address) {
+      toast.error("Vui lòng nhập đầy đủ thông tin!")
       setIsLoading(false)
       return
     }
@@ -162,8 +216,8 @@ export default function AuthPage() {
       {/* Overlay màu hồng nhạt */}
       <div className="absolute inset-0 bg-pink-100/70 z-10" />
       {/* Khung đăng nhập/đăng ký */}
-      <div className="relative z-20 w-full max-w-4xl">
-        <div className="relative min-h-[650px] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-row transition-all duration-700">
+      <div className="relative z-20 w-full max-w-5xl">
+        <div className="relative min-h-[750px] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-row transition-all duration-700">
           {/* Panel chuyển đổi */}
           <div className={`absolute top-0 left-0 w-1/2 h-full flex flex-col items-center justify-center transition-all duration-700 z-10 ${isRegister ? 'bg-pink-100' : 'bg-pink-200'} ${isRegister ? 'translate-x-0' : 'translate-x-full'} ${isRegister ? 'order-1' : 'order-2'} p-8 md:p-12`}
             style={{ borderTopLeftRadius: 24, borderBottomLeftRadius: 24, borderTopRightRadius: isRegister ? 24 : 0, borderBottomRightRadius: isRegister ? 24 : 0 }}>
@@ -235,60 +289,65 @@ export default function AuthPage() {
           </div>
           {/* Form Đăng ký */}
           <div className={`w-1/2 h-full flex flex-col justify-center items-center px-6 md:px-12 py-8 transition-all duration-700 bg-white absolute top-0 right-0 ${isRegister ? 'translate-x-0 opacity-100 pointer-events-auto order-2' : 'translate-x-full opacity-0 pointer-events-none order-1'} z-20`}
-            style={{ minWidth: 320, maxWidth: 480 }}>
-            <div className="w-full max-w-xs mx-auto">
-              <h2 className="text-3xl font-bold mb-8 text-pink-500 text-center">Tạo tài khoản mới</h2>
-              <form onSubmit={handleRegister} className="space-y-5 overflow-y-auto max-h-[80vh] pb-4">
-                <div>
-                  <Label htmlFor="register-fullname">Họ và tên</Label>
-                  <Input id="register-fullname" type="text" placeholder="Nhập họ tên" required />
-                </div>
-                <div>
-                  <Label htmlFor="register-email">Email</Label>
-                  <Input id="register-email" type="email" placeholder="Nhập email" required />
-                </div>
-                <div>
-                  <Label htmlFor="register-phone">Số điện thoại</Label>
-                  <Input id="register-phone" type="tel" placeholder="0123456789" required />
-                </div>
-                <div>
-                  <Label htmlFor="register-dob">Ngày sinh</Label>
-                  <Input id="register-dob" type="date" required />
-                </div>
-                <div>
-                  <Label>Giới tính</Label>
-                  <div className="flex gap-4">
-                    <label><input type="radio" name="register-gender" value="male" defaultChecked className="accent-pink-500" /> Nam</label>
-                    <label><input type="radio" name="register-gender" value="female" className="accent-pink-500" /> Nữ</label>
-                    <label><input type="radio" name="register-gender" value="other" className="accent-pink-500" /> Khác</label>
+            style={{ minWidth: 320, maxWidth: 540 }}>
+            <div className="w-full max-w-md mx-auto flex flex-col h-full">
+              <h2 className="text-3xl font-bold text-pink-500 text-center mb-4 mt-6">Đăng ký tài khoản</h2>
+              <div className="flex-1 overflow-y-auto">
+                <form onSubmit={handleRegister} className="space-y-6 bg-white rounded-2xl shadow-lg border p-6">
+                  <div>
+                    <Label htmlFor="register-fullname">Họ và tên</Label>
+                    <Input id="register-fullname" type="text" placeholder="Nhập họ tên" required />
                   </div>
-                </div>
-                <div>
-                  <Label htmlFor="register-address">Địa chỉ</Label>
-                  <Input id="register-address" type="text" placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành" required />
-                </div>
-                <div>
-                  <Label htmlFor="register-password">Mật khẩu</Label>
-                  <div className="relative">
-                    <Input id="register-password" type={showRegisterPassword ? "text" : "password"} placeholder="Tạo mật khẩu" required className="pr-10" />
-                    <button type="button" tabIndex={-1} className="absolute right-2 top-2 text-gray-400 hover:text-pink-500" onClick={() => setShowRegisterPassword(v => !v)}>
-                      {showRegisterPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
-                    </button>
+                  <div>
+                    <Label htmlFor="register-email">Email</Label>
+                    <Input id="register-email" type="email" placeholder="Nhập email" required value={registerEmail} onChange={handleRegisterEmailChange} onBlur={handleRegisterEmailChange} />
+                    {registerErrors.email && <div className="text-red-500 text-xs mt-1">{registerErrors.email}</div>}
                   </div>
-                </div>
-                <div>
-                  <Label htmlFor="confirm-password">Xác nhận mật khẩu</Label>
-                  <div className="relative">
-                    <Input id="confirm-password" type={showRegisterConfirm ? "text" : "password"} placeholder="Nhập lại mật khẩu" required className="pr-10" />
-                    <button type="button" tabIndex={-1} className="absolute right-2 top-2 text-gray-400 hover:text-pink-500" onClick={() => setShowRegisterConfirm(v => !v)}>
-                      {showRegisterConfirm ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
-                    </button>
+                  <div>
+                    <Label htmlFor="register-phone">Số điện thoại</Label>
+                    <Input id="register-phone" type="tel" placeholder="0123456789" required />
                   </div>
-                </div>
-                <Button type="submit" className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-3 rounded-lg shadow-sm" disabled={isLoading}>
-                  {isLoading ? "Đang đăng ký..." : "Đăng Ký"}
-                </Button>
-              </form>
+                  <div>
+                    <Label htmlFor="register-dob">Ngày sinh</Label>
+                    <Input id="register-dob" type="date" required />
+                  </div>
+                  <div>
+                    <Label>Giới tính</Label>
+                    <div className="flex gap-4">
+                      <label><input type="radio" name="register-gender" value="male" defaultChecked /> Nam</label>
+                      <label><input type="radio" name="register-gender" value="female" /> Nữ</label>
+                      <label><input type="radio" name="register-gender" value="other" /> Khác</label>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="register-address">Địa chỉ</Label>
+                    <Input id="register-address" type="text" placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành" required />
+                  </div>
+                  <div>
+                    <Label htmlFor="register-password">Mật khẩu</Label>
+                    <div className="relative">
+                      <Input id="register-password" type={showRegisterPassword ? "text" : "password"} placeholder="Tạo mật khẩu" required className="pr-10" value={registerPassword} onChange={handleRegisterPasswordChange} onBlur={handleRegisterPasswordChange} />
+                      <button type="button" tabIndex={-1} className="absolute right-2 top-2 text-gray-400 hover:text-pink-500" onClick={() => setShowRegisterPassword(v => !v)}>
+                        {showRegisterPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                      </button>
+                    </div>
+                    {registerErrors.password && <div className="text-red-500 text-xs mt-1">{registerErrors.password}</div>}
+                  </div>
+                  <div>
+                    <Label htmlFor="confirm-password">Xác nhận mật khẩu</Label>
+                    <div className="relative">
+                      <Input id="confirm-password" type={showRegisterConfirm ? "text" : "password"} placeholder="Nhập lại mật khẩu" required className="pr-10" value={registerConfirm} onChange={handleRegisterConfirmChange} onBlur={handleRegisterConfirmChange} />
+                      <button type="button" tabIndex={-1} className="absolute right-2 top-2 text-gray-400 hover:text-pink-500" onClick={() => setShowRegisterConfirm(v => !v)}>
+                        {showRegisterConfirm ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                      </button>
+                    </div>
+                    {registerErrors.confirm && <div className="text-red-500 text-xs mt-1">{registerErrors.confirm}</div>}
+                  </div>
+                  <Button type="submit" className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-3 rounded-lg shadow-sm" disabled={isLoading}>
+                    {isLoading ? "Đang đăng ký..." : "Đăng Ký"}
+                  </Button>
+                </form>
+              </div>
             </div>
           </div>
         </div>

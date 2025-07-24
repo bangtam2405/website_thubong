@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Eye, Plus, Edit, Trash2, LineChart, Users, ShoppingCart, DollarSign, Package } from "lucide-react"
+import { Eye, Plus, Edit, Trash2, LineChart, Users, ShoppingCart, DollarSign, Package, BarChart as BarChartIcon, TrendingUp } from "lucide-react"
 import Image from "next/image"
 import instance from "@/lib/axiosConfig"
 import { useRouter } from "next/navigation"
@@ -26,6 +26,8 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import CountUp from 'react-countup';
 
 // Định nghĩa kiểu cho một tháng doanh thu
 type MonthRevenue = {
@@ -39,6 +41,9 @@ type MonthRevenue = {
 function StatsTab() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [statType, setStatType] = useState<'revenue' | 'top-products'>('revenue');
+  const [topProducts, setTopProducts] = useState<any[]>([]);
+  const [loadingTop, setLoadingTop] = useState(false);
   // Mặc định: từ ngày này tháng trước đến ngày hiện tại
   function getDefaultFromDate() {
     const d = new Date();
@@ -83,6 +88,15 @@ function StatsTab() {
       .finally(() => setLoading(false));
   };
 
+  // Lấy top sản phẩm bán chạy khi cần
+  useEffect(() => {
+    if (statType === 'top-products' && topProducts.length === 0) {
+      setLoadingTop(true);
+      instance.get('/api/admin/top-products?limit=7').then(res => setTopProducts(res.data)).finally(() => setLoadingTop(false));
+    }
+    // eslint-disable-next-line
+  }, [statType]);
+
   useEffect(() => {
     fetchStats();
     // eslint-disable-next-line
@@ -91,107 +105,176 @@ function StatsTab() {
   if (loading) return <div>Đang tải dữ liệu thống kê...</div>;
   if (!stats) return <div>Không có dữ liệu.</div>;
 
+  // Badge màu cho trạng thái đơn hàng
+  const statusColor = {
+    'Chờ xác nhận': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    'Đã xác nhận': 'bg-blue-100 text-blue-800 border-blue-200',
+    'Đang xử lý': 'bg-orange-100 text-orange-800 border-orange-200',
+    'Đang giao hàng': 'bg-cyan-100 text-cyan-800 border-cyan-200',
+    'Đã giao hàng': 'bg-green-100 text-green-800 border-green-200',
+    'Đã hủy': 'bg-red-100 text-red-700 border-red-200',
+  };
+
   return (
     <div className="space-y-8">
-      <div className="flex gap-4 mb-4 items-end">
-        <div>
-          <label className="block text-sm font-medium mb-1">Từ ngày</label>
-          <input type="date" value={fromDate || getDefaultFromDate()} onChange={e => setFromDate(e.target.value)} className="border rounded px-2 py-1" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Đến ngày</label>
-          <input type="date" value={toDate || getDefaultToDate()} onChange={e => setToDate(e.target.value)} className="border rounded px-2 py-1" />
-        </div>
-        <Button onClick={fetchStats} className="h-10">Lọc</Button>
-      </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+      {/* Card số liệu luôn hiển thị phía trên */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+        <Card className="shadow-lg border-0 bg-gradient-to-br from-pink-100 to-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tổng Doanh Thu</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <DollarSign className="h-7 w-7 text-pink-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalRevenue.toLocaleString()}₫</div>
+            <div className="text-3xl font-extrabold text-pink-600">
+              <CountUp end={stats.totalRevenue} duration={1.2} separator="," />₫
+            </div>
+            <div className="text-xs text-gray-400 mt-1">Tổng doanh thu đã hoàn thành</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="shadow-lg border-0 bg-gradient-to-br from-blue-100 to-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tổng Khách Hàng</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Users className="h-7 w-7 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+{stats.totalCustomers}</div>
+            <div className="text-3xl font-extrabold text-blue-600">
+              +<CountUp end={stats.totalCustomers} duration={1.2} separator="," />
+            </div>
+            <div className="text-xs text-gray-400 mt-1">Khách đã đăng ký</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="shadow-lg border-0 bg-gradient-to-br from-green-100 to-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tổng Đơn Hàng</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+            <ShoppingCart className="h-7 w-7 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+{stats.totalOrders}</div>
+            <div className="text-3xl font-extrabold text-green-600">
+              +<CountUp end={stats.totalOrders} duration={1.2} separator="," />
+            </div>
+            <div className="text-xs text-gray-400 mt-1">Tất cả trạng thái</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="shadow-lg border-0 bg-gradient-to-br from-yellow-100 to-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tổng Sản Phẩm</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <Package className="h-7 w-7 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalProducts}</div>
+            <div className="text-3xl font-extrabold text-yellow-600">
+              <CountUp end={stats.totalProducts} duration={1.2} separator="," />
+            </div>
+            <div className="text-xs text-gray-400 mt-1">Đang kinh doanh</div>
           </CardContent>
         </Card>
       </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
-          <CardHeader>
-            <CardTitle>Doanh Thu 12 Tháng Gần Nhất</CardTitle>
-          </CardHeader>
-          <CardContent className="pl-2">
-            <ResponsiveContainer width="100%" height={350}>
-              <BarChart data={stats.monthlyRevenue}>
-                <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${(value as number) / 1000}k`} />
-                <Bar dataKey="total" fill="currentColor" radius={[4, 4, 0, 0]} className="fill-primary" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="col-span-3">
-          <CardHeader>
-            <CardTitle>Đơn Hàng Gần Đây</CardTitle>
-            <CardDescription>
-              5 đơn hàng mới nhất.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-             <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Khách Hàng</TableHead>
-                    <TableHead>Trạng thái</TableHead>
-                    <TableHead>Tổng</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {stats.recentOrders.map((order: any) => (
-                    <TableRow key={order._id}>
-                      <TableCell>
-                        <div className="font-medium">{order.user?.username || 'N/A'}</div>
-                        <div className="hidden text-sm text-muted-foreground md:inline">
-                          {order.user?.email}
-                        </div>
-                      </TableCell>
-                      <TableCell><Badge>{order.status}</Badge></TableCell>
-                      <TableCell>{order.totalPrice.toLocaleString()}₫</TableCell>
+      {/* Chọn loại thống kê và biểu đồ bên dưới */}
+      <div className="space-y-8">
+        <div className="flex gap-4 mb-4 items-end">
+          <div className="flex gap-2">
+            <Button
+              variant={statType === 'revenue' ? 'default' : 'outline'}
+              className={statType === 'revenue' ? 'bg-pink-500 text-white' : ''}
+              onClick={() => setStatType('revenue')}
+              size="sm"
+            >
+              <TrendingUp className="w-4 h-4 mr-1" /> Doanh thu
+            </Button>
+            <Button
+              variant={statType === 'top-products' ? 'default' : 'outline'}
+              className={statType === 'top-products' ? 'bg-[#38bdf8] text-white' : ''}
+              onClick={() => setStatType('top-products')}
+              size="sm"
+            >
+              <BarChartIcon className="w-4 h-4 mr-1" /> Sản phẩm bán chạy
+            </Button>
+          </div>
+          <div className="flex-1" />
+          <div>
+            <label className="block text-sm font-medium mb-1">Từ ngày</label>
+            <input type="date" value={fromDate || getDefaultFromDate()} onChange={e => setFromDate(e.target.value)} className="border rounded px-2 py-1" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Đến ngày</label>
+            <input type="date" value={toDate || getDefaultToDate()} onChange={e => setToDate(e.target.value)} className="border rounded px-2 py-1" />
+          </div>
+          <Button onClick={fetchStats} className="h-10 bg-pink-500 hover:bg-pink-600 text-white">Lọc</Button>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
+          {/* Biểu đồ chính */}
+          <Card className="col-span-4 shadow-lg border-0">
+            <CardHeader>
+              <CardTitle>{statType === 'revenue' ? 'Doanh Thu 12 Tháng Gần Nhất' : 'Top Sản Phẩm Bán Chạy'}</CardTitle>
+            </CardHeader>
+            <CardContent className="pl-2">
+              {statType === 'revenue' ? (
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={stats.monthlyRevenue}>
+                    <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${(value as number) / 1000}k`} />
+                    <Bar dataKey="total" fill="#ec4899" radius={[4, 4, 0, 0]} label={{ position: "top", fill: "#ec4899", fontWeight: 600, formatter: (v: number) => v.toLocaleString() }}>
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                loadingTop ? (
+                  <div className="flex justify-center items-center h-72 text-gray-400">Đang tải...</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={350}>
+                    <BarChart data={topProducts} layout="vertical">
+                      <XAxis type="number" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis dataKey="name" type="category" stroke="#888888" fontSize={13} tickLine={false} axisLine={false} width={120} />
+                      <Bar dataKey="sold" fill="#38bdf8" radius={[0, 4, 4, 0]} label={{ position: "right", fill: "#38bdf8", fontWeight: 600, formatter: (v: number) => v.toLocaleString() }}>
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )
+              )}
+            </CardContent>
+          </Card>
+          {/* Bảng đơn hàng gần đây giữ nguyên */}
+          <Card className="col-span-3 shadow-lg border-0">
+            <CardHeader>
+              <CardTitle>Đơn Hàng Gần Đây</CardTitle>
+              <CardDescription>
+                5 đơn hàng mới nhất.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+               <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Khách Hàng</TableHead>
+                      <TableHead>Trạng thái</TableHead>
+                      <TableHead>Tổng</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-          </CardContent>
-        </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {stats.recentOrders.map((order: any) => (
+                      <TableRow key={order._id} className="hover:bg-pink-50 transition">
+                        <TableCell>
+                          <div className="font-medium text-pink-600 flex items-center gap-2">
+                            <Users className="w-5 h-5 text-pink-400" />
+                            {order.user?.username || order.user?.email || 'Ẩn danh'}
+                          </div>
+                          <div className="hidden text-xs text-gray-400 md:inline">
+                            {order.user?.email}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className={cn(
+                            "inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border",
+                            statusColor[order.status as keyof typeof statusColor] || "bg-gray-100 text-gray-700 border-gray-200"
+                          )}>{order.status}</span>
+                        </TableCell>
+                        <TableCell className="font-bold text-right text-pink-600">{order.totalPrice.toLocaleString()}₫</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

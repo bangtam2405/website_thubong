@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { Pacifico } from 'next/font/google';
 import "./globals.css";
 import Providers from "./providers";
 import AppLayoutClient from "@/components/AppLayoutClient";
 
 const inter = Inter({ subsets: ["latin"] });
+const pacifico = Pacifico({ subsets: ['latin'], weight: '400', display: 'swap' });
 
 export const metadata: Metadata = {
   title: "Thú Bông Tùy Chỉnh - Tạo Thú Bông Theo Ý Bạn",

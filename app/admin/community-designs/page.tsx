@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Trash2, EyeOff } from "lucide-react";
+import { Trash2, EyeOff, Search } from "lucide-react";
 import DesignTabs from "@/components/DesignTabs";
 import Image from "next/image";
 import {
@@ -23,6 +23,7 @@ export default function AdminCommunityDesignsPage() {
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     fetchDesigns();
@@ -58,13 +59,37 @@ export default function AdminCommunityDesignsPage() {
     setActionId(null);
   }
 
+  const filteredDesigns = designs.filter(d => {
+    const s = search.trim().toLowerCase();
+    if (!s) return true;
+    return (
+      (d.designName && d.designName.toLowerCase().includes(s)) ||
+      (d.description && d.description.toLowerCase().includes(s)) ||
+      (d.userName && d.userName.toLowerCase().includes(s))
+    );
+  });
+
   return (
     <div className="container mx-auto py-10 px-4">
       <h1 className="text-2xl font-bold mb-6 text-pink-600">Bảng điều khiển quản trị</h1>
       <DesignTabs />
       <h1 className="text-2xl font-bold mb-4">Quản lý thiết kế cộng đồng</h1>
+      <div className="flex items-center gap-2 mb-4">
+        <div className="relative w-full max-w-xs">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+            <Search className="w-5 h-5" />
+          </span>
+          <input
+            type="text"
+            className="pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-pink-200 outline-none w-full"
+            placeholder="Tìm kiếm tên thiết kế và người tạo"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {loading ? <div className="col-span-full text-center text-gray-400">Đang tải...</div> : designs.length === 0 ? <div className="col-span-full text-center text-gray-400">Chưa có thiết kế cộng đồng nào.</div> : designs.map((d) => (
+        {loading ? <div className="col-span-full text-center text-gray-400">Đang tải...</div> : filteredDesigns.length === 0 ? <div className="col-span-full text-center text-gray-400">Chưa có thiết kế cộng đồng nào.</div> : filteredDesigns.map((d) => (
           <div key={d._id} className="overflow-hidden group bg-gray-50 rounded-xl border shadow-sm flex flex-col">
             <div className="relative">
               <div className="aspect-square overflow-hidden rounded-t-xl">

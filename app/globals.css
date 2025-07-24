@@ -71,3 +71,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Fix radio button accent color to black */
+input[type="radio"]:checked {
+  accent-color: #000;
+}
