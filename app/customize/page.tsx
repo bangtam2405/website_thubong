@@ -54,7 +54,7 @@ type SelectedOptions = {
   furColor: string;
   material: string;
   clothing: string;
-  accessories: string[];
+  accessories: { [key: string]: number }; // Thay đổi từ string[] thành object
   name: string;
   size: string;
   // Add index signature at the end
@@ -65,7 +65,23 @@ type SelectedOptions = {
 function robustMergeOptions(defaults: SelectedOptions, loaded: any): SelectedOptions {
   const merged = { ...defaults };
   Object.keys(defaults).forEach(key => {
-    if (Array.isArray(defaults[key])) {
+    if (key === 'accessories') {
+      // Xử lý đặc biệt cho accessories
+      if (Array.isArray(loaded[key])) {
+        // Chuyển đổi từ array cũ sang object mới
+        const accessoriesObj: { [key: string]: number } = {};
+        loaded[key].forEach((item: any) => {
+          const id = typeof item === 'object' && item !== null && item._id ? item._id : item;
+          accessoriesObj[id] = (accessoriesObj[id] || 0) + 1;
+        });
+        merged[key] = accessoriesObj;
+      } else if (typeof loaded[key] === 'object' && loaded[key] !== null) {
+        // Nếu đã là object thì giữ nguyên
+        merged[key] = loaded[key];
+      } else {
+        merged[key] = {};
+      }
+    } else if (Array.isArray(defaults[key])) {
       if (Array.isArray(loaded[key])) {
         merged[key] = loaded[key].map((item: any) =>
           typeof item === 'object' && item !== null && item._id ? item._id : item
@@ -112,7 +128,7 @@ export default function CustomizePage() {
     furColor: "",
     material: "",
     clothing: "",
-    accessories: [] as string[],
+    accessories: {} as { [key: string]: number },
     name: "",
     size: "",
   };
@@ -236,7 +252,7 @@ export default function CustomizePage() {
       selectedOptions.mouth ||
       selectedOptions.furColor ||
       selectedOptions.clothing ||
-      selectedOptions.accessories.length > 0
+      Object.keys(selectedOptions.accessories).length > 0
     );
     if (!hasAnySelection) {
       setTotalPrice(0);
@@ -286,10 +302,10 @@ export default function CustomizePage() {
     }
 
     // Cộng giá phụ kiện
-    selectedOptions.accessories.forEach((accId) => {
+    Object.entries(selectedOptions.accessories).forEach(([accId, quantity]) => {
       const selectedAcc = categories.find((item) => item._id === accId)
       if (typeof selectedAcc?.price === 'number') {
-        price += selectedAcc.price
+        price += selectedAcc.price * quantity
       }
     })
 
@@ -332,11 +348,13 @@ export default function CustomizePage() {
           if (res.data) {
             let parts = res.data.parts;
             console.log('DEBUG API /api/designs/:id response parts:', parts);
+            console.log('DEBUG parts.accessories:', parts.accessories);
             if (parts) {
               if (!parts.body) {
                 console.warn('CẢNH BÁO: API trả về parts.body là rỗng! Thiết kế này đã bị lưu sai hoặc backend chưa sửa đúng.');
               }
               const merged = robustMergeOptions(defaultSelectedOptions, parts);
+              console.log('DEBUG merged.accessories:', merged.accessories);
               setSelectedOptions(merged);
               // Thêm log để debug
               const bodyParent = categories.find(cat => cat.name === "Thân" && cat.parent === null);
@@ -380,6 +398,7 @@ export default function CustomizePage() {
   // Load template nếu có templateId
   useEffect(() => {
     if (templateId) {
+      // Thử load từ designs trước
       fetch(`http://localhost:5000/api/designs/${templateId}`)
         .then(res => res.json())
         .then(data => {
@@ -391,6 +410,31 @@ export default function CustomizePage() {
               setSelectedOptions(prev => robustMergeOptions({ ...defaultSelectedOptions, ...prev }, data.parts));
             }
           }
+        })
+        .catch(() => {
+          // Nếu không tìm thấy design, thử load từ products
+          fetch(`http://localhost:5000/api/products/${templateId}`)
+            .then(res => res.json())
+            .then(product => {
+              if (product && product.customData && product.customData.canvasJSON) {
+                setCanvasJSON(product.customData.canvasJSON);
+                setLoadedCanvasJSON(product.customData.canvasJSON);
+                if (product.customData.parts) {
+                  setSelectedOptions(prev => robustMergeOptions({ ...defaultSelectedOptions, ...prev }, product.customData.parts));
+                }
+              } else if (product) {
+                // Nếu sản phẩm không có customData, tạo template từ thông tin sản phẩm
+                const templateParts = {
+                  name: product.name,
+                  size: product.specifications?.size || "",
+                  // Có thể thêm các thông tin khác từ product.specifications
+                };
+                setSelectedOptions(prev => robustMergeOptions({ ...defaultSelectedOptions, ...prev }, templateParts));
+              }
+            })
+            .catch(err => {
+              console.error("Không thể load template:", err);
+            });
         });
     }
   }, [templateId]);
@@ -406,9 +450,10 @@ export default function CustomizePage() {
       if (category === "accessories") {
         return {
           ...prev,
-          accessories: prev.accessories.includes(optionId)
-            ? prev.accessories.filter((id) => id !== optionId)
-            : [...prev.accessories, optionId],
+          accessories: {
+            ...prev.accessories,
+            [optionId]: (prev.accessories[optionId] || 0) + 1
+          }
         };
       } else {
         return {
@@ -502,8 +547,8 @@ export default function CustomizePage() {
         mouth: categories.find((o) => o._id === selectedOptions.mouth)?.name || "",
         furColor: categories.find((o) => o._id === selectedOptions.furColor)?.name || "",
         clothing: selectedOptions.clothing ? categories.find((o) => o._id === selectedOptions.clothing)?.name || "" : null,
-        accessories: selectedOptions.accessories
-          .map(id => categories.find((o) => o._id === id)?.name)
+        accessories: Object.entries(selectedOptions.accessories)
+          .map(([id, quantity]) => categories.find((o) => o._id === id)?.name)
           .filter((name): name is string => name !== undefined),
         size: selectedOptions.size,
         material: selectedMaterial?.name || "",
@@ -571,8 +616,8 @@ export default function CustomizePage() {
         mouth: categories.find((o) => o._id === selectedOptions.mouth)?.name || "",
         furColor: categories.find((o) => o._id === selectedOptions.furColor)?.name || "",
         clothing: selectedOptions.clothing ? categories.find((o) => o._id === selectedOptions.clothing)?.name || "" : null,
-        accessories: selectedOptions.accessories
-          .map(id => categories.find((o) => o._id === id)?.name)
+        accessories: Object.entries(selectedOptions.accessories)
+          .map(([id, quantity]) => categories.find((o) => o._id === id)?.name)
           .filter((name): name is string => name !== undefined),
         size: selectedOptions.size
       },
@@ -585,12 +630,24 @@ export default function CustomizePage() {
       console.log("Token length:", token?.length)
       console.log("Customized product:", customizedProduct)
       
+      // Chuyển đổi accessories từ object sang array để tương thích với backend
+      const partsForSave = { ...selectedOptions };
+      if (selectedOptions.accessories && typeof selectedOptions.accessories === 'object') {
+        const accessoriesArray: string[] = [];
+        Object.entries(selectedOptions.accessories).forEach(([accId, quantity]) => {
+          for (let i = 0; i < quantity; i++) {
+            accessoriesArray.push(accId);
+          }
+        });
+        (partsForSave as any).accessories = accessoriesArray;
+      }
+      
       // Lưu sản phẩm tùy chỉnh vào database trước
       const productResponse = await axios.post("http://localhost:5000/api/products/custom", {
         ...customizedProduct,
         isCustom: true,
         customData: {
-          parts: selectedOptions,
+          parts: partsForSave,
           canvasJSON: fabricRef.current.toJSON()
         }
       }, {
@@ -682,10 +739,15 @@ export default function CustomizePage() {
       setSelectedOptions(prev => {
         const next = { ...prev }
         
-        // Xóa khỏi accessories nếu là accessory
-        if (activeObject.partType === 'accessory') {
-          next.accessories = prev.accessories.filter(id => id !== activeObject.partId)
-        } else {
+                  // Xóa khỏi accessories nếu là accessory
+          if (activeObject.partType === 'accessory') {
+            const accId = activeObject.partId;
+            if (accId && next.accessories[accId] > 1) {
+              next.accessories[accId]--;
+            } else if (accId) {
+              delete next.accessories[accId];
+            }
+          } else {
           // Xóa khỏi các trường khác
           const fieldMap: { [key: string]: string } = {
             'ears': 'ears',
@@ -861,7 +923,10 @@ export default function CustomizePage() {
     console.log("handleAccessoryAdd - accId:", accId);
     setSelectedOptions(prev => ({
       ...prev,
-      accessories: [...prev.accessories, accId],
+      accessories: {
+        ...prev.accessories,
+        [accId]: (prev.accessories[accId] || 0) + 1
+      }
     }));
   };
 
@@ -1004,12 +1069,14 @@ export default function CustomizePage() {
                   {selectedOptions.clothing && (
                     <li>Quần Áo: {categories.find((o) => o._id === selectedOptions.clothing)?.name}</li>
                   )}
-                  {selectedOptions.accessories.length > 0 && (
+                  {Object.entries(selectedOptions.accessories).length > 0 && (
                     <li>
                       Phụ Kiện:{" "}
-                      {selectedOptions.accessories
-                        .map((id) => categories.find((o) => o._id === id)?.name)
-                        .join(", ")}
+                      {Object.entries(selectedOptions.accessories).map(([id, quantity]) => (
+                        <span key={id}>
+                          {categories.find((o) => o._id === id)?.name} ({quantity})
+                        </span>
+                      ))}
                     </li>
                   )}
                   <li>
@@ -1089,12 +1156,15 @@ export default function CustomizePage() {
                         </span>
                       </li>
                     )}
-                    {selectedOptions.accessories.map((accId, idx) => (
-                      <li key={accId + '-' + idx} className="flex justify-between">
-                        <span>{categories.find((o) => o._id === accId)?.name}:</span>
-                        <span>+{categories.find((o) => o._id === accId)?.price?.toLocaleString('vi-VN')}₫</span>
-                      </li>
-                    ))}
+                    {Object.entries(selectedOptions.accessories).map(([accId, quantity]) => {
+                      const accessoryObj = categories.find((o) => o._id === accId);
+                      return accessoryObj && accessoryObj.price !== undefined ? (
+                        <li key={accId} className="flex justify-between">
+                          <span>{accessoryObj.name} ({quantity}):</span>
+                          <span>+{(accessoryObj.price * quantity).toLocaleString('vi-VN')}₫</span>
+                        </li>
+                      ) : null;
+                    })}
                     {selectedGiftBox && (
                       <li className="flex justify-between">
                         <span>Hộp quà: {selectedGiftBox.name}</span>
@@ -1274,7 +1344,7 @@ export default function CustomizePage() {
                           <div
                             key={option._id}
                             className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                              selectedOptions.accessories?.includes(option._id) ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
+                              selectedOptions.accessories[option._id] ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
                             }`}
                             onClick={() => handleOptionSelect(mapGroupToOptionKey(group), option._id)}
                           >
@@ -1287,6 +1357,11 @@ export default function CustomizePage() {
                             />
                             <p className="text-center text-sm">{option.name}</p>
                             <p className="text-center text-xs text-pink-500">+{option.price?.toLocaleString('vi-VN')}₫</p>
+                            {selectedOptions.accessories[option._id] && (
+                              <p className="text-center text-xs text-blue-500 font-bold">
+                                Đã chọn: {selectedOptions.accessories[option._id]}
+                              </p>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -1439,11 +1514,23 @@ export default function CustomizePage() {
                     return;
                   }
                   // Có thể kiểm tra thêm các trường khác nếu muốn
+                  // Chuyển đổi accessories từ object sang array để tương thích với backend
+                  const partsForSave = { ...selectedOptions };
+                  if (selectedOptions.accessories && typeof selectedOptions.accessories === 'object') {
+                    const accessoriesArray: string[] = [];
+                    Object.entries(selectedOptions.accessories).forEach(([accId, quantity]) => {
+                      for (let i = 0; i < quantity; i++) {
+                        accessoriesArray.push(accId);
+                      }
+                    });
+                    (partsForSave as any).accessories = accessoriesArray;
+                  }
+                  
                   const saveBody = {
                     userId: role === 'admin' ? 'admin' : userId,
                     designName: saveDesignForm.name || selectedOptions.name || "Thiết kế mới",
                     description: saveDesignForm.description,
-                    parts: selectedOptions,
+                    parts: partsForSave,
                     canvasJSON: JSON.stringify(canvasData),
                     previewImage: saveDesignForm.previewImage
                   };

@@ -64,7 +64,7 @@ export default function AccessoriesPage() {
           <div className="col-span-full text-center text-gray-400">Chưa có sản phẩm phụ kiện nào.</div>
         )}
         {isClient && !loading && accessoriesItems.map((item) => (
-          <CardProduct key={item._id} product={item} />
+          <CardProduct key={item._id} product={item} showCustomizeButton={false} />
         ))}
       </div>
     </div>

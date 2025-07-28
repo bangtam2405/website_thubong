@@ -7,7 +7,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Button } from "@/components/ui/button"
 import { AddToCartButton } from "@/components/AddToCartButton"
 import { Product } from "@/types/product"
-import { Heart } from "lucide-react"
+import { Heart, Palette } from "lucide-react"
 import axios from "axios"
 import { toast } from "sonner"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -48,6 +48,12 @@ export default function ProductListPage({ params }: ProductListPageProps) {
       console.error("Lỗi khi thêm vào wishlist:", error)
       toast.error("Có lỗi xảy ra khi thêm vào danh sách yêu thích!")
     }
+  }
+
+  const handleCustomize = (product: Product) => {
+    // Sử dụng customizeLink từ sản phẩm nếu có, nếu không thì dùng link mặc định
+    const customizeUrl = product.customizeLink || `/customize?edit=68874d8c490eca1da4d7aacb`;
+    window.location.href = customizeUrl;
   }
 
   useEffect(() => {
@@ -172,6 +178,20 @@ export default function ProductListPage({ params }: ProductListPageProps) {
                   </Button>
                 </Link>
                 <AddToCartButton product={product} className="flex-1" />
+                                 {params.type !== "accessories" && (
+                   <Button 
+                     variant="outline" 
+                     size="icon"
+                     onClick={(e) => {
+                       e.preventDefault()
+                       handleCustomize(product)
+                     }}
+                     className="flex-shrink-0"
+                     title="Tùy chỉnh"
+                   >
+                     <Palette className="h-4 w-4" />
+                   </Button>
+                 )}
                 <Button 
                   variant="outline" 
                   size="icon"

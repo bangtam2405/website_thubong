@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCartShopping, faStar } from '@fortawesome/free-solid-svg-icons';
-import { Heart } from 'lucide-react';
+import { Heart, Palette } from 'lucide-react';
 import { AddToCartButton } from "@/components/AddToCartButton";
 import { formatDateVN } from "@/lib/utils";
 import axios from 'axios';
@@ -29,6 +29,7 @@ interface CardProductProps {
     sold?: number;
     stock?: number;
     featured?: boolean;
+    customizeLink?: string; // Thêm trường này
     specifications?: {
       body?: string;
       ears?: string;
@@ -42,9 +43,10 @@ interface CardProductProps {
     updatedAt?: string;
     categoryId?: string;
   };
+  showCustomizeButton?: boolean; // Thêm prop này
 }
 
-const CardProduct: React.FC<CardProductProps> = ({ product }) => {
+const CardProduct: React.FC<CardProductProps> = ({ product, showCustomizeButton = true }) => {
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [loadingWishlist, setLoadingWishlist] = useState(false);
 
@@ -93,6 +95,14 @@ const CardProduct: React.FC<CardProductProps> = ({ product }) => {
       toast.error('Có lỗi xảy ra khi thêm vào danh sách yêu thích!');
     }
   };
+
+  const handleCustomize = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Sử dụng customizeLink từ sản phẩm nếu có, nếu không thì dùng link mặc định
+    const customizeUrl = product.customizeLink || `/customize?edit=68874d8c490eca1da4d7aacb`;
+    window.location.href = customizeUrl;
+  };
   return (
     <div className="overflow-hidden group cursor-pointer transition-shadow hover:shadow-lg rounded-xl bg-white border">
       <Link href={`/product/${product._id}`} className="block">
@@ -132,23 +142,34 @@ const CardProduct: React.FC<CardProductProps> = ({ product }) => {
         </div>
       </Link>
       <div className="p-4 pt-0 flex flex-col gap-2">
-        <AddToCartButton product={{
-          _id: product._id,
-          name: product.name,
-          description: product.description || "",
-          price: product.price,
-          image: product.image || "/placeholder.svg",
-          type: product.type || "teddy",
-          rating: typeof product.rating === "number" ? product.rating : 5,
-          reviews: typeof product.reviews === "number" ? product.reviews : 0,
-          sold: typeof product.sold === "number" ? product.sold : 0,
-          stock: typeof product.stock === "number" ? product.stock : 99,
-          featured: !!product.featured,
-          specifications: product.specifications,
-          createdAt: product.createdAt || new Date().toISOString(),
-          updatedAt: product.updatedAt || new Date().toISOString(),
-          categoryId: product.categoryId,
-        }} className="w-full bg-pink-500 hover:bg-pink-600 text-white" />
+        <div className="flex gap-2">
+          <AddToCartButton product={{
+            _id: product._id,
+            name: product.name,
+            description: product.description || "",
+            price: product.price,
+            image: product.image || "/placeholder.svg",
+            type: product.type || "teddy",
+            rating: typeof product.rating === "number" ? product.rating : 5,
+            reviews: typeof product.reviews === "number" ? product.reviews : 0,
+            sold: typeof product.sold === "number" ? product.sold : 0,
+            stock: typeof product.stock === "number" ? product.stock : 99,
+            featured: !!product.featured,
+            specifications: product.specifications,
+            createdAt: product.createdAt || new Date().toISOString(),
+            updatedAt: product.updatedAt || new Date().toISOString(),
+            categoryId: product.categoryId,
+          }} className={showCustomizeButton ? "flex-1 bg-pink-500 hover:bg-pink-600 text-white" : "w-full bg-pink-500 hover:bg-pink-600 text-white"} />
+          {showCustomizeButton && (
+            <button
+              onClick={handleCustomize}
+              className="px-3 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-md transition-colors flex items-center justify-center"
+              title="Tùy chỉnh sản phẩm"
+            >
+              <Palette className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

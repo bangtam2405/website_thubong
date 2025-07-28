@@ -10,6 +10,7 @@ export type Product = {
   sold: number
   stock: number
   featured: boolean
+  customizeLink?: string // Link mẫu thiết kế
   specifications?: {
     body?: string
     ears?: string

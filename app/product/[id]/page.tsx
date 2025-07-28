@@ -6,7 +6,7 @@ import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Star, Heart, Share2, Truck, Shield, RefreshCw, ShoppingCart } from "lucide-react"
+import { Star, Heart, Share2, Truck, Shield, RefreshCw, ShoppingCart, Palette } from "lucide-react"
 import axios from "axios"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCart } from "@/contexts/CartContext"
@@ -106,6 +106,14 @@ export default function ProductDetail() {
     }
   }
 
+  const handleCustomize = () => {
+    if (!product) return
+    
+    // Sử dụng customizeLink từ sản phẩm nếu có, nếu không thì dùng link mặc định
+    const customizeUrl = product.customizeLink || `/customize?edit=68874d8c490eca1da4d7aacb`
+    window.location.href = customizeUrl
+  }
+
   if (loading) {
     return (
       <div className="container mx-auto py-12 px-4">
@@ -200,6 +208,11 @@ export default function ProductDetail() {
               <Button variant="outline" className="flex-1" onClick={handleAddToWishlist}>
                 <Heart className="mr-2 h-5 w-5" />Yêu thích
               </Button>
+                             {product.type !== "accessory" && (
+                 <Button variant="outline" onClick={handleCustomize}>
+                   <Palette className="mr-2 h-5 w-5" />Tùy chỉnh
+                 </Button>
+               )}
               <Button variant="outline"><Share2 className="h-5 w-5" /></Button>
             </div>
             <div className="flex flex-wrap gap-4 mb-2">

@@ -292,7 +292,7 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
     // Chỉ vẽ khi có ít nhất một phần tử được chọn
     const hasAnySelection = selectedOptions.body || selectedOptions.ears || selectedOptions.eyes || 
                            selectedOptions.nose || selectedOptions.mouth || selectedOptions.furColor || 
-                           selectedOptions.clothing || (selectedOptions.accessories && selectedOptions.accessories.length > 0);
+                           selectedOptions.clothing || (selectedOptions.accessories && Object.keys(selectedOptions.accessories).length > 0);
     
     console.log("Has any selection:", hasAnySelection);
     
@@ -315,6 +315,15 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
       if (type === 'accessory') {
         const accessorySnaps = snapPoints.filter(p => p.type === 'accessory')
         snap = accessorySnaps[accessoryIndex ?? 0] || { x: 0, y: 0, type }
+        
+        // Kiểm tra xem accessory này đã tồn tại chưa
+        const existingAccessory = fabricCanvasRef.current.getObjects().find((obj: any) => 
+          obj.partType === 'accessory' && obj.partId === id && obj.accessoryIndex === accessoryIndex
+        );
+        if (existingAccessory) {
+          console.log('Accessory already exists, skipping creation');
+          return;
+        }
       } else {
         snap = snapPoints.find(p => p.type === type && (!side || p.side === side)) || { x: 0, y: 0, type }
       }
@@ -378,6 +387,7 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
             partType: type,
             partSide: side || null,
             partId: id,
+            accessoryIndex: accessoryIndex,
           })
           // Nếu đã có trạng thái cũ thì apply lại
           let state = partStatesRef.current[id];
@@ -413,8 +423,6 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
       img.src = url
     }
 
-    // Đảm bảo mỗi partType chỉ add đúng 1 lần mỗi lần render
-    const addedTypes = new Set<string>();
     // Helper: clear all objects of a partType before adding new one
     function clearPartType(type: string) {
       if (fabricCanvasRef.current) {
@@ -422,57 +430,125 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
         objsToRemove.forEach((obj: any) => fabricCanvasRef.current.remove(obj));
       }
     }
+
+    // Helper: check if option changed for a part type
+    function hasOptionChanged(type: string, currentOption: string) {
+      const existingObj = fabricCanvasRef.current.getObjects().find((obj: any) => obj.partType === type);
+      // Nếu không có object nào hoặc object có partId khác với currentOption
+      return !existingObj || existingObj.partId !== currentOption;
+    }
+
+    // Helper: preserve existing object position if option hasn't changed
+    function preserveExistingObject(type: string, currentOption: string) {
+      const existingObj = fabricCanvasRef.current.getObjects().find((obj: any) => obj.partType === type);
+      if (existingObj && existingObj.partId === currentOption) {
+        // Giữ nguyên object hiện tại, không tạo lại
+        return true;
+      }
+      return false;
+    }
+
     // 1. Body
-    if (selectedOptions.body && !addedTypes.has('body')) {
-      clearPartType('body');
-      addPart(selectedOptions.body, 'body');
-      addedTypes.add('body');
+    if (selectedOptions.body) {
+      if (!preserveExistingObject('body', selectedOptions.body)) {
+        clearPartType('body');
+        addPart(selectedOptions.body, 'body');
+      }
     }
     // 2. Ears
-    if (selectedOptions.ears && !addedTypes.has('ears')) {
-      clearPartType('ears');
-      addPart(selectedOptions.ears, 'ears');
-      addedTypes.add('ears');
+    if (selectedOptions.ears) {
+      if (!preserveExistingObject('ears', selectedOptions.ears)) {
+        clearPartType('ears');
+        addPart(selectedOptions.ears, 'ears');
+      }
     }
     // 3. Eyes
-    if (selectedOptions.eyes && !addedTypes.has('eyes')) {
-      clearPartType('eyes');
-      addPart(selectedOptions.eyes, 'eyes');
-      addedTypes.add('eyes');
-      if (fabricCanvasRef.current) {
-        const eyesObjs = fabricCanvasRef.current.getObjects().filter((obj: any) => obj.partType === 'eyes');
-        if (eyesObjs.length > 1) {
-          eyesObjs.slice(0, -1).forEach((obj: any) => fabricCanvasRef.current.remove(obj));
+    if (selectedOptions.eyes) {
+      if (!preserveExistingObject('eyes', selectedOptions.eyes)) {
+        clearPartType('eyes');
+        addPart(selectedOptions.eyes, 'eyes');
+        if (fabricCanvasRef.current) {
+          const eyesObjs = fabricCanvasRef.current.getObjects().filter((obj: any) => obj.partType === 'eyes');
+          if (eyesObjs.length > 1) {
+            eyesObjs.slice(0, -1).forEach((obj: any) => fabricCanvasRef.current.remove(obj));
+          }
         }
       }
     }
     // 4. Nose
-    if (selectedOptions.nose && !addedTypes.has('nose')) {
-      clearPartType('nose');
-      addPart(selectedOptions.nose, 'nose');
-      addedTypes.add('nose');
+    if (selectedOptions.nose) {
+      if (!preserveExistingObject('nose', selectedOptions.nose)) {
+        clearPartType('nose');
+        addPart(selectedOptions.nose, 'nose');
+      }
     }
     // Debug: Kiểm tra selectedOptions.mouth và categories (miệng)
     console.log('[CustomFabricCanvas] selectedOptions.mouth:', selectedOptions.mouth);
     console.log('[CustomFabricCanvas] categories (mouth):', categories.filter(c => c.name && c.name.toLowerCase().includes('miệng')));
     // 5. Mouth
-    if (selectedOptions.mouth && !addedTypes.has('mouth')) {
-      clearPartType('mouth');
-      addPart(selectedOptions.mouth, 'mouth');
-      addedTypes.add('mouth');
+    if (selectedOptions.mouth) {
+      if (!preserveExistingObject('mouth', selectedOptions.mouth)) {
+        clearPartType('mouth');
+        addPart(selectedOptions.mouth, 'mouth');
+      }
     }
     // 6. Clothing
-    if (selectedOptions.clothing && !addedTypes.has('clothing')) {
-      clearPartType('clothing');
-      addPart(selectedOptions.clothing, 'clothing');
-      addedTypes.add('clothing');
+    if (selectedOptions.clothing) {
+      if (!preserveExistingObject('clothing', selectedOptions.clothing)) {
+        clearPartType('clothing');
+        addPart(selectedOptions.clothing, 'clothing');
+      }
     }
     // 7. Accessories (mảng)
-    if (selectedOptions.accessories && selectedOptions.accessories.length > 0) {
-      clearPartType('accessory');
-      selectedOptions.accessories.forEach((accId: string, idx: number) => {
-        addPart(accId, 'accessory', undefined, idx);
+    if (selectedOptions.accessories && Object.keys(selectedOptions.accessories).length > 0) {
+      // Không xóa accessories cũ, chỉ thêm mới hoặc cập nhật
+      const existingAccessories = fabricCanvas.getObjects().filter((obj: any) => obj.partType === 'accessory');
+      const existingAccessoryIds = new Set(existingAccessories.map((obj: any) => obj.partId));
+      
+      // Tính tổng số accessories hiện tại để làm base index
+      let totalAccessoryIndex = 0;
+      Object.entries(selectedOptions.accessories).forEach(([accId, quantity]) => {
+        const neededCount = quantity as number;
+        totalAccessoryIndex += neededCount;
       });
+      
+      // Xử lý từng loại accessory
+      let currentIndex = 0;
+      Object.entries(selectedOptions.accessories).forEach(([accId, quantity]) => {
+        const existingAccessoriesOfType = existingAccessories.filter((obj: any) => obj.partId === accId);
+        const existingCount = existingAccessoriesOfType.length;
+        const neededCount = quantity as number;
+        
+        if (neededCount > existingCount) {
+          // Thêm accessories mới
+          for (let i = existingCount; i < neededCount; i++) {
+            addPart(accId, 'accessory', undefined, currentIndex);
+            currentIndex++;
+          }
+        } else if (neededCount < existingCount) {
+          // Xóa accessories thừa (giữ lại những cái đầu tiên)
+          const accessoriesToRemove = existingAccessoriesOfType.slice(neededCount);
+          accessoriesToRemove.forEach((obj: any) => fabricCanvas.remove(obj));
+        }
+        
+        // Cập nhật accessoryIndex cho các accessories đã tồn tại
+        const startIndex = currentIndex;
+        existingAccessoriesOfType.slice(0, Math.min(existingCount, neededCount)).forEach((obj: any, index: number) => {
+          obj.accessoryIndex = startIndex + index;
+        });
+        
+        currentIndex += neededCount;
+      });
+      
+      // Xóa accessories không còn trong selectedOptions
+      existingAccessories.forEach((obj: any) => {
+        if (!selectedOptions.accessories[obj.partId]) {
+          fabricCanvas.remove(obj);
+        }
+      });
+    } else {
+      // Nếu không có accessories nào, xóa tất cả
+      clearPartType('accessory');
     }
 
     // Snap-to-position khi kéo part
@@ -484,7 +560,9 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
       let snap
       if (obj.partType === 'accessory') {
         const accessorySnaps = snapPoints.filter(p => p.type === 'accessory')
-        snap = accessorySnaps[obj.partId ? selectedOptions.accessories.indexOf(obj.partId) : 0] || { x: 0, y: 0, type: 'accessory' }
+        // Sử dụng accessoryIndex trực tiếp từ object
+        const accessoryIndex = obj.accessoryIndex || 0;
+        snap = accessorySnaps[accessoryIndex] || { x: 0, y: 0, type: 'accessory' }
       } else {
         snap = snapPoints.find(p => p.type === obj.partType && (!obj.partSide || p.side === obj.partSide))
       }

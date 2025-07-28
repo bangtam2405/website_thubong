@@ -154,6 +154,7 @@ function ProductForm({ product, onSuccess, onCancel }: { product?: any, onSucces
     stock: product?.stock || 0,
     size: product?.specifications?.size || "28cm",
     color: product?.specifications?.color || "Hồng",
+    customizeLink: product?.customizeLink || "",
     _id: product?._id,
   });
   const isEdit = !!product;
@@ -234,6 +235,12 @@ function ProductForm({ product, onSuccess, onCancel }: { product?: any, onSucces
         <option value="new">Mới</option>
         <option value="giftbox">Hộp Quà</option>
       </select>
+      <Input 
+        name="customizeLink" 
+        value={form.customizeLink} 
+        onChange={handleChange} 
+        placeholder="Link mẫu thiết kế (VD: /customize?edit=68874d8c490eca1da4d7aacb)" 
+      />
       <div className="flex gap-2 mt-2">
         <Button type="submit">{isEdit ? "Cập nhật" : "Thêm mới"}</Button>
         <Button type="button" variant="outline" onClick={onCancel}>Hủy</Button>
