@@ -377,11 +377,18 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
           fabricCanvas.add(fabricImage)
           fabricCanvas.sendToBack(fabricImage)
         } else {
+          // Tính toán scale để mọi part có kích thước đồng nhất
+          const maxWidth = 150; // px, có thể chỉnh nhỏ hơn nếu muốn
+          const maxHeight = 150;
+          const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
+
           fabricImage.set({
-            left: snap.x,
-            top: snap.y,
-            scaleX: 1,
-            scaleY: 1,
+            left: fabricCanvas.width / 2,
+            top: fabricCanvas.height / 2,
+            originX: 'center',
+            originY: 'center',
+            scaleX: scale,
+            scaleY: scale,
             selectable: true,
             evented: true,
             partType: type,
@@ -551,29 +558,29 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
       clearPartType('accessory');
     }
 
-    // Snap-to-position khi kéo part
-    const onMoving = (e: any) => {
-      const obj = e.target
-      if (!obj || !obj.partType) return
-      const threshold = 30
-      // Tìm snap point phù hợp
-      let snap
-      if (obj.partType === 'accessory') {
-        const accessorySnaps = snapPoints.filter(p => p.type === 'accessory')
-        // Sử dụng accessoryIndex trực tiếp từ object
-        const accessoryIndex = obj.accessoryIndex || 0;
-        snap = accessorySnaps[accessoryIndex] || { x: 0, y: 0, type: 'accessory' }
-      } else {
-        snap = snapPoints.find(p => p.type === obj.partType && (!obj.partSide || p.side === obj.partSide))
-      }
-      if (snap) {
-        if (Math.abs(obj.left - snap.x) < threshold && Math.abs(obj.top - snap.y) < threshold) {
-          obj.left = snap.x
-          obj.top = snap.y
-        }
-      }
-    }
-    fabricCanvas.on('object:moving', onMoving)
+    // Snap-to-position khi kéo part - TẠM TẮT ĐỂ CÓ THỂ KÉO TỰ DO
+    // const onMoving = (e: any) => {
+    //   const obj = e.target
+    //   if (!obj || !obj.partType) return
+    //   const threshold = 30
+    //   // Tìm snap point phù hợp
+    //   let snap
+    //   if (obj.partType === 'accessory') {
+    //     const accessorySnaps = snapPoints.filter(p => p.type === 'accessory')
+    //     // Sử dụng accessoryIndex trực tiếp từ object
+    //     const accessoryIndex = obj.accessoryIndex || 0;
+    //     snap = accessorySnaps[accessoryIndex] || { x: 0, y: 0, type: 'accessory' }
+    //   } else {
+    //     snap = snapPoints.find(p => p.type === obj.partType && (!obj.partSide || p.side === obj.partSide))
+    //   }
+    //   if (snap) {
+    //     if (Math.abs(obj.left - snap.x) < threshold && Math.abs(obj.top - snap.y) < threshold) {
+    //       obj.left = snap.x
+    //       obj.top = snap.y
+    //     }
+    //   }
+    // }
+    // fabricCanvas.on('object:moving', onMoving)
 
     // Tăng borderWidth cho active object
     fabricCanvas.on('selection:created', (e: any) => {
@@ -590,7 +597,7 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
     })
 
     return () => {
-      fabricCanvas.off('object:moving', onMoving)
+      // fabricCanvas.off('object:moving', onMoving) // Đã comment vì tắt snap
       fabricCanvas.off('selection:created')
       fabricCanvas.off('selection:updated')
     }
