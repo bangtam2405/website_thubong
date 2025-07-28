@@ -36,6 +36,15 @@ export default function ProductsPage() {
     );
   });
 
+  // Tính toán thống kê
+  const stats = {
+    totalProducts: filteredProducts.length,
+    totalStock: filteredProducts.reduce((sum, p) => sum + (p.stock || 0), 0),
+    totalSold: filteredProducts.reduce((sum, p) => sum + (p.sold || 0), 0),
+    lowStock: filteredProducts.filter(p => (p.stock || 0) <= 5).length,
+    outOfStock: filteredProducts.filter(p => (p.stock || 0) === 0).length
+  };
+
   return (
     <div className="container mx-auto py-8 px-4">
       <Card>
@@ -49,6 +58,30 @@ export default function ProductsPage() {
           </Button>
         </CardHeader>
         <CardContent>
+          {/* Thống kê tổng quan */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <div className="text-2xl font-bold text-blue-600">{stats.totalProducts}</div>
+              <div className="text-sm text-blue-600">Tổng sản phẩm</div>
+            </div>
+            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+              <div className="text-2xl font-bold text-green-600">{stats.totalStock}</div>
+              <div className="text-sm text-green-600">Tồn kho</div>
+            </div>
+            <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+              <div className="text-2xl font-bold text-purple-600">{stats.totalSold}</div>
+              <div className="text-sm text-purple-600">Đã bán</div>
+            </div>
+            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+              <div className="text-2xl font-bold text-yellow-600">{stats.lowStock}</div>
+              <div className="text-sm text-yellow-600">Sắp hết</div>
+            </div>
+            <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+              <div className="text-2xl font-bold text-red-600">{stats.outOfStock}</div>
+              <div className="text-sm text-red-600">Hết hàng</div>
+            </div>
+          </div>
+
           <div className="flex items-center gap-2 mb-4">
             <div className="relative w-full max-w-xs">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
@@ -214,45 +247,110 @@ function ProductTable({ products, onEdit, onDelete }: { products: any[], onEdit:
     <div className="overflow-x-auto">
       <Table className="mt-4 bg-white rounded-xl shadow">
         <TableHeader>
-          <TableRow>
-            <TableHead>Tên</TableHead>
-            <TableHead>Loại</TableHead>
-            <TableHead>Giá</TableHead>
-            <TableHead>Tồn kho</TableHead>
-            <TableHead>Ảnh</TableHead>
-            <TableHead>Đã bán</TableHead>
-            <TableHead>Thao tác</TableHead>
+          <TableRow className="bg-gray-50">
+            <TableHead className="w-48 font-semibold">Tên sản phẩm</TableHead>
+            <TableHead className="font-semibold">Loại</TableHead>
+            <TableHead className="font-semibold">Giá</TableHead>
+            <TableHead className="text-center font-semibold">Nhập về</TableHead>
+            <TableHead className="text-center font-semibold">Đã bán</TableHead>
+            <TableHead className="text-center font-semibold">Còn lại</TableHead>
+            <TableHead className="font-semibold">Ảnh</TableHead>
+            <TableHead className="font-semibold">Thao tác</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {products.map((p) => (
-            <TableRow key={p._id}>
-              <TableCell className="font-medium">{p.name}</TableCell>
-              <TableCell>
-                {p.type === "teddy" ? "Teddy" : 
-                 p.type === "accessory" ? "Phụ kiện" : 
-                 p.type === "new" ? "Mới" : 
-                 p.type === "giftbox" ? "Hộp quà" :
-                 "Bộ sưu tập"}
-              </TableCell>
-              <TableCell>{Number(p.price).toLocaleString('vi-VN')}₫</TableCell>
-              <TableCell>{p.stock}</TableCell>
-              <TableCell>
-                {p.image ? (
-                  <img src={p.image} alt={p.name} className="rounded shadow border-2 border-green-400" width={60} height={60} style={{objectFit:'cover'}} />
-                ) : (
-                  <span className="text-gray-400 italic">Chưa có ảnh</span>
-                )}
-              </TableCell>
-              <TableCell>{p.sold || 0}</TableCell>
-              <TableCell>
-                <Button size="icon" variant="ghost" onClick={() => onEdit(p)}><Edit /></Button>
-                <Button size="icon" variant="ghost" onClick={() => onDelete(p._id!)}><Trash2 /></Button>
-              </TableCell>
-            </TableRow>
-          ))}
+          {products.map((p) => {
+            const totalImported = p.stock + (p.sold || 0);
+            const remaining = p.stock;
+            const sold = p.sold || 0;
+            
+            // Xác định trạng thái tồn kho
+            let stockStatus = '';
+            let stockColor = '';
+            if (remaining === 0) {
+              stockStatus = 'Hết hàng';
+              stockColor = 'bg-red-100 text-red-800';
+            } else if (remaining <= 5) {
+              stockStatus = 'Sắp hết';
+              stockColor = 'bg-orange-100 text-orange-800';
+            } else if (remaining <= 10) {
+              stockStatus = 'Còn ít';
+              stockColor = 'bg-yellow-100 text-yellow-800';
+            } else {
+              stockStatus = 'Còn nhiều';
+              stockColor = 'bg-green-100 text-green-800';
+            }
+            
+            return (
+              <TableRow key={p._id} className="hover:bg-gray-50">
+                <TableCell className="font-medium max-w-48 truncate" title={p.name}>
+                  <div className="flex flex-col">
+                    <span className="truncate">{p.name}</span>
+                    {p.specifications && (
+                      <span className="text-xs text-gray-500">
+                        {p.specifications.size} - {p.specifications.color}
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    p.type === "teddy" ? "bg-pink-100 text-pink-800" :
+                    p.type === "accessory" ? "bg-blue-100 text-blue-800" :
+                    p.type === "new" ? "bg-green-100 text-green-800" :
+                    p.type === "giftbox" ? "bg-purple-100 text-purple-800" :
+                    "bg-gray-100 text-gray-800"
+                  }`}>
+                    {p.type === "teddy" ? "Teddy" : 
+                     p.type === "accessory" ? "Phụ kiện" : 
+                     p.type === "new" ? "Mới" : 
+                     p.type === "giftbox" ? "Hộp quà" :
+                     "Bộ sưu tập"}
+                  </span>
+                </TableCell>
+                <TableCell className="font-semibold">{Number(p.price).toLocaleString('vi-VN')}₫</TableCell>
+                <TableCell className="text-center">
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm font-medium" title="Tổng số lượng đã nhập">
+                    {totalImported}
+                  </span>
+                </TableCell>
+                <TableCell className="text-center">
+                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm font-medium" title="Số lượng đã bán">
+                    {sold}
+                  </span>
+                </TableCell>
+                <TableCell className="text-center">
+                  <span className={`px-2 py-1 rounded-full text-sm font-medium ${stockColor}`} title={stockStatus}>
+                    {remaining}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  {p.image ? (
+                    <img src={p.image} alt={p.name} className="rounded shadow border-2 border-green-400" width={60} height={60} style={{objectFit:'cover'}} />
+                  ) : (
+                    <span className="text-gray-400 italic text-sm">Chưa có ảnh</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <div className="flex gap-1">
+                    <Button size="icon" variant="ghost" onClick={() => onEdit(p)} title="Chỉnh sửa">
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => onDelete(p._id!)} title="Xóa">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
+      {products.length === 0 && (
+        <div className="text-center py-8 text-gray-500">
+          Không có sản phẩm nào được tìm thấy
+        </div>
+      )}
     </div>
   );
 } 

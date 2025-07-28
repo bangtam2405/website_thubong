@@ -11,10 +11,29 @@ import axios from "axios"
 import { AddToCartButton } from "@/components/AddToCartButton"
 import { Product } from "@/types/product"
 import { Design } from "@/types/design";
+import { useRouter } from "next/navigation";
+
+function calculateDesignPrice(item: any): number | null {
+  if (item.parts && Array.isArray(item.parts) && item.parts.length > 0) {
+    const total = item.parts.reduce((sum: number, part: any) => sum + (typeof part.price === 'number' ? part.price : 0), 0);
+    if (total > 0) return total;
+  }
+  if (typeof item.price === 'number' && item.price > 0) return item.price;
+  return null;
+}
 
 export default function NewProductsPage() {
   const [designTemplates, setDesignTemplates] = useState<Design[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setUserId(localStorage.getItem('userId'));
+    }
+  }, []);
 
   useEffect(() => {
     fetch("http://localhost:5000/api/designs?userId=admin")
@@ -23,6 +42,31 @@ export default function NewProductsPage() {
       .catch(() => setDesignTemplates([]))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleClone = async (id: string) => {
+    if (!userId) {
+      alert("Vui lòng đăng nhập để sao chép và chỉnh sửa thiết kế này!");
+      return;
+    }
+    setLoadingId(id);
+    try {
+      const res = await fetch(`/api/designs/${id}/clone`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.location.href = `/customize?edit=${data.id}`;
+      } else {
+        alert(data.message || "Tạo bản sao thất bại.");
+      }
+    } catch (error) {
+      alert("Đã xảy ra lỗi. Vui lòng thử lại.");
+    } finally {
+      setLoadingId(null);
+    }
+  };
 
   return (
     <div className="container mx-auto py-12 px-4">
@@ -55,13 +99,39 @@ export default function NewProductsPage() {
             <CardContent className="p-4">
               <h3 className="font-semibold text-lg mb-1">{item.designName}</h3>
               <p className="text-sm text-gray-500 mb-2 line-clamp-2">{item.description}</p>
+              <div className="text-lg font-semibold text-pink-600 text-center mb-2">
+                {(() => {
+                  const price = calculateDesignPrice(item);
+                  return price === null ? 'Liên hệ' : price.toLocaleString('vi-VN') + '₫';
+                })()}
+              </div>
             </CardContent>
             <CardFooter className="p-4 pt-0 flex flex-col gap-2">
-              <Link href={`/customize?templateId=${item._id}`} className="w-full">
-                <Button variant="outline" className="w-full">
-                  Tùy chỉnh
-                </Button>
-              </Link>
+              <AddToCartButton product={{
+                _id: item._id,
+                name: item.designName,
+                description: item.description || "",
+                price: calculateDesignPrice(item) || 0,
+                image: item.previewImage || "/placeholder.svg",
+                type: "custom",
+                rating: 5,
+                reviews: 0,
+                sold: 0,
+                stock: 99,
+                featured: false,
+                specifications: item.specifications,
+                createdAt: item.createdAt || new Date().toISOString(),
+                updatedAt: item.updatedAt || new Date().toISOString(),
+                categoryId: item.categoryId,
+              }} className="w-full bg-pink-500 hover:bg-pink-600 text-white" />
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => handleClone(item._id)}
+                disabled={loadingId === item._id}
+              >
+                {loadingId === item._id ? "Đang tạo bản sao..." : "Tùy chỉnh"}
+              </Button>
             </CardFooter>
           </Card>
         ))}

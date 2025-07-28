@@ -7,13 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Eye, Plus, Edit, Trash2, LineChart, Users, ShoppingCart, DollarSign, Package, BarChart as BarChartIcon, TrendingUp } from "lucide-react"
+import { Eye, Plus, Edit, Trash2, LineChart as LineChartIcon, Users, ShoppingCart, DollarSign, Package, BarChart as BarChartIcon, TrendingUp, FileDown, FileSpreadsheet } from "lucide-react"
 import Image from "next/image"
 import instance from "@/lib/axiosConfig"
 import { useRouter } from "next/navigation"
 import ImageUpload from "@/components/ImageUpload"
 import { AdminTabContext } from "./layout"
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, LineChart, Line } from "recharts"
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -28,6 +28,8 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import CountUp from 'react-countup';
+import { formatDateVN } from "@/lib/utils";
+import * as XLSX from "xlsx";
 
 // Định nghĩa kiểu cho một tháng doanh thu
 type MonthRevenue = {
@@ -44,46 +46,52 @@ function StatsTab() {
   const [statType, setStatType] = useState<'revenue' | 'top-products'>('revenue');
   const [topProducts, setTopProducts] = useState<any[]>([]);
   const [loadingTop, setLoadingTop] = useState(false);
-  // Mặc định: từ ngày này tháng trước đến ngày hiện tại
-  function getDefaultFromDate() {
-    const d = new Date();
-    d.setMonth(d.getMonth() - 1);
+  const [groupBy, setGroupBy] = useState<'day' | 'month' | 'year'>('day');
+  // Filter state động
+  const today = new Date();
+  const defaultYear = today.getFullYear();
+  const defaultMonth = (today.getMonth() + 1).toString().padStart(2, '0');
+  const [fromDate, setFromDate] = useState<string>(() => {
+    const d = new Date(); d.setMonth(d.getMonth() - 1);
     return d.toISOString().slice(0, 10);
-  }
-  function getDefaultToDate() {
-    const d = new Date();
-    return d.toISOString().slice(0, 10);
-  }
-  const [fromDate, setFromDate] = useState<string>(getDefaultFromDate());
-  const [toDate, setToDate] = useState<string>(getDefaultToDate());
+  });
+  const [toDate, setToDate] = useState<string>(() => today.toISOString().slice(0, 10));
+  const [fromMonth, setFromMonth] = useState<string>(`${defaultYear}-${defaultMonth}`);
+  const [toMonth, setToMonth] = useState<string>(`${defaultYear}-${defaultMonth}`);
+  const [fromYear, setFromYear] = useState<number>(defaultYear - 1);
+  const [toYear, setToYear] = useState<number>(defaultYear);
+
+  // Reset filter khi đổi groupBy
+  useEffect(() => {
+    if (groupBy === 'day') {
+      const d = new Date(); d.setMonth(d.getMonth() - 1);
+      setFromDate(d.toISOString().slice(0, 10));
+      setToDate(today.toISOString().slice(0, 10));
+    } else if (groupBy === 'month') {
+      setFromMonth(`${defaultYear}-${(today.getMonth() + 1).toString().padStart(2, '0')}`);
+      setToMonth(`${defaultYear}-${(today.getMonth() + 1).toString().padStart(2, '0')}`);
+    } else {
+      setFromYear(defaultYear - 1);
+      setToYear(defaultYear);
+    }
+  }, [groupBy]);
 
   const fetchStats = () => {
     setLoading(true);
-    instance.get("/api/admin/stats", {
-      params: {
-        from: fromDate || undefined,
-        to: toDate || undefined
-      }
-    })
+    let params: any = { groupBy };
+    if (groupBy === 'day') {
+      params.from = fromDate;
+      params.to = toDate;
+    } else if (groupBy === 'month') {
+      params.from = fromMonth + '-01';
+      params.to = toMonth + '-28'; // lấy hết tháng
+    } else {
+      params.from = `${fromYear}-01-01`;
+      params.to = `${toYear}-12-31`;
+    }
+    instance.get("/api/admin/stats", { params })
       .then(res => {
-        const now = toDate ? new Date(toDate) : new Date();
-        const months: MonthRevenue[] = [];
-        for (let i = 11; i >= 0; i--) {
-          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          months.push({
-            name: `Thg ${d.getMonth() + 1}/${d.getFullYear()}`,
-            year: d.getFullYear(),
-            month: d.getMonth() + 1,
-            total: 0,
-          });
-        }
-        (res.data.monthlyRevenue as { _id: { year: number, month: number }, total: number }[]).forEach((item) => {
-          const idx = months.findIndex(
-            m => m.year === item._id.year && m.month === item._id.month
-          );
-          if (idx !== -1) months[idx].total = item.total;
-        });
-        setStats({ ...res.data, monthlyRevenue: months });
+        setStats(res.data);
       })
       .finally(() => setLoading(false));
   };
@@ -113,6 +121,83 @@ function StatsTab() {
     'Đang giao hàng': 'bg-cyan-100 text-cyan-800 border-cyan-200',
     'Đã giao hàng': 'bg-green-100 text-green-800 border-green-200',
     'Đã hủy': 'bg-red-100 text-red-700 border-red-200',
+  };
+
+  // Xuất Excel doanh thu
+  const handleExportExcel = () => {
+    if (!stats?.monthlyRevenue) return;
+    const data = stats.monthlyRevenue.map((item: any) => ({
+      "Tháng/Năm": item.name,
+      "Tổng doanh thu": item.total?.toLocaleString() + '₫',
+      "Số đơn hàng": item.orderCount ?? 0,
+      "Số khách hàng": item.customerCount ?? 0,
+      "Sản phẩm bán ra": item.totalProductSold ?? 0,
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "DoanhThu");
+    XLSX.writeFile(wb, `doanhthu_${new Date().getTime()}.xlsx`);
+  };
+  // Xuất PDF doanh thu
+  const handleExportPDF = async () => {
+    if (!stats?.monthlyRevenue) return;
+    const pdfMakeModule = await import("pdfmake/build/pdfmake");
+    const pdfFontsModule = await import("pdfmake/build/vfs_fonts");
+    const pdfMake = pdfMakeModule.default || pdfMakeModule.pdfMake || pdfMakeModule;
+    const pdfFonts = pdfFontsModule.default || pdfFontsModule.pdfMake || pdfFontsModule;
+    pdfMake.vfs = (pdfFonts.pdfMake && pdfFonts.pdfMake.vfs) || pdfFonts.vfs;
+    const body = [
+      [
+        { text: 'Tháng/Năm', style: 'tableHeader' },
+        { text: 'Tổng doanh thu', style: 'tableHeader' },
+        { text: 'Số đơn hàng', style: 'tableHeader' },
+        { text: 'Số khách hàng', style: 'tableHeader' },
+        { text: 'Sản phẩm bán ra', style: 'tableHeader' },
+      ],
+      ...stats.monthlyRevenue.map((item: any) => [
+        item.name,
+        item.total?.toLocaleString() + '₫',
+        item.orderCount ?? 0,
+        item.customerCount ?? 0,
+        item.totalProductSold ?? 0,
+      ])
+    ];
+    const docDefinition = {
+      content: [
+        { text: 'BÁO CÁO DOANH THU THEO THÁNG', style: 'header', alignment: 'center', margin: [0,0,0,12] },
+        {
+          table: {
+            headerRows: 1,
+            widths: [80, 120, 60, 60, 60],
+            body
+          },
+          layout: {
+            fillColor: (rowIndex: number) => rowIndex === 0 ? '#fce7f3' : null,
+            hLineWidth: () => 0.5,
+            vLineWidth: () => 0.5,
+            hLineColor: () => '#e5e7eb',
+            vLineColor: () => '#e5e7eb',
+          },
+        }
+      ],
+      styles: {
+        header: {
+          fontSize: 18,
+          bold: true,
+          color: '#e3497a',
+        },
+        tableHeader: {
+          bold: true,
+          fontSize: 12,
+          color: '#e3497a',
+        },
+      },
+      defaultStyle: {
+        font: 'Roboto',
+        fontSize: 11,
+      }
+    };
+    pdfMake.createPdf(docDefinition).download(`baocao_doanhthu_${new Date().getTime()}.pdf`);
   };
 
   return (
@@ -170,8 +255,8 @@ function StatsTab() {
       </div>
       {/* Chọn loại thống kê và biểu đồ bên dưới */}
       <div className="space-y-8">
-        <div className="flex gap-4 mb-4 items-end">
-          <div className="flex gap-2">
+        <div className="flex gap-4 mb-4 items-end flex-wrap">
+          <div className="flex gap-2 flex-wrap items-end">
             <Button
               variant={statType === 'revenue' ? 'default' : 'outline'}
               className={statType === 'revenue' ? 'bg-pink-500 text-white' : ''}
@@ -188,90 +273,135 @@ function StatsTab() {
             >
               <BarChartIcon className="w-4 h-4 mr-1" /> Sản phẩm bán chạy
             </Button>
+            {statType === 'revenue' && (
+              <>
+                <Button
+                  onClick={handleExportExcel}
+                  className="bg-green-500 hover:bg-green-600 text-white font-bold px-4 py-2 rounded-lg shadow flex items-center gap-2"
+                  size="sm"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  Xuất Excel
+                </Button>
+                <Button
+                  onClick={handleExportPDF}
+                  className="bg-pink-500 hover:bg-pink-600 text-white font-bold px-4 py-2 rounded-lg shadow flex items-center gap-2"
+                  size="sm"
+                >
+                  <FileDown className="w-4 h-4" />
+                  Xuất PDF
+                </Button>
+              </>
+            )}
+            <div>
+              <label className="block text-sm font-medium mb-1">Kiểu thống kê</label>
+              <select
+                value={groupBy}
+                onChange={e => setGroupBy(e.target.value as 'day' | 'month' | 'year')}
+                className="border rounded px-2 py-1"
+              >
+                <option value="day">Theo ngày</option>
+                <option value="month">Theo tháng</option>
+                <option value="year">Theo năm</option>
+              </select>
+            </div>
+            {groupBy === 'day' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Từ ngày</label>
+                  <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="border rounded px-2 py-1" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Đến ngày</label>
+                  <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="border rounded px-2 py-1" />
+                </div>
+              </>
+            )}
+            {groupBy === 'month' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Từ tháng</label>
+                  <input type="month" value={fromMonth} onChange={e => setFromMonth(e.target.value)} className="border rounded px-2 py-1" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Đến tháng</label>
+                  <input type="month" value={toMonth} onChange={e => setToMonth(e.target.value)} className="border rounded px-2 py-1" />
+                </div>
+              </>
+            )}
+            {groupBy === 'year' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Từ năm</label>
+                  <input type="number" value={fromYear} min={2000} max={2100} onChange={e => setFromYear(Number(e.target.value))} className="border rounded px-2 py-1 w-24" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Đến năm</label>
+                  <input type="number" value={toYear} min={2000} max={2100} onChange={e => setToYear(Number(e.target.value))} className="border rounded px-2 py-1 w-24" />
+                </div>
+              </>
+            )}
+            <Button onClick={fetchStats} className="h-10 bg-pink-500 hover:bg-pink-600 text-white ml-2">Lọc</Button>
           </div>
-          <div className="flex-1" />
-          <div>
-            <label className="block text-sm font-medium mb-1">Từ ngày</label>
-            <input type="date" value={fromDate || getDefaultFromDate()} onChange={e => setFromDate(e.target.value)} className="border rounded px-2 py-1" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Đến ngày</label>
-            <input type="date" value={toDate || getDefaultToDate()} onChange={e => setToDate(e.target.value)} className="border rounded px-2 py-1" />
-          </div>
-          <Button onClick={fetchStats} className="h-10 bg-pink-500 hover:bg-pink-600 text-white">Lọc</Button>
         </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-          {/* Biểu đồ chính */}
-          <Card className="col-span-4 shadow-lg border-0">
+        {/* Main chart area: 2 columns, BarChart left, LineChart right */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+          {/* Biểu đồ cột */}
+          <Card className="shadow-lg border-0">
             <CardHeader>
-              <CardTitle>{statType === 'revenue' ? 'Doanh Thu 12 Tháng Gần Nhất' : 'Top Sản Phẩm Bán Chạy'}</CardTitle>
+              <CardTitle>{statType === 'revenue' ? 'Biểu Đồ Cột Doanh Thu' : 'Biểu Đồ Cột Sản Phẩm Bán Chạy'}</CardTitle>
             </CardHeader>
             <CardContent className="pl-2">
               {statType === 'revenue' ? (
-                <ResponsiveContainer width="100%" height={350}>
-                  <BarChart data={stats.monthlyRevenue}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={stats.monthlyRevenue} margin={{ top: 50, right: 30, left: 30, bottom: 30 }}>
                     <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                     <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${(value as number) / 1000}k`} />
-                    <Bar dataKey="total" fill="#ec4899" radius={[4, 4, 0, 0]} label={{ position: "top", fill: "#ec4899", fontWeight: 600, formatter: (v: number) => v.toLocaleString() }}>
-                    </Bar>
+                    <Bar dataKey="total" fill="#ec4899" radius={[4, 4, 0, 0]} label={{ position: "top", fill: "#ec4899", fontWeight: 600, formatter: (v: number) => v.toLocaleString() }} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
                 loadingTop ? (
                   <div className="flex justify-center items-center h-72 text-gray-400">Đang tải...</div>
                 ) : (
-                  <ResponsiveContainer width="100%" height={350}>
-                    <BarChart data={topProducts} layout="vertical">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={topProducts} margin={{ top: 50, right: 30, left: 30, bottom: 30 }} layout="vertical">
                       <XAxis type="number" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                       <YAxis dataKey="name" type="category" stroke="#888888" fontSize={13} tickLine={false} axisLine={false} width={120} />
-                      <Bar dataKey="sold" fill="#38bdf8" radius={[0, 4, 4, 0]} label={{ position: "right", fill: "#38bdf8", fontWeight: 600, formatter: (v: number) => v.toLocaleString() }}>
-                      </Bar>
+                      <Bar dataKey="sold" fill="#38bdf8" radius={[0, 4, 4, 0]} label={{ position: "right", fill: "#38bdf8", fontWeight: 600, formatter: (v: number) => v.toLocaleString() }} />
                     </BarChart>
                   </ResponsiveContainer>
                 )
               )}
             </CardContent>
           </Card>
-          {/* Bảng đơn hàng gần đây giữ nguyên */}
-          <Card className="col-span-3 shadow-lg border-0">
+          {/* Biểu đồ đường */}
+          <Card className="shadow-lg border-0">
             <CardHeader>
-              <CardTitle>Đơn Hàng Gần Đây</CardTitle>
-              <CardDescription>
-                5 đơn hàng mới nhất.
-              </CardDescription>
+              <CardTitle>{statType === 'revenue' ? 'Biểu Đồ Đường Doanh Thu' : 'Biểu Đồ Đường Sản Phẩm Bán Chạy'}</CardTitle>
             </CardHeader>
-            <CardContent>
-               <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Khách Hàng</TableHead>
-                      <TableHead>Trạng thái</TableHead>
-                      <TableHead>Tổng</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {stats.recentOrders.map((order: any) => (
-                      <TableRow key={order._id} className="hover:bg-pink-50 transition">
-                        <TableCell>
-                          <div className="font-medium text-pink-600 flex items-center gap-2">
-                            <Users className="w-5 h-5 text-pink-400" />
-                            {order.user?.username || order.user?.email || 'Ẩn danh'}
-                          </div>
-                          <div className="hidden text-xs text-gray-400 md:inline">
-                            {order.user?.email}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className={cn(
-                            "inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border",
-                            statusColor[order.status as keyof typeof statusColor] || "bg-gray-100 text-gray-700 border-gray-200"
-                          )}>{order.status}</span>
-                        </TableCell>
-                        <TableCell className="font-bold text-right text-pink-600">{order.totalPrice.toLocaleString()}₫</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+            <CardContent className="pl-2">
+              {statType === 'revenue' ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={stats.monthlyRevenue} margin={{ top: 50, right: 30, left: 30, bottom: 30 }}>
+                    <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${(value as number) / 1000}k`} />
+                    <Line type="monotone" dataKey="total" stroke="#38bdf8" strokeWidth={3} dot={{ r: 5, fill: '#38bdf8' }} activeDot={{ r: 8 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                loadingTop ? (
+                  <div className="flex justify-center items-center h-72 text-gray-400">Đang tải...</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={topProducts} margin={{ top: 50, right: 30, left: 30, bottom: 30 }} layout="vertical">
+                      <XAxis type="number" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis dataKey="name" type="category" stroke="#888888" fontSize={13} tickLine={false} axisLine={false} width={120} />
+                      <Line type="monotone" dataKey="sold" stroke="#38bdf8" strokeWidth={3} dot={{ r: 5, fill: '#38bdf8' }} activeDot={{ r: 8 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )
+              )}
             </CardContent>
           </Card>
         </div>
@@ -315,7 +445,7 @@ function OrdersTab() {
             <TableRow key={order._id}>
               <TableCell>{order._id.slice(-6).toUpperCase()}</TableCell>
               <TableCell>{order.user?.username || order.user?.email || 'Ẩn danh'}</TableCell>
-              <TableCell>{new Date(order.createdAt).toLocaleDateString()}</TableCell>
+              <TableCell>{formatDateVN(order.createdAt)}</TableCell>
               <TableCell>
                 <Select
                   value={order.status}
@@ -387,7 +517,7 @@ function UsersTab() {
               <TableCell>{user.fullName || user.username}</TableCell>
               <TableCell>{user.email}</TableCell>
               <TableCell>{user.phone}</TableCell>
-              <TableCell>{user.dob ? new Date(user.dob).toLocaleDateString() : ''}</TableCell>
+              <TableCell>{user.dob ? formatDateVN(user.dob) : ''}</TableCell>
               <TableCell>{user.gender === 'male' ? 'Nam' : user.gender === 'female' ? 'Nữ' : 'Khác'}</TableCell>
               <TableCell>{user.addresses && user.addresses.length > 0 ? user.addresses[0].address : ''}</TableCell>
               <TableCell><Badge>{user.status === 'active' ? 'Hoạt động' : user.status === 'locked' ? 'Bị khóa' : 'Chờ xác thực'}</Badge></TableCell>

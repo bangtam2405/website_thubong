@@ -12,6 +12,8 @@ export default function EditCategoryForm({ id, onCancel }: { id: string, onCance
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState("")
   const [price, setPrice] = useState("")
+  const [imported, setImported] = useState("")
+  const [sold, setSold] = useState("")
   const [image, setImage] = useState("")
   const [parentCategory, setParentCategory] = useState<any>(null)
 
@@ -23,6 +25,8 @@ export default function EditCategoryForm({ id, onCancel }: { id: string, onCance
           setCategory(categoryData);
           setName(categoryData.name || "");
           setPrice(categoryData.price ? String(categoryData.price) : "");
+          setImported(categoryData.imported ? String(categoryData.imported) : "0");
+          setSold(categoryData.sold ? String(categoryData.sold) : "0");
           setImage(categoryData.image || "");
           if (categoryData.parent) {
             try {
@@ -53,6 +57,8 @@ export default function EditCategoryForm({ id, onCancel }: { id: string, onCance
     const updatedData = {
       name,
       price: price ? Number(price) : undefined,
+      imported: imported ? Number(imported) : 0,
+      sold: sold ? Number(sold) : 0,
       image,
     };
     try {
@@ -63,6 +69,9 @@ export default function EditCategoryForm({ id, onCancel }: { id: string, onCance
       toast.error("Cập nhật thất bại!");
     }
   };
+
+  // Tính toán tồn kho
+  const currentStock = (Number(imported) || 0) - (Number(sold) || 0);
 
   if (loading) return <div className="p-8 text-center">Đang tải...</div>
   if (!category) return <div className="p-8 text-center">Không tìm thấy mục cần sửa.</div>
@@ -76,6 +85,41 @@ export default function EditCategoryForm({ id, onCancel }: { id: string, onCance
       <div>
         <Label htmlFor="price">Giá</Label>
         <Input id="price" value={price} onChange={e => setPrice(e.target.value)} placeholder="Giá (nếu có)" type="number" />
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <Label htmlFor="imported">Tổng nhập</Label>
+          <Input 
+            id="imported" 
+            value={imported} 
+            onChange={e => setImported(e.target.value)} 
+            placeholder="0" 
+            type="number" 
+            min="0"
+          />
+        </div>
+        <div>
+          <Label htmlFor="sold">Đã bán</Label>
+          <Input 
+            id="sold" 
+            value={sold} 
+            onChange={e => setSold(e.target.value)} 
+            placeholder="0" 
+            type="number" 
+            min="0"
+          />
+        </div>
+        <div>
+          <Label htmlFor="stock">Tồn kho (tự động)</Label>
+          <Input 
+            id="stock" 
+            value={currentStock} 
+            placeholder="0" 
+            type="number" 
+            disabled
+            className="bg-gray-100"
+          />
+        </div>
       </div>
       <div>
         {parentCategory && parentCategory.name === "Màu Lông" ? (

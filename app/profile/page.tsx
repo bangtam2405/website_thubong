@@ -5,11 +5,10 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import axios from "axios"
-import { User } from "lucide-react"
-import ImageUpload from "@/components/ImageUpload";
-import { Eye, EyeOff } from "lucide-react";
+import { User, Pencil, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link"
+import { formatDateVN } from "@/lib/utils";
 
 export default function ProfilePage() {
   const [fullName, setFullName] = useState("");
@@ -175,18 +174,56 @@ export default function ProfilePage() {
       {/* Sidebar */}
       <aside className="w-full md:w-1/4 mb-4 md:mb-0">
         <div className="bg-white rounded-2xl shadow-xl p-4 flex flex-col items-center">
-          <div className="mb-2">
+          <div className="mb-2 relative group">
             {avatar ? (
-              <img src={avatar} alt="Avatar" className="w-20 h-20 rounded-full object-cover border-4 border-pink-200" />
+              <img src={avatar} alt="Avatar" className="w-28 h-28 rounded-full object-cover border-4 border-pink-200" />
             ) : (
-              <div className="bg-pink-100 rounded-full p-3">
-                <User className="h-12 w-12 text-pink-500" />
+              <div className="bg-pink-100 rounded-full p-3 w-28 h-28 flex items-center justify-center">
+                <User className="h-20 w-20 text-pink-500" />
               </div>
             )}
+            {/* Icon bút overlay */}
+            <button
+              type="button"
+              className="absolute bottom-2 right-2 bg-white rounded-full p-2 shadow hover:bg-pink-100 transition-colors opacity-80 group-hover:opacity-100"
+              title="Đổi ảnh đại diện"
+              onClick={() => document.getElementById('avatar-upload-input')?.click()}
+            >
+              <Pencil className="w-5 h-5 text-pink-500" />
+            </button>
+            <input
+              id="avatar-upload-input"
+              type="file"
+              accept="image/jpeg,image/png"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('folder', 'avatars');
+                setLoading(true);
+                try {
+                  const res = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData,
+                  });
+                  const data = await res.json();
+                  if (data.success && data.url) {
+                    await handleAvatarUploaded(data.url);
+                  } else {
+                    toast.error('Upload ảnh thất bại!');
+                  }
+                } catch (err) {
+                  toast.error('Lỗi upload ảnh!');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+            />
           </div>
           <div className="mb-1 font-semibold text-base text-center truncate w-full">{fullName || "Chưa có tên"}</div>
           <div className="text-gray-500 text-xs mb-2 text-center truncate w-full">{email}</div>
-          <ImageUpload onImageUploaded={handleAvatarUploaded} currentImage={avatar} folder="avatars" />
           <nav className="mt-6 w-full">
             <ul className="space-y-1">
               <li>

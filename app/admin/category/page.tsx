@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import instance from "@/lib/axiosConfig";
 import ImageUpload from "@/components/ImageUpload";
+import { toast } from "sonner";
 
 interface Category {
   _id: string;
@@ -40,12 +41,13 @@ export default function CategoryForm({ onCancel }: { onCancel?: () => void }) {
         type: parent ? "option" : type,
         image,
         price: price ? Number(price) : undefined,
-        quantity: quantity ? Number(quantity) : undefined,
+        quantity: quantity ? Number(quantity) : undefined, // Backend sẽ lưu vào trường imported
       });
-      alert("Đã thêm danh mục");
+      toast.success("Đã thêm danh mục!");
       setName("");
       setImage("");
       setPrice("");
+      setQuantity("");
       setLevel1("");
       setLevel2("");
       setLevel3("");
@@ -53,7 +55,7 @@ export default function CategoryForm({ onCancel }: { onCancel?: () => void }) {
       const res = await instance.get("http://localhost:5000/api/categories");
       setCategories(res.data);
     } catch (error) {
-      alert("Lỗi khi thêm danh mục");
+      toast.error("Lỗi khi thêm danh mục!");
       console.error(error);
     }
   };

@@ -10,6 +10,7 @@ import { Product } from "@/types/product"
 import { Heart } from "lucide-react"
 import axios from "axios"
 import { toast } from "sonner"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface ProductListPageProps {
   params: {
@@ -21,6 +22,8 @@ export default function ProductListPage({ params }: ProductListPageProps) {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [isClient, setIsClient] = useState(false);
+  const [sort, setSort] = useState<string>("");
+  const [filter, setFilter] = useState<string>("");
 
   useEffect(() => { setIsClient(true); }, []);
 
@@ -52,22 +55,21 @@ export default function ProductListPage({ params }: ProductListPageProps) {
       try {
         // Map frontend type to backend type
         const typeMap: { [key: string]: string } = {
-          custom: "collection", // Map custom to collection since backend doesn't have custom type
+          custom: "collection",
           collection: "collection",
-          accessories: "accessory", // Map accessories to accessory
+          accessories: "accessory",
           new: "new",
           teddy: "teddy"
         }
-
         const backendType = typeMap[params.type] || params.type
-        console.log("Fetching products with type:", backendType)
-        
-        const response = await fetch(`http://localhost:5000/api/products?type=${backendType}`)
+        let url = `http://localhost:5000/api/products?type=${backendType}`;
+        if (sort) url += `&sort=${sort}`;
+        if (filter) url += `&filter=${filter}`;
+        const response = await fetch(url)
         if (!response.ok) {
           throw new Error('Failed to fetch products')
         }
         const data = await response.json()
-        console.log("Fetched products:", data)
         setProducts(data)
       } catch (error) {
         console.error("Error fetching products:", error)
@@ -75,9 +77,8 @@ export default function ProductListPage({ params }: ProductListPageProps) {
         setLoading(false)
       }
     }
-
     fetchProducts()
-  }, [params.type])
+  }, [params.type, sort, filter])
 
   if (!isClient) {
     return <div className="container mx-auto py-12">Đang tải...</div>
@@ -121,6 +122,22 @@ export default function ProductListPage({ params }: ProductListPageProps) {
           ? "Teddy Đồ"
           : "Sản Phẩm"}
       </h1>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-end gap-2 mb-6">
+        <label className="text-sm text-gray-500 mr-2 md:mb-0 mb-1">Sắp xếp theo:</label>
+        <Select value={sort || "default"} onValueChange={v => setSort(v === "default" ? "" : v)}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Sắp xếp" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="default">Mặc định</SelectItem>
+            <SelectItem value="price_asc">Giá tăng dần</SelectItem>
+            <SelectItem value="price_desc">Giá giảm dần</SelectItem>
+            <SelectItem value="rating_desc">Đánh giá cao nhất</SelectItem>
+            <SelectItem value="sold_desc">Bán chạy nhất</SelectItem>
+            <SelectItem value="newest">Mới nhất</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {products.map((product) => (

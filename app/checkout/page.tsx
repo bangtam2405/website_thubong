@@ -11,6 +11,7 @@ import { CreditCard, QrCode, Wallet2 } from "lucide-react"
 import { useCart } from "@/contexts/CartContext"
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Dialog } from '@headlessui/react';
+import { formatDateVN } from "@/lib/utils";
 
 // Log the environment variable for debugging
 console.log('NEXT_PUBLIC_BASE_URL:', process.env.NEXT_PUBLIC_BASE_URL);

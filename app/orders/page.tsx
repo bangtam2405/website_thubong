@@ -6,6 +6,7 @@ import axios from "axios"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/contexts/CartContext"
+import { formatDateVN } from "@/lib/utils";
 
 const ORDER_TABS = [
   { label: "Tất cả", value: "all" },
@@ -93,7 +94,7 @@ export default function OrdersPage() {
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-gray-700">Mã đơn:</span>
                   <span className="text-pink-500 font-bold">{order._id.slice(-6).toUpperCase()}</span>
-                  <span className="text-gray-400 text-sm ml-4">{new Date(order.createdAt).toLocaleDateString()}</span>
+                  <span className="text-gray-400 text-sm ml-4">{formatDateVN(order.createdAt)}</span>
                 </div>
                 <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-pink-50 text-pink-500 border border-pink-200">{order.status}</span>
               </div>

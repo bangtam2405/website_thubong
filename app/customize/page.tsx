@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import ImageUpload from "@/components/ImageUpload";
 import { useRouter } from 'next/navigation';
+import { formatDateVN } from "@/lib/utils";
 
 interface Category {
   _id: string
@@ -631,7 +632,22 @@ export default function CustomizePage() {
   }
 
   const handleDownloadDesign = () => {
-    toast.success("Đã Tải Xuống Thiết Kế. Hình ảnh thiết kế tùy chỉnh của bạn đã được tải xuống.");
+    if (fabricRef.current && fabricRef.current.toDataURL) {
+      try {
+        const dataUrl = fabricRef.current.toDataURL({ format: 'png', quality: 1 });
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = 'thiet-ke-thu-bong.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Đã tải xuống thiết kế dưới dạng PNG!");
+      } catch (e) {
+        toast.error("Không thể tải xuống hình ảnh!");
+      }
+    } else {
+      toast.error("Không thể tải xuống hình ảnh!");
+    }
   }
 
   const handleTakeScreenshot = () => {
@@ -784,6 +800,10 @@ export default function CustomizePage() {
   const [isClient, setIsClient] = useState(false);
   useEffect(() => { setIsClient(true); }, []);
 
+  useEffect(() => {
+    console.log("accessories:", selectedOptions.accessories);
+  }, [selectedOptions.accessories]);
+
   // Sau khi render CustomFabricCanvas, lắng nghe sự kiện chọn object để hiển thị UI chỉnh sửa text
   useEffect(() => {
     if (!fabricRef.current?.getCanvas) return;
@@ -835,6 +855,15 @@ export default function CustomizePage() {
   const [templateForm, setTemplateForm] = useState({ name: "", description: "", previewImage: "" });
   const [savingTemplate, setSavingTemplate] = useState(false);
   const isAdmin = typeof window !== 'undefined' && localStorage.getItem('role') === 'admin';
+
+  // Thêm hàm để thêm phụ kiện vào selectedOptions
+  const handleAccessoryAdd = (accId: string) => {
+    console.log("handleAccessoryAdd - accId:", accId);
+    setSelectedOptions(prev => ({
+      ...prev,
+      accessories: [...prev.accessories, accId],
+    }));
+  };
 
   if (loading) return <div>Đang tải dữ liệu...</div>
 
@@ -947,6 +976,7 @@ export default function CustomizePage() {
                   backgroundImage={bgImage || undefined}
                   customTexts={customTexts}
                   onCustomTextsChange={setCustomTexts}
+                  onAccessoryAdd={handleAccessoryAdd}
                 />
               </div>
               <div className="absolute bottom-2 left-0 right-0 text-center z-20">
@@ -1059,8 +1089,8 @@ export default function CustomizePage() {
                         </span>
                       </li>
                     )}
-                    {selectedOptions.accessories.map((accId) => (
-                      <li key={accId} className="flex justify-between">
+                    {selectedOptions.accessories.map((accId, idx) => (
+                      <li key={accId + '-' + idx} className="flex justify-between">
                         <span>{categories.find((o) => o._id === accId)?.name}:</span>
                         <span>+{categories.find((o) => o._id === accId)?.price?.toLocaleString('vi-VN')}₫</span>
                       </li>
@@ -1161,7 +1191,7 @@ export default function CustomizePage() {
                   {/* Màu Lông */}
                   <div>
                     <h3 className="font-medium mb-3">Màu Lông</h3>
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-3 items-center">
                       {furColorOptions.map((option) => (
                         <div
                           key={option._id}
@@ -1175,6 +1205,15 @@ export default function CustomizePage() {
                           title={option.name}
                         />
                       ))}
+                      {/* Nút bỏ chọn màu */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOptions(prev => ({ ...prev, furColor: '' }))}
+                        className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-gray-400 hover:text-pink-500 hover:border-pink-300 transition-all ${!selectedOptions.furColor ? 'border-pink-400 bg-pink-50' : 'border-gray-200 bg-white'}`}
+                        title="Bỏ chọn màu"
+                      >
+                        <span className="text-lg">×</span>
+                      </button>
                     </div>
                   </div>
                 </TabsContent>

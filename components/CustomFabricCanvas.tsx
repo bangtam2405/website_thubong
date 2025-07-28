@@ -12,13 +12,14 @@ export interface Category {
   price?: number
 }
 
-const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOptions, categories, canvasJSON, backgroundImage, customTexts = [], onCustomTextsChange }: { 
+const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOptions, categories, canvasJSON, backgroundImage, customTexts = [], onCustomTextsChange, onAccessoryAdd }: { 
   selectedOptions: any, 
   categories: Category[], 
   canvasJSON?: any,
   backgroundImage?: string,
   customTexts?: { id: string, text: string, fill: string, fontSize: number, fontFamily: string, left: number, top: number }[],
-  onCustomTextsChange?: (texts: any[]) => void
+  onCustomTextsChange?: (texts: any[]) => void,
+  onAccessoryAdd?: (accId: string) => void,
 }, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fabricCanvasRef = useRef<any>(null)
@@ -26,6 +27,9 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
   const partStatesRef = useRef<{ [id: string]: any }>({})
   const [hasLoadedFromJSON, setHasLoadedFromJSON] = useState(false)
   const [justRestored, setJustRestored] = useState(false)
+  const clipboardRef = useRef<any>(null);
+  const clipboardOriginalPartIdRef = useRef<string | null>(null);
+  const clipboardOriginalObjectRef = useRef<any>(null);
 
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
@@ -575,6 +579,52 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
       fabricCanvas.off('object:moving', preventBodyMove);
       fabricCanvas.off('object:scaling', preventBodyMove);
       fabricCanvas.off('object:rotating', preventBodyMove);
+    };
+  }, []);
+
+  // Thêm useEffect lắng nghe Ctrl+C/Ctrl+V
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const canvas = fabricCanvasRef.current;
+      if (!canvas) return;
+      // Chỉ thao tác khi canvas đang focus hoặc object đang được chọn
+      const activeObj = canvas.getActiveObject();
+      if (e.ctrlKey && e.key.toLowerCase() === 'c') {
+        if (activeObj && activeObj.partType !== 'body') {
+          activeObj.clone((cloned: any) => {
+            clipboardRef.current = cloned;
+            clipboardOriginalObjectRef.current = activeObj;
+            clipboardOriginalPartIdRef.current = activeObj.partId || null;
+          });
+          e.preventDefault();
+        }
+      }
+      if (e.ctrlKey && e.key.toLowerCase() === 'v') {
+        if (clipboardOriginalObjectRef.current) {
+          clipboardOriginalObjectRef.current.clone((clonedObj: any) => {
+            clonedObj.set({
+              left: (clonedObj.left || 0) + 30,
+              top: (clonedObj.top || 0) + 30,
+              evented: true,
+              selectable: true,
+            });
+            if (clonedObj.partId) {
+              clonedObj.partId = clonedObj.partId + '_copy_' + Date.now();
+            }
+            if (clonedObj.partType === 'accessory' && typeof onAccessoryAdd === 'function' && clipboardOriginalPartIdRef.current) {
+              onAccessoryAdd(clipboardOriginalPartIdRef.current);
+            }
+            canvas.add(clonedObj);
+            canvas.setActiveObject(clonedObj);
+            canvas.renderAll();
+          });
+          e.preventDefault();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 

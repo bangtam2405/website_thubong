@@ -5,16 +5,27 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import TextType from "./TextType";
 import { useEffect, useState } from "react";
+import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from "@/components/ui/carousel";
+import useEmblaCarousel from 'embla-carousel-react';
+import Autoplay from 'embla-carousel-autoplay';
+import { useCallback, useRef } from 'react';
+import { formatDateVN } from "@/lib/utils";
 
 export default function HomeHeroSection() {
   const [review, setReview] = useState<{ rating: number, comment: string } | null>(null);
+  const [banners, setBanners] = useState<any[]>([]);
+  const [emblaRef] = useEmblaCarousel({ loop: true }, [Autoplay({ delay: 2000 })]);
 
   useEffect(() => {
+    fetch("http://localhost:5000/api/banner")
+      .then(res => res.json())
+      .then(data => {
+        setBanners(Array.isArray(data) ? data.filter((b: any) => b.isActive).sort((a: any, b: any) => a.order - b.order) : []);
+      });
     fetch("http://localhost:5000/api/reviews?limit=5")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
-          // Lấy ngẫu nhiên 1 review trong mảng
           const idx = Math.floor(Math.random() * data.length);
           setReview({ rating: data[idx].rating, comment: data[idx].comment });
         }
@@ -34,7 +45,7 @@ export default function HomeHeroSection() {
           <div className="space-y-8">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold">
               <TextType
-                text={["Thiết Kế Một Cái Ôm Của Riêng Bạn", "Gửi Yêu Thương Vào Từng Cái Ôm Bạn Thiết Kế"]}
+                text={["Thiết Kế Một Cái Ôm Của Riêng Bạn", "Từng Cái Ôm – Gói Trọn Yêu Thương"]}
                 as="span"
                 typingSpeed={120}
                 pauseDuration={1200}
@@ -80,22 +91,45 @@ export default function HomeHeroSection() {
           </div>
           <div className="relative">
             <div className="relative h-[400px] w-full flex items-center justify-center">
-              <img 
-                src="/dethuong.jpg" 
-                alt="Avatar của tôi" 
-                width={400} 
-                height={400} 
-                className="rounded-3xl shadow-2xl border-8 border-white object-cover"
-              />
+              {banners.length > 1 ? (
+                <div ref={emblaRef} className="overflow-hidden w-full">
+                  <div className="flex">
+                    {banners.map((b, i) => (
+                      <div key={b._id || i} className="min-w-0 shrink-0 grow-0 basis-full flex justify-center items-center">
+                        <a href={b.link || undefined} target={b.link ? "_blank" : undefined} rel="noopener noreferrer">
+                          <img
+                            src={b.url}
+                            alt={b.caption || `Banner ${i+1}`}
+                            width={600}
+                            height={400}
+                            className="rounded-xl shadow-2xl object-cover w-full h-[400px]"
+                          />
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : banners.length === 1 ? (
+                <a href={banners[0].link || undefined} target={banners[0].link ? "_blank" : undefined} rel="noopener noreferrer">
+                  <img
+                    src={banners[0].url}
+                    alt={banners[0].caption || "Banner"}
+                    width={600}
+                    height={400}
+                    className="rounded-xl shadow-2xl object-cover w-full h-[400px]"
+                  />
+                </a>
+              ) : (
+                <img
+                  src="/dethuong.jpg"
+                  alt="Avatar của tôi"
+                  width={600}
+                  height={400}
+                  className="rounded-xl shadow-2xl object-cover w-full h-[400px]"
+                />
+              )}
             </div>
-            <div className="absolute -bottom-6 -left-6 bg-white p-4 rounded-lg shadow-lg">
-              <div className="flex items-center gap-2">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className={`h-5 w-5 ${i < (review?.rating || 5) ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`} />
-                ))}
-              </div>
-              <p className="text-sm font-medium mt-1">{review?.comment || '"Con gái tôi rất thích chú gấu tùy chỉnh này!"'}</p>
-            </div>
+            {/* Đã xóa phần review trên banner */}
           </div>
         </div>
       </div>

@@ -1,13 +1,12 @@
 "use client"
 import { ReactNode, useState, createContext, useEffect } from "react";
-import { Gift, User, ShoppingBag, List, Users, LayoutDashboard, Star, Palette, ClipboardList, Boxes } from "lucide-react";
+import { Gift, User, ShoppingBag, List, Users, LayoutDashboard, Star, Palette, ClipboardList, Boxes, Pencil, Eye, EyeOff, Image as ImageIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTags, faUserTie } from "@fortawesome/free-solid-svg-icons";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import ImageUpload from "@/components/ImageUpload";
 import { toast } from "sonner";
 import instance from "@/lib/axiosConfig";
 
@@ -20,6 +19,7 @@ const menu = [
   { label: "Sản phẩm", value: "products", icon: <ShoppingBag size={20} className={iconClass} /> },
   { label: "Kho phụ kiện", value: "categories", icon: <Boxes size={20} className={iconClass} /> },
   { label: "Hộp quà", value: "giftboxes", icon: <Gift size={20} className={iconClass} /> },
+  { label: "Banner", value: "banner", icon: <ImageIcon size={20} className={iconClass} /> },
   { label: "Giảm giá", value: "coupons", icon: <FontAwesomeIcon icon={faTags} className="text-pink-400 h-5 w-5" /> },
   { label: "Thiết kế", value: "community-designs", icon: <Palette size={20} className={iconClass} /> },
   { label: "Đánh giá", value: "reviews", icon: <Star size={20} className={iconClass} /> },
@@ -39,6 +39,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     if (pathname.startsWith('/admin/coupons')) return 'coupons';
     if (pathname.startsWith('/admin/designs') || pathname.startsWith('/admin/community-designs')) return 'community-designs';
     if (pathname.startsWith('/admin/reviews')) return 'reviews';
+    if (pathname.startsWith('/admin/banner')) return 'banner';
     return 'stats';
   };
   const activeTab = getActiveTab();
@@ -51,6 +52,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState("");
   const [username, setUsername] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState("");
   // Lấy thông tin admin (giả sử là user đầu tiên có role admin)
   useEffect(() => {
     if (!showProfile) return;
@@ -145,7 +150,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 <span id="admin-profile-desc" className="sr-only">Cập nhật tên, avatar, số điện thoại, ngày sinh, giới tính cho tài khoản admin.</span>
               </DialogHeader>
               <form onSubmit={handleUpdate} className="space-y-4">
-                <div className="flex flex-col items-center mb-4">
+                <div className="flex flex-col items-center mb-4 relative group">
                   {avatar ? (
                     <img src={avatar} alt="Avatar" className="w-24 h-24 rounded-full object-cover border-4 border-pink-200 mb-2" />
                   ) : (
@@ -153,7 +158,45 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                       <User className="h-12 w-12 text-pink-500" />
                     </div>
                   )}
-                  <ImageUpload onImageUploaded={handleAvatarUploaded} currentImage={avatar} folder="avatars" />
+                  {/* Icon bút overlay */}
+                  <button
+                    type="button"
+                    className="absolute bottom-3 right-1 bg-white rounded-full p-2 shadow hover:bg-pink-100 transition-colors opacity-80 group-hover:opacity-100"
+                    title="Đổi ảnh đại diện"
+                    onClick={() => document.getElementById('admin-avatar-upload-input')?.click()}
+                  >
+                    <Pencil className="w-5 h-5 text-pink-500" />
+                  </button>
+                  <input
+                    id="admin-avatar-upload-input"
+                    type="file"
+                    accept="image/jpeg,image/png"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const formData = new FormData();
+                      formData.append('file', file);
+                      formData.append('folder', 'avatars');
+                      setLoading(true);
+                      try {
+                        const res = await fetch('/api/upload', {
+                          method: 'POST',
+                          body: formData,
+                        });
+                        const data = await res.json();
+                        if (data.success && data.url) {
+                          await handleAvatarUploaded(data.url);
+                        } else {
+                          toast.error('Upload ảnh thất bại!');
+                        }
+                      } catch (err) {
+                        toast.error('Lỗi upload ảnh!');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                  />
                 </div>
                 <Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Họ và tên" className="" />
                 <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Số điện thoại" className="" />
@@ -163,6 +206,27 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   <label><input type="radio" checked={gender === 'male'} onChange={() => setGender('male')} /> Nam</label>
                   <label><input type="radio" checked={gender === 'female'} onChange={() => setGender('female')} /> Nữ</label>
                   <label><input type="radio" checked={gender === 'other'} onChange={() => setGender('other')} /> Khác</label>
+                </div>
+                {/* Đổi mật khẩu */}
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="block mb-1 font-medium text-sm">Mật khẩu mới</label>
+                    <div className="relative">
+                      <Input type={showNewPassword ? "text" : "password"} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Để trống nếu không đổi" className="pr-10" />
+                      <button type="button" tabIndex={-1} className="absolute right-2 top-2 text-gray-400 hover:text-pink-500" onClick={() => setShowNewPassword(v => !v)}>
+                        {showNewPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block mb-1 font-medium text-sm">Xác nhận mật khẩu</label>
+                    <div className="relative">
+                      <Input type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Để trống nếu không đổi" className="pr-10" />
+                      <button type="button" tabIndex={-1} className="absolute right-2 top-2 text-gray-400 hover:text-pink-500" onClick={() => setShowConfirmPassword(v => !v)}>
+                        {showConfirmPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <Button type="submit" className="w-full bg-pink-500 hover:bg-pink-600">Lưu Thay Đổi</Button>
               </form>

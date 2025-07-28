@@ -1,8 +1,8 @@
 Chính sách bảo hành: Shop bảo hành sản phẩm trong 12 tháng kể từ ngày mua. Đổi trả trong 7 ngày nếu có lỗi sản xuất.
 Sản phẩm bán chạy: Gấu bông Doraemon, Thỏ Bông, Gấu Brown.
-Địa chỉ cửa hàng: 123 Đường ABC, Quận 1, TP.HCM.
+Địa chỉ cửa hàng: 233 Nguyễn Văn Cừ, Phường Cái Khế, Thành Phố Cần Thơ.
 Thời gian giao hàng: 1-3 ngày nội thành, 3-5 ngày toàn quốc.
-Hỗ trợ khách hàng: 0901 234 567 (8h-21h mỗi ngày).
+Hỗ trợ khách hàng: 0793 980 972 (8h-21h mỗi ngày).
 
 Chính sách đổi trả: Sản phẩm được đổi trả trong vòng 7 ngày nếu còn nguyên tem mác, chưa qua sử dụng và có lỗi từ nhà sản xuất. Không áp dụng đổi trả với sản phẩm đặt riêng theo yêu cầu.
 
@@ -39,3 +39,12 @@ Câu hỏi thường gặp:
 - Sản phẩm nào được đánh giá 5 sao nhiều nhất? => Gấu bông Doraemon, Thỏ Bông, Gấu Brown là các sản phẩm được khách hàng đánh giá 5 sao nhiều nhất.
 - Shop có nhận in tên, thêu tên lên thú bông không? => Có, bạn chỉ cần ghi chú khi đặt hàng hoặc liên hệ shop để được hỗ trợ.
 - Có thể đặt hàng số lượng lớn cho sự kiện, công ty không? => Shop nhận đơn hàng số lượng lớn, có chiết khấu và hỗ trợ thiết kế riêng cho sự kiện. 
+
+Hướng dẫn thao tác từng bước trên website:
+- Để thiết kế thú bông cá nhân hóa: Truy cập mục "Thiết Kế" trên menu hoặc nút Bắt đầu thiết kế ở Trang chủ, chọn các bộ phận (mắt, mũi, thân, phụ kiện), tuỳ chỉnh màu sắc, chất liệu, kích thước, sau đó nhấn "Lưu thiết kế" hoặc "Thêm vào giỏ hàng".
+- Để thêm sản phẩm vào giỏ hàng: Tìm sản phẩm trên trang chủ hoặc qua tìm kiếm, nhấn vào sản phẩm, chọn tuỳ chọn (kích thước, chất liệu...), nhấn "Thêm vào giỏ hàng". Biểu tượng giỏ hàng ở góc trên sẽ cập nhật số lượng.
+- Để đặt hàng: Vào giỏ hàng, kiểm tra sản phẩm, nhấn "Thanh toán", điền thông tin nhận hàng, chọn phương thức thanh toán, xác nhận đơn.
+- Để theo dõi đơn hàng: Đăng nhập, vào mục "Đơn Hàng" trên menu hoặc /orders, xem trạng thái đơn hàng, chi tiết từng đơn.
+- Để xem sản phẩm bán chạy: Vào trang chủ hoặc mục "Sản phẩm bán chạy", các sản phẩm có nhãn "Bán chạy" hoặc được gợi ý trong chatbox.
+- Để xem sản phẩm được đánh giá cao: Vào mục "Sản phẩm nổi bật" hoặc hỏi chatbox về sản phẩm được đánh giá tốt nhất.
+- Để liên hệ hỗ trợ: Vào trang "Liên Hệ" hoặc sử dụng chatbox ở góc phải màn hình. 

@@ -13,17 +13,23 @@ import { Product } from "@/types/product"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCartShopping, faStar } from '@fortawesome/free-solid-svg-icons';
 import CardProduct from "@/components/CardProduct";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function TeddyPage() {
   const [teddyItems, setTeddyItems] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [sort, setSort] = useState<string>("");
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => { setIsClient(true); }, []);
 
   useEffect(() => {
-    axios.get("http://localhost:5000/api/products?type=teddy")
+    let url = "http://localhost:5000/api/products?type=teddy";
+    if (sort) url += `&sort=${sort}`;
+    axios.get(url)
       .then(res => setTeddyItems(res.data))
       .catch(() => setTeddyItems([]))
       .finally(() => setLoading(false))
-  }, [])
+  }, [sort])
 
   return (
     <div className="container mx-auto py-12 px-4">
@@ -33,15 +39,31 @@ export default function TeddyPage() {
           Khám phá các mẫu teddy đáng yêu, bạn có thể đặt hàng nhanh hoặc tùy chỉnh theo ý thích!
         </p>
       </div>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-end gap-2 mb-6">
+        <label className="text-sm text-gray-500 mr-2 md:mb-0 mb-1">Sắp xếp theo:</label>
+        <Select value={sort || "default"} onValueChange={v => setSort(v === "default" ? "" : v)}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Sắp xếp" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="default">Mặc định</SelectItem>
+            <SelectItem value="price_asc">Giá tăng dần</SelectItem>
+            <SelectItem value="price_desc">Giá giảm dần</SelectItem>
+            <SelectItem value="rating_desc">Đánh giá cao nhất</SelectItem>
+            <SelectItem value="sold_desc">Bán chạy nhất</SelectItem>
+            <SelectItem value="newest">Mới nhất</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {loading && (
+        {(!isClient || loading) && (
           <div className="col-span-full text-center text-gray-400">Đang tải dữ liệu...</div>
         )}
-        {!loading && teddyItems.length === 0 && (
+        {isClient && !loading && teddyItems.length === 0 && (
           <div className="col-span-full text-center text-gray-400">Chưa có sản phẩm teddy nào.</div>
         )}
-        {teddyItems.map((item) => (
+        {isClient && !loading && teddyItems.map((item) => (
           <CardProduct key={item._id} product={item} />
         ))}
       </div>

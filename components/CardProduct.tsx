@@ -1,10 +1,14 @@
 "use client"
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCartShopping, faStar } from '@fortawesome/free-solid-svg-icons';
+import { Heart } from 'lucide-react';
 import { AddToCartButton } from "@/components/AddToCartButton";
+import { formatDateVN } from "@/lib/utils";
+import axios from 'axios';
+import { toast } from 'sonner';
 
 function formatSold(sold: number) {
   if (sold >= 10000) return `${(sold / 1000).toFixed(0)}k+`;
@@ -41,10 +45,67 @@ interface CardProductProps {
 }
 
 const CardProduct: React.FC<CardProductProps> = ({ product }) => {
+  const [wishlist, setWishlist] = useState<string[]>([]);
+  const [loadingWishlist, setLoadingWishlist] = useState(false);
+
+  useEffect(() => {
+    const fetchWishlist = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      setLoadingWishlist(true);
+      try {
+        const res = await axios.get('http://localhost:5000/api/wishlist', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.data.products) {
+          setWishlist(res.data.products.map((p: any) => p._id));
+        }
+      } catch (e) {
+        // ignore
+      } finally {
+        setLoadingWishlist(false);
+      }
+    };
+    fetchWishlist();
+  }, []);
+
+  const isWishlisted = wishlist.includes(product._id);
+
+  const handleAddToWishlist = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Bạn cần đăng nhập để thêm vào danh sách yêu thích!');
+        return;
+      }
+      await axios.post('http://localhost:5000/api/wishlist', {
+        productId: product._id
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      setWishlist(prev => [...prev, product._id]);
+      toast.success('Đã thêm vào danh sách yêu thích!');
+    } catch (error) {
+      console.error('Lỗi khi thêm vào wishlist:', error);
+      toast.error('Có lỗi xảy ra khi thêm vào danh sách yêu thích!');
+    }
+  };
   return (
     <div className="overflow-hidden group cursor-pointer transition-shadow hover:shadow-lg rounded-xl bg-white border">
       <Link href={`/product/${product._id}`} className="block">
         <div className="relative">
+          {/* Icon trái tim ở góc trên phải */}
+          <button
+            className="absolute top-2 right-2 z-10 bg-white/80 rounded-full p-2 shadow hover:bg-pink-100 transition-colors"
+            title={isWishlisted ? 'Đã trong yêu thích' : 'Thêm vào yêu thích'}
+            onClick={handleAddToWishlist}
+            disabled={loadingWishlist}
+          >
+            <Heart className={`w-5 h-5 transition-colors ${isWishlisted ? 'fill-pink-500 text-pink-500' : 'text-pink-400'}`} />
+          </button>
           <div className="aspect-square overflow-hidden">
             <Image
               src={product.image || "/placeholder.svg"}

@@ -76,3 +76,20 @@
 input[type="radio"]:checked {
   accent-color: #000;
 }
+
+/* Ẩn hoàn toàn logo Next.js dev overlay (chữ N tròn) */
+[data-nextjs-toast],
+div[style*="border-radius: 9999px"][style*="background"] {
+  display: none !important;
+}
+
+/* Ẩn hoàn toàn Next.js error overlay (nút N 1 Issue) và các overlay liên quan */
+#__nextjs-error-overlay,
+#__nextjs-error-overlay *,
+div[style*="z-index:9999999999"],
+div[style*="z-index: 9999999999"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

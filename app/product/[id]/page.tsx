@@ -12,6 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCart } from "@/contexts/CartContext"
 import { toast } from "sonner"
 import type { Product } from "@/types/product"
+import Zoom from 'react-medium-image-zoom'
+import 'react-medium-image-zoom/dist/styles.css'
 
 type Review = {
   _id: string;
@@ -130,12 +132,15 @@ export default function ProductDetail() {
         {/* Cột trái: Ảnh sản phẩm */}
         <div className="flex flex-col items-center justify-center">
           <div className="relative w-full aspect-square max-w-md rounded-xl overflow-hidden border-2 border-pink-100 shadow">
-            <Image
-              src={product.image}
-              alt={product.name}
-              fill
-              className="object-cover"
-            />
+            <Zoom>
+              <Image
+                src={product.image}
+                alt={product.name}
+                fill
+                className="object-cover"
+                style={{ borderRadius: 'inherit' }}
+              />
+            </Zoom>
           </div>
         </div>
         {/* Cột phải: Thông tin sản phẩm */}

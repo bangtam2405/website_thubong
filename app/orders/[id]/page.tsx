@@ -18,6 +18,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 import ReviewModal from "@/components/ReviewModal";
+import { formatDateVN } from "@/lib/utils";
 
 const statusColor = (status: string) => {
   switch (status) {
@@ -135,7 +136,7 @@ export default function OrderDetailPage() {
           </div>
           <div className="flex items-center gap-2">
             <span className="font-semibold">Ngày đặt:</span>
-            <span>{isClient ? new Date(order.createdAt).toLocaleString() : new Date(order.createdAt).toISOString()}</span>
+            <span>{formatDateVN(order.createdAt)}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="font-semibold">Tổng tiền:</span>
@@ -160,7 +161,7 @@ export default function OrderDetailPage() {
               </div>
               {order.transactionId && <div><b>Mã giao dịch:</b> {order.transactionId}</div>}
               {order.paymentStatus === 'success' && order.updatedAt && (
-                <div><b>Thời gian thanh toán:</b> {new Date(order.updatedAt).toLocaleString()}</div>
+                <div><b>Thời gian thanh toán:</b> {formatDateVN(order.updatedAt)}</div>
               )}
             </div>
           </div>

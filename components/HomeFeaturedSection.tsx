@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { formatDateVN } from "@/lib/utils";
 
 export default function HomeFeaturedSection({ featuredProducts }: { featuredProducts: any[] }) {
   return (

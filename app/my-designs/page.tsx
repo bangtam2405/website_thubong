@@ -2,6 +2,9 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { formatDateVN } from "@/lib/utils";
+import { Copy, Edit, Share2, Trash2 } from 'lucide-react';
 
 export default function MyDesignsPage() {
   const [designs, setDesigns] = useState<any[]>([]);
@@ -38,39 +41,96 @@ export default function MyDesignsPage() {
     await axios.delete(`http://localhost:5000/api/designs/${d._id}`);
     setDesigns(prev => prev.filter(item => item._id !== d._id));
   };
+
+  const router = useRouter();
+
+  // Đồng bộ logic tùy chỉnh: clone rồi chuyển hướng
+  const handleCustomize = async (id: string) => {
+    if (!userId) {
+      alert("Vui lòng đăng nhập để tùy chỉnh thiết kế này!");
+      return;
+    }
+    setSharingId(id);
+    try {
+      const res = await fetch(`/api/designs/${id}/clone`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.location.href = `/customize?edit=${data.id}`;
+      } else {
+        alert(data.message || "Tạo bản sao thất bại.");
+      }
+    } catch (error) {
+      alert("Đã xảy ra lỗi. Vui lòng thử lại.");
+    } finally {
+      setSharingId(null);
+    }
+  };
   return (
     <div className="container mx-auto py-8">
-      <h1 className="text-2xl font-bold mb-4">Thiết kế của tôi</h1>
-      <ul className="space-y-4">
+      <h1 className="text-3xl font-bold mb-8 text-pink-600 text-center drop-shadow">Thiết kế của tôi</h1>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {designs.map(d => (
-          <li key={d._id} className="border rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="font-semibold text-lg">{d.designName}</div>
-              <div className="text-sm text-gray-500">
-                Cập nhật: {d.updatedAt ? (isClient ? new Date(d.updatedAt).toLocaleString() : new Date(d.updatedAt).toISOString()) : ""}
+          <div key={d._id} className="bg-white rounded-2xl shadow-lg border border-pink-100 flex flex-col h-full">
+            {d.previewImage && (
+              <div className="w-full h-48 bg-gray-100 rounded-t-2xl overflow-hidden flex items-center justify-center">
+                <img src={d.previewImage} alt={d.designName} className="object-contain h-full w-full" />
               </div>
-              {d.isPublic && <div className="text-xs text-pink-500">Đã chia sẻ: <Link href={`/design/${d._id}`} className="underline">Xem link</Link></div>}
-            </div>
-            <div className="flex gap-2 mt-2 md:mt-0">
-              <button className="px-3 py-1 bg-pink-500 text-white rounded" onClick={() => handleCopy(d)}>Sao chép</button>
-              <Link href={`/customize?edit=${d._id}`} className="px-3 py-1 bg-blue-500 text-white rounded">Chỉnh sửa</Link>
-              {d.isPublic ? (
-                <div>
-                  <span>Đã chia sẻ</span>
-                  {origin && (
-                    <input value={origin + '/shared-designs/' + d._id} readOnly className="ml-2 px-3 py-1 bg-green-500 text-white rounded" />
-                  )}
-                </div>
-              ) : (
-                <button className="px-3 py-1 bg-green-500 text-white rounded" onClick={() => handleShare(d._id)} disabled={sharingId === d._id}>
-                  {sharingId === d._id ? 'Đang chia sẻ...' : 'Chia sẻ'}
+            )}
+            <div className="flex-1 flex flex-col p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="font-semibold text-lg text-pink-600 truncate">{d.designName}</span>
+                {d.isPublic && <span className="ml-2 px-2 py-0.5 text-xs rounded bg-pink-100 text-pink-600 font-medium">Đã chia sẻ</span>}
+              </div>
+              <div className="text-xs text-gray-500 mb-4">Cập nhật: {d.updatedAt ? (isClient ? formatDateVN(d.updatedAt) : d.updatedAt) : ""}</div>
+              <div className="flex gap-2 mt-auto flex-wrap">
+                <button
+                  className="w-10 h-10 flex items-center justify-center bg-pink-100 hover:bg-pink-200 text-pink-600 rounded-full transition"
+                  onClick={() => handleCopy(d)}
+                  title="Sao chép"
+                  aria-label="Sao chép"
+                >
+                  <Copy className="w-5 h-5" />
                 </button>
-              )}
-              <button className="px-3 py-1 bg-red-500 text-white rounded" onClick={() => handleDelete(d)}>Xóa</button>
+                <button
+                  className="w-10 h-10 flex items-center justify-center bg-pink-500 hover:bg-pink-600 text-white rounded-full transition"
+                  onClick={() => handleCustomize(d._id)}
+                  disabled={sharingId === d._id}
+                  title="Tùy chỉnh"
+                  aria-label="Tùy chỉnh"
+                >
+                  <Edit className="w-5 h-5" />
+                </button>
+                {!d.isPublic ? (
+                  <button
+                    className="w-10 h-10 flex items-center justify-center bg-pink-100 hover:bg-pink-200 text-pink-600 rounded-full transition"
+                    onClick={() => handleShare(d._id)}
+                    disabled={sharingId === d._id}
+                    title="Chia sẻ"
+                    aria-label="Chia sẻ"
+                  >
+                    <Share2 className="w-5 h-5" />
+                  </button>
+                ) : null}
+                <button
+                  className="w-10 h-10 flex items-center justify-center bg-red-100 hover:bg-red-200 text-red-600 rounded-full transition"
+                  onClick={() => handleDelete(d)}
+                  title="Xóa"
+                  aria-label="Xóa"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </div>
             </div>
-          </li>
+          </div>
         ))}
-      </ul>
+      </div>
+      {designs.length === 0 && (
+        <div className="text-center text-gray-400 mt-16 text-lg">Bạn chưa có thiết kế nào.</div>
+      )}
     </div>
   );
 } 

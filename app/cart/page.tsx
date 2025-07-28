@@ -9,9 +9,9 @@ import { Trash2, Plus, Minus, ArrowRight } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { useCart } from "@/contexts/CartContext"
 import { useRouter } from "next/navigation"
-import { useNavigation } from "react-day-picker"
 import { toast } from "sonner";
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+//import { formatDateVN } from "@/lib/utils";
 
 const fetchUserCoupons = async (userId: string) => {
   const res = await fetch(`/api/coupons/user/${userId}`);

@@ -125,7 +125,7 @@ export default function Header() {
                   height={50}
                   className="mr-2"
                 />
-                <span className="text-2xl font-bold text-pink-500" style={{ fontFamily: 'Pacifico, cursive' }}>Gấu Xinh</span>
+                <span className="text-3xl font-bold text-pink-500" style={{ fontFamily: 'Pacifico, cursive' }}>Gấu Xinh</span>
               </Link>
             </div>
 
@@ -197,7 +197,7 @@ export default function Header() {
                   />
                 </svg>
               </div>
-              <span className="text-xl font-medium text-pink-500">093.377.6616</span>
+              <span className="text-xl font-medium text-pink-500">0793.980.972</span>
             </div>
 
             {/* User and cart */}
@@ -253,7 +253,7 @@ export default function Header() {
                     <DropdownMenuItem>
                       <Link href="/my-designs" className="w-full flex items-center gap-2">
                         <FontAwesomeIcon icon={faFolderOpen} className="h-4 w-4 text-pink-500" />
-                        Xem Thiết Kế Đã Lưu
+                        Xem thiết kế đã lưu
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem>

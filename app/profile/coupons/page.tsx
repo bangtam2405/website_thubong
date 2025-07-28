@@ -5,17 +5,13 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { formatDateVN } from "@/lib/utils";
 
 const fetchUserCoupons = async (userId: string) => {
   const res = await fetch(`http://localhost:5000/api/admin/coupons/user/${userId}`);
   if (!res.ok) throw new Error('Lỗi khi lấy mã giảm giá');
   return res.json();
 };
-
-function formatDate(dateStr?: string) {
-  if (!dateStr) return 'Không giới hạn';
-  return new Date(dateStr).toLocaleDateString('vi-VN');
-}
 
 function getCouponTypeLabel(type: string) {
   if (type === 'percentage') return 'Giảm %';
@@ -93,7 +89,7 @@ export default function MyCouponsPage() {
                   <div><span className="font-semibold">Giá trị:</span> {c.type === 'percentage' ? `${c.value}%` : `${c.value.toLocaleString('vi-VN')}₫`}</div>
                   <div><span className="font-semibold">Đơn tối thiểu:</span> {c.minOrderAmount ? `${c.minOrderAmount.toLocaleString('vi-VN')}₫` : 'Không'}</div>
                   <div><span className="font-semibold">Tối đa:</span> {c.maxDiscountAmount ? `${c.maxDiscountAmount.toLocaleString('vi-VN')}₫` : 'Không giới hạn'}</div>
-                  <div><span className="font-semibold">Hạn dùng:</span> {formatDate(c.validUntil)}</div>
+                  <div><span className="font-semibold">Hạn dùng:</span> {formatDateVN(c.validUntil)}</div>
                   <div><span className="font-semibold">Trạng thái:</span> {c.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}</div>
                   <div><span className="font-semibold">Số lần dùng:</span> {c.usageLimit ? `${c.usedCount || 0}/${c.usageLimit}` : 'Không giới hạn'}</div>
                   <div><span className="font-semibold">Mã cá nhân:</span> {c.userId ? 'Có' : 'Toàn bộ khách hàng'}</div>

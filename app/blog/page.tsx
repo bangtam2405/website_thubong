@@ -1,6 +1,7 @@
 "use client"
 import { BookOpen, PenLine, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { formatDateVN } from "@/lib/utils";
 
 const blogPosts = [
   {

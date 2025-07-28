@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Star, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { formatDateVN } from "@/lib/utils";
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
@@ -123,7 +124,7 @@ export default function AdminReviewPage() {
                     </div>
                   </TableCell>
                   <TableCell className="py-3 px-4 line-clamp-2 max-w-xs">{r.comment}</TableCell>
-                  <TableCell className="py-3 px-4 text-center">{formatDate(r.createdAt)}</TableCell>
+                  <TableCell className="py-3 px-4 text-center">{formatDateVN(r.createdAt)}</TableCell>
                   <TableCell className="py-3 px-4 text-center">
                     {r.media && r.media.length > 0 ? (
                       <img src={r.media[0]} alt="Ảnh review" className="w-12 h-12 object-cover rounded border cursor-pointer" onClick={() => setSelected(r)} />
@@ -155,7 +156,7 @@ export default function AdminReviewPage() {
                 {selected.user?.avatar && <img src={selected.user.avatar} alt={selected.user?.username || selected.user?.email} className="w-10 h-10 rounded-full border" />}
                 <div>
                   <div className="font-semibold">{selected.user?.username || selected.user?.email || selected.user}</div>
-                  <div className="text-xs text-gray-400">{formatDate(selected.createdAt)}</div>
+                  <div className="text-xs text-gray-400">{formatDateVN(selected.createdAt)}</div>
                 </div>
               </div>
               <div className="flex items-center gap-2">

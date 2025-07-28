@@ -23,4 +23,6 @@ export type Product = {
   createdAt: string
   updatedAt: string
   categoryId?: string
+  size?: string
+  material?: string
 } 
