@@ -12,7 +12,6 @@ import { useCart } from "@/contexts/CartContext"
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Dialog } from '@headlessui/react';
 import { formatDateVN } from "@/lib/utils";
-
 // Log the environment variable for debugging
 console.log('NEXT_PUBLIC_BASE_URL:', process.env.NEXT_PUBLIC_BASE_URL);
 
@@ -91,6 +90,7 @@ export default function CheckoutPage() {
   const [showCouponModal, setShowCouponModal] = useState(false);
   const [selectedCoupon, setSelectedCoupon] = useState<string>("");
   const [couponSearch, setCouponSearch] = useState("");
+
 
   useEffect(() => {
     const itemsParam = searchParams.get("items")
@@ -175,6 +175,11 @@ export default function CheckoutPage() {
     setPromoError("");
     setSelectedCoupon("");
   };
+
+
+
+  // Tính trọng lượng tổng
+  const totalWeight = items.reduce((sum, item) => sum + (item.quantity * 0.5), 0); // Giả sử mỗi sản phẩm 0.5kg
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -395,7 +400,7 @@ export default function CheckoutPage() {
           <Input placeholder="Họ và tên" value={name} onChange={e => setName(e.target.value)} required />
           <Input placeholder="Số điện thoại" value={phone} onChange={e => setPhone(e.target.value)} required />
         </div>
-        <Input placeholder="Địa chỉ nhận hàng" value={address} onChange={e => setAddress(e.target.value)} required />
+                    <Input placeholder="Địa chỉ nhận hàng" value={address} onChange={e => setAddress(e.target.value)} required />
         <div>
           <h3 className="font-semibold mb-4">Phương thức thanh toán</h3>
           <RadioGroup value={payment} onValueChange={setPayment} className="space-y-4">
@@ -416,7 +421,7 @@ export default function CheckoutPage() {
             </div>
           </RadioGroup>
         </div>
-        {/* Tổng tiền, giảm giá, cần thanh toán nằm ngay trên nút xác nhận */}
+        {/* Tổng tiền, giảm giá, phí vận chuyển, cần thanh toán */}
         <div className="flex flex-col items-end text-lg font-bold mt-4 space-y-1">
           <div className="flex gap-2">
             <span className="font-bold">Tổng cộng:</span>
@@ -428,6 +433,7 @@ export default function CheckoutPage() {
               <span className="text-green-600">-{promoAmount.toLocaleString('vi-VN')}₫</span>
             </div>
           )}
+          
           <div className="flex gap-2">
             <span className="font-bold">Cần thanh toán:</span>
             <span className="text-pink-600">{finalTotal.toLocaleString('vi-VN')}₫</span>
