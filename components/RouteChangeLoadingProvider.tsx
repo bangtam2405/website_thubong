@@ -7,8 +7,15 @@ export default function RouteChangeLoadingProvider() {
   const pathname = usePathname();
   const [isRouteChanging, setIsRouteChanging] = useState(false);
   const [prevPath, setPrevPath] = useState(pathname);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    
     if (pathname !== prevPath) {
       setIsRouteChanging(true);
       const timeout = setTimeout(() => {
@@ -17,7 +24,10 @@ export default function RouteChangeLoadingProvider() {
       }, 600);
       return () => clearTimeout(timeout);
     }
-  }, [pathname, prevPath]);
+  }, [pathname, prevPath, mounted]);
+
+  // Không render gì cho đến khi component được mount
+  if (!mounted) return null;
 
   return isRouteChanging ? <LoadingOverlay /> : null;
 } 

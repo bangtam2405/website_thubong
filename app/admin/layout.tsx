@@ -1,6 +1,6 @@
 "use client"
 import { ReactNode, useState, createContext, useEffect } from "react";
-import { Gift, User, ShoppingBag, List, Users, LayoutDashboard, Star, Palette, ClipboardList, Boxes, Pencil, Eye, EyeOff, Image as ImageIcon } from "lucide-react";
+import { Gift, User, ShoppingBag, List, Users, LayoutDashboard, Star, Palette, ClipboardList, Boxes, Pencil, Eye, EyeOff, Image as ImageIcon, Tag } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTags, faUserTie } from "@fortawesome/free-solid-svg-icons";
@@ -17,6 +17,7 @@ const menu = [
   { label: "Đơn hàng", value: "orders", icon: <ClipboardList size={20} className={iconClass} /> },
   { label: "Khách hàng", value: "users", icon: <Users size={20} className={iconClass} /> },
   { label: "Sản phẩm", value: "products", icon: <ShoppingBag size={20} className={iconClass} /> },
+  { label: "Danh mục sản phẩm", value: "product-categories", icon: <Tag size={20} className={iconClass} /> },
   { label: "Kho phụ kiện", value: "categories", icon: <Boxes size={20} className={iconClass} /> },
   { label: "Hộp quà", value: "giftboxes", icon: <Gift size={20} className={iconClass} /> },
   { label: "Banner", value: "banner", icon: <ImageIcon size={20} className={iconClass} /> },
@@ -34,6 +35,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     if (pathname.startsWith('/admin/orders')) return 'orders';
     if (pathname.startsWith('/admin/users')) return 'users';
     if (pathname.startsWith('/admin/products')) return 'products';
+    if (pathname.startsWith('/admin/product-categories')) return 'product-categories';
     if (pathname.startsWith('/admin/categories')) return 'categories';
     if (pathname.startsWith('/admin/giftboxes')) return 'giftboxes';
     if (pathname.startsWith('/admin/coupons')) return 'coupons';

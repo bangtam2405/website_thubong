@@ -7,6 +7,7 @@ import RouteChangeLoadingProvider from "@/components/RouteChangeLoadingProvider"
 export default function AppLayoutClient({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isLoginPage = pathname === "/login";
+  
   return isLoginPage ? (
     <main className="min-h-screen">{children}</main>
   ) : (

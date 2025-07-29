@@ -4,6 +4,8 @@ import { Pacifico } from 'next/font/google';
 import "./globals.css";
 import Providers from "./providers";
 import AppLayoutClient from "@/components/AppLayoutClient";
+import ClientOnly from "@/components/ClientOnly";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const inter = Inter({ subsets: ["latin"] });
 const pacifico = Pacifico({ subsets: ['latin'], weight: '400', display: 'swap' });
@@ -17,10 +19,14 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi" className={inter.className} suppressHydrationWarning>
-      <body>
-        <Providers>
-          <AppLayoutClient>{children}</AppLayoutClient>
-        </Providers>
+      <body suppressHydrationWarning>
+        <ErrorBoundary>
+          <Providers>
+            <ClientOnly>
+              <AppLayoutClient>{children}</AppLayoutClient>
+            </ClientOnly>
+          </Providers>
+        </ErrorBoundary>
       </body>
     </html>
   );

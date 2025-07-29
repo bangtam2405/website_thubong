@@ -6,6 +6,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  devIndicators: false,
   images: {
     unoptimized: true,
     domains: ['localhost', 'res.cloudinary.com'],

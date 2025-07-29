@@ -47,6 +47,7 @@ function StatsTab() {
   const [topProducts, setTopProducts] = useState<any[]>([]);
   const [loadingTop, setLoadingTop] = useState(false);
   const [groupBy, setGroupBy] = useState<'day' | 'month' | 'year'>('day');
+  const [productCategories, setProductCategories] = useState<any[]>([]);
   // Filter state động
   const today = new Date();
   const defaultYear = today.getFullYear();
@@ -107,7 +108,17 @@ function StatsTab() {
 
   useEffect(() => {
     fetchStats();
-    // eslint-disable-next-line
+  }, [groupBy, fromDate, toDate, fromMonth, toMonth, fromYear, toYear]);
+
+  // Fetch danh mục sản phẩm
+  useEffect(() => {
+    instance.get("http://localhost:5000/api/product-categories/admin")
+      .then(res => setProductCategories(res.data))
+      .catch(err => {
+        console.error("Lỗi khi tải danh mục sản phẩm:", err);
+        // Nếu API chưa tồn tại, hiển thị thông báo lỗi
+        setProductCategories([]);
+      });
   }, []);
 
   if (loading) return <div>Đang tải dữ liệu thống kê...</div>;
@@ -252,6 +263,24 @@ function StatsTab() {
             <div className="text-xs text-gray-400 mt-1">Đang kinh doanh</div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Thống kê danh mục sản phẩm */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-8">
+        {productCategories.map((category, index) => (
+          <Card key={category._id || index} className="shadow-md border-0 bg-gradient-to-br from-purple-50 to-white">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{category.name}</CardTitle>
+              <div className="text-lg">{category.icon || '📦'}</div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-purple-600">
+                <CountUp end={category.productCount || 0} duration={1} separator="," />
+              </div>
+              <div className="text-xs text-gray-500 mt-1">Sản phẩm</div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
       {/* Chọn loại thống kê và biểu đồ bên dưới */}
       <div className="space-y-8">

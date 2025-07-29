@@ -141,9 +141,22 @@ export default function ProductsPage() {
 }
 
 function ProductForm({ product, onSuccess, onCancel }: { product?: any, onSuccess: () => void, onCancel: () => void }) {
-  const [categories, setCategories] = useState<any[]>([]);
+  const [productCategories, setProductCategories] = useState<any[]>([]);
   useEffect(() => {
-    instance.get("http://localhost:5000/api/categories").then(res => setCategories(res.data));
+    // Lấy danh mục sản phẩm từ API mới
+    instance.get("http://localhost:5000/api/product-categories/admin")
+      .then(res => setProductCategories(res.data))
+      .catch(err => {
+        console.error("Lỗi khi tải danh mục sản phẩm:", err);
+        // Fallback về danh mục cũ nếu API mới chưa có
+        setProductCategories([
+          { name: "Teddy", type: "teddy" },
+          { name: "Phụ Kiện", type: "accessory" },
+          { name: "Bộ Sưu Tập", type: "collection" },
+          { name: "Hàng Mới", type: "new" },
+          { name: "Hộp Quà", type: "giftbox" }
+        ]);
+      });
   }, []);
   const [form, setForm] = useState<any>({
     name: product?.name || "",
@@ -229,12 +242,22 @@ function ProductForm({ product, onSuccess, onCancel }: { product?: any, onSucces
         </div>
       )}
       <select name="type" value={form.type} onChange={handleChange} className="border rounded px-2 py-2 w-full">
-        <option value="teddy">Teddy</option>
-        <option value="accessory">Phụ Kiện</option>
-        <option value="collection">Bộ Sưu Tập</option>
-        <option value="new">Mới</option>
-        <option value="giftbox">Hộp Quà</option>
+        {productCategories.length > 0 ? (
+          productCategories.map(category => (
+            <option key={category._id} value={category.type}>{category.name}</option>
+          ))
+        ) : (
+          <option value="">Không có danh mục nào</option>
+        )}
       </select>
+      {productCategories.length === 0 && (
+        <div className="text-sm text-orange-600 bg-orange-50 p-2 rounded">
+          💡 Chưa có danh mục sản phẩm. Vui lòng tạo danh mục tại 
+          <a href="/admin/product-categories" className="text-blue-600 underline ml-1">
+            Quản lý danh mục sản phẩm
+          </a>
+        </div>
+      )}
       <Input 
         name="customizeLink" 
         value={form.customizeLink} 

@@ -259,7 +259,7 @@ export default function Header() {
                     <DropdownMenuItem>
                       <Link href="/profile" className="w-full flex items-center gap-2">
                         <FontAwesomeIcon icon={faUser} className="h-4 w-4 text-pink-500" />
-                        Hồ Sơ
+                        Thông tin cá nhân
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem>
@@ -271,13 +271,13 @@ export default function Header() {
                     <DropdownMenuItem>
                       <Link href="/orders" className="w-full flex items-center gap-2">
                         <FontAwesomeIcon icon={faBoxOpen} className="h-4 w-4 text-pink-500" />
-                        Đơn Hàng Của Tôi
+                        Đơn hàng của tôi
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout} className="cursor-pointer flex items-center gap-2">
                       <FontAwesomeIcon icon={faSignOutAlt} className="h-4 w-4 text-pink-500" />
-                      Đăng Xuất
+                      Đăng xuất
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
