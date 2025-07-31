@@ -177,6 +177,10 @@ export default function CustomizePage() {
   const [giftBoxModalOpen, setGiftBoxModalOpen] = useState(false);
   const [pendingGiftBox, setPendingGiftBox] = useState<any>(null);
   const [selectedGiftBox, setSelectedGiftBox] = useState<GiftBox | null>(null);
+  const [giftBoxes, setGiftBoxes] = useState<GiftBox[]>([]);
+  const [accessoriesPerPage, setAccessoriesPerPage] = useState(15); // Số phụ kiện hiển thị mỗi lần
+  const [bodyPerPage, setBodyPerPage] = useState(9); // Số thân hiển thị mỗi lần
+  const [featuresPerPage, setFeaturesPerPage] = useState(12); // Số đặc điểm hiển thị mỗi lần
 
   // Reset loadedCanvasJSON khi không edit
   useEffect(() => {
@@ -511,7 +515,12 @@ export default function CustomizePage() {
 
   // 1. State cho modal lưu thiết kế
   const [showSaveDesignModal, setShowSaveDesignModal] = useState(false);
-  const [saveDesignForm, setSaveDesignForm] = useState({ name: '', description: '', previewImage: '' });
+  const [saveDesignForm, setSaveDesignForm] = useState({
+    designName: '',
+    description: '',
+    isPublic: false,
+    previewImage: ''
+  });
   const [savingDesign, setSavingDesign] = useState(false);
 
   const handleAddToCart = () => {
@@ -1198,13 +1207,15 @@ export default function CustomizePage() {
                 <TabsContent value="body" className="space-y-6">
                   {/* Loại Thân */}
                   <div>
-                    <h3 className="font-medium mb-3">Loại Thân</h3>
-                    <div className="grid grid-cols-3 gap-3">
-                      {bodyOptions.map(option => (
+                    <h3 className="font-medium mb-4 text-lg text-gray-800">Loại Thân</h3>
+                    <div className="grid grid-cols-3 gap-4">
+                      {bodyOptions.slice(0, bodyPerPage).map(option => (
                         <div
                           key={option._id}
-                          className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                            selectedOptions.body === option._id ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
+                          className={`border-2 rounded-xl p-4 cursor-pointer transition-all hover:shadow-md ${
+                            selectedOptions.body === option._id 
+                              ? "border-pink-500 bg-pink-50 shadow-md" 
+                              : "border-gray-200 hover:border-pink-300"
                           }`}
                           onClick={() => {
                             setSelectedOptions(prev => {
@@ -1214,17 +1225,43 @@ export default function CustomizePage() {
                             });
                           }}
                         >
-                          <Image
-                            src={option.image || "/placeholder.svg"}
-                            alt={option.name}
-                            width={60}
-                            height={60}
-                            className="mx-auto mb-2"
-                          />
-                          <p className="text-center text-sm">{option.name}</p>
+                          <div className="flex flex-col items-center">
+                            <Image
+                              src={option.image || "/placeholder.svg"}
+                              alt={option.name}
+                              width={80}
+                              height={80}
+                              className="rounded-lg object-contain mb-3"
+                            />
+                            <p className="text-center text-sm font-medium text-gray-800">{option.name}</p>
+                          </div>
                         </div>
                       ))}
                     </div>
+                    
+                    {/* Nút "Xem thêm" cho thân */}
+                    {bodyOptions.length > bodyPerPage && (
+                      <div className="mt-6 text-center">
+                        <button
+                          onClick={() => setBodyPerPage(prev => prev + 9)}
+                          className="bg-pink-500 hover:bg-pink-600 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                        >
+                          Xem thêm {Math.min(9, bodyOptions.length - bodyPerPage)} loại thân
+                        </button>
+                      </div>
+                    )}
+                    
+                    {/* Nút "Thu gọn" cho thân */}
+                    {bodyPerPage > 9 && bodyOptions.length <= bodyPerPage && (
+                      <div className="mt-6 text-center">
+                        <button
+                          onClick={() => setBodyPerPage(9)}
+                          className="text-pink-500 hover:text-pink-600 px-6 py-2 rounded-lg font-medium transition-colors border border-pink-300 hover:border-pink-400"
+                        >
+                          Thu gọn
+                        </button>
+                      </div>
+                    )}
                   </div>
                   {/* Kích Thước */}
                   <div>
@@ -1289,84 +1326,137 @@ export default function CustomizePage() {
                 </TabsContent>
 
                 <TabsContent value="features" className="space-y-6">
-                  {featureGroups.map(group => (
-                    <div key={group._id}>
-                      <h3 className="font-medium mb-3">{group.name}</h3>
-                      <div className="grid grid-cols-3 gap-3">
-                        {categories.filter(opt => opt.parent === group._id).length > 0
-                          ? categories.filter(opt => opt.parent === group._id).map(option => (
-                              <div
-                                key={option._id}
-                                className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                                  String((selectedOptions as any)[mapGroupToOptionKey(group)]) === String(option._id) ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
-                                }`}
-                                onClick={() => handleOptionSelect(mapGroupToOptionKey(group), option._id)}
-                              >
+                  {featureGroups.map(group => {
+                    const groupFeatures = categories.filter(opt => opt.parent === group._id);
+                    const displayedFeatures = groupFeatures.length > 0 
+                      ? groupFeatures.slice(0, featuresPerPage)
+                      : [group].slice(0, featuresPerPage);
+                    const hasMore = groupFeatures.length > featuresPerPage;
+                    
+                    return (
+                      <div key={group._id}>
+                        <h3 className="font-medium mb-4 text-lg text-gray-800">{group.name}</h3>
+                        <div className="grid grid-cols-3 gap-4">
+                          {displayedFeatures.map(option => (
+                            <div
+                              key={option._id}
+                              className={`border-2 rounded-xl p-4 cursor-pointer transition-all hover:shadow-md ${
+                                String((selectedOptions as any)[mapGroupToOptionKey(group)]) === String(option._id) 
+                                  ? "border-pink-500 bg-pink-50 shadow-md" 
+                                  : "border-gray-200 hover:border-pink-300"
+                              }`}
+                              onClick={() => handleOptionSelect(mapGroupToOptionKey(group), option._id)}
+                            >
+                              <div className="flex flex-col items-center">
                                 <Image
                                   src={option.image || "/placeholder.svg"}
                                   alt={option.name}
-                                  width={60}
-                                  height={60}
-                                  className="mx-auto mb-2"
+                                  width={80}
+                                  height={80}
+                                  className="rounded-lg object-contain mb-3"
                                 />
-                                <p className="text-center text-sm">{option.name}</p>
+                                <p className="text-center text-sm font-medium text-gray-800">{option.name}</p>
                               </div>
-                            ))
-                          : (
-                            <div
-                              className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                                (selectedOptions as any)[mapGroupToOptionKey(group)] === group._id ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
-                              }`}
-                              onClick={() => handleOptionSelect(mapGroupToOptionKey(group), group._id)}
-                            >
-                              <Image
-                                src={group.image || "/placeholder.svg"}
-                                alt={group.name}
-                                width={60}
-                                height={60}
-                                className="mx-auto mb-2"
-                              />
-                              <p className="text-center text-sm">{group.name}</p>
                             </div>
-                          )
-                        }
+                          ))}
+                        </div>
+                        
+                        {/* Nút "Xem thêm" cho đặc điểm */}
+                        {hasMore && (
+                          <div className="mt-6 text-center">
+                            <button
+                              onClick={() => setFeaturesPerPage(prev => prev + 12)}
+                              className="bg-pink-500 hover:bg-pink-600 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                            >
+                              Xem thêm {Math.min(12, groupFeatures.length - featuresPerPage)} đặc điểm
+                            </button>
+                          </div>
+                        )}
+                        
+                        {/* Nút "Thu gọn" cho đặc điểm */}
+                        {featuresPerPage > 12 && groupFeatures.length <= featuresPerPage && (
+                          <div className="mt-6 text-center">
+                            <button
+                              onClick={() => setFeaturesPerPage(12)}
+                              className="text-pink-500 hover:text-pink-600 px-6 py-2 rounded-lg font-medium transition-colors border border-pink-300 hover:border-pink-400"
+                            >
+                              Thu gọn
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </TabsContent>
 
                 <TabsContent value="extras" className="space-y-6">
-                  {accessoryGroups.map(group => (
-                    <div key={group._id}>
-                      <h3 className="font-medium mb-3">{group.name}</h3>
-                      <div className="grid grid-cols-2 gap-3">
-                        {categories.filter(opt => opt.parent === group._id && opt.type === "option").map(option => (
-                          <div
-                            key={option._id}
-                            className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                              selectedOptions.accessories[option._id] ? "border-pink-500 bg-pink-50" : "hover:border-gray-300"
-                            }`}
-                            onClick={() => handleOptionSelect(mapGroupToOptionKey(group), option._id)}
-                          >
-                            <Image
-                              src={option.image || "/placeholder.svg"}
-                              alt={option.name}
-                              width={70}
-                              height={70}
-                              className="mx-auto mb-2"
-                            />
-                            <p className="text-center text-sm">{option.name}</p>
-                            <p className="text-center text-xs text-pink-500">+{option.price?.toLocaleString('vi-VN')}₫</p>
-                            {selectedOptions.accessories[option._id] && (
-                              <p className="text-center text-xs text-blue-500 font-bold">
-                                Đã chọn: {selectedOptions.accessories[option._id]}
-                              </p>
-                            )}
+                  {accessoryGroups.map(group => {
+                    const groupAccessories = categories.filter(opt => opt.parent === group._id && opt.type === "option");
+                    const displayedAccessories = groupAccessories.slice(0, accessoriesPerPage);
+                    const hasMore = groupAccessories.length > accessoriesPerPage;
+                    
+                    return (
+                      <div key={group._id}>
+                        <h3 className="font-medium mb-4 text-lg text-gray-800">{group.name}</h3>
+                        <div className="grid grid-cols-3 gap-4">
+                          {displayedAccessories.map(option => (
+                            <div
+                              key={option._id}
+                              className={`border-2 rounded-xl p-4 cursor-pointer transition-all hover:shadow-md ${
+                                selectedOptions.accessories[option._id] 
+                                  ? "border-pink-500 bg-pink-50 shadow-md" 
+                                  : "border-gray-200 hover:border-pink-300"
+                              }`}
+                              onClick={() => handleOptionSelect(mapGroupToOptionKey(group), option._id)}
+                            >
+                              <div className="flex flex-col items-center">
+                                <div className="relative mb-3">
+                                  <Image
+                                    src={option.image || "/placeholder.svg"}
+                                    alt={option.name}
+                                    width={80}
+                                    height={80}
+                                    className="rounded-lg object-contain"
+                                  />
+                                  {selectedOptions.accessories[option._id] && (
+                                    <div className="absolute -top-2 -right-2 bg-pink-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+                                      {selectedOptions.accessories[option._id]}
+                                    </div>
+                                  )}
+                                </div>
+                                <p className="text-center text-sm font-medium text-gray-800 mb-1">{option.name}</p>
+                                <p className="text-center text-xs text-pink-600 font-semibold">+{option.price?.toLocaleString('vi-VN')}₫</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {/* Nút "Xem thêm" */}
+                        {hasMore && (
+                          <div className="mt-6 text-center">
+                            <button
+                              onClick={() => setAccessoriesPerPage(prev => prev + 15)}
+                              className="bg-pink-500 hover:bg-pink-600 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                            >
+                              Xem thêm {Math.min(15, groupAccessories.length - accessoriesPerPage)} phụ kiện
+                            </button>
                           </div>
-                        ))}
+                        )}
+                        
+                        {/* Nút "Thu gọn" khi đã xem hết */}
+                        {accessoriesPerPage > 15 && groupAccessories.length <= accessoriesPerPage && (
+                          <div className="mt-6 text-center">
+                            <button
+                              onClick={() => setAccessoriesPerPage(15)}
+                              className="text-pink-500 hover:text-pink-600 px-6 py-2 rounded-lg font-medium transition-colors border border-pink-300 hover:border-pink-400"
+                            >
+                              Thu gọn
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </TabsContent>
               </Tabs>
 
@@ -1478,9 +1568,9 @@ export default function CustomizePage() {
             </DialogHeader>
             <div className="space-y-3">
               <Input
-                placeholder="Tên thiết kế"
-                value={saveDesignForm.name}
-                onChange={e => setSaveDesignForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Tên thiết kế của bạn"
+                value={saveDesignForm.designName}
+                onChange={(e) => setSaveDesignForm(prev => ({ ...prev, designName: e.target.value }))}
                 required
               />
               <Input
@@ -1528,7 +1618,7 @@ export default function CustomizePage() {
                   
                   const saveBody = {
                     userId: role === 'admin' ? 'admin' : userId,
-                    designName: saveDesignForm.name || selectedOptions.name || "Thiết kế mới",
+                    designName: saveDesignForm.designName || selectedOptions.name || "Thiết kế mới",
                     description: saveDesignForm.description,
                     parts: partsForSave,
                     canvasJSON: JSON.stringify(canvasData),
@@ -1554,7 +1644,7 @@ export default function CustomizePage() {
                   }
                   setSavingDesign(false);
                 }}
-                disabled={savingDesign || !saveDesignForm.name}
+                disabled={savingDesign || !saveDesignForm.designName}
               >
                 {savingDesign ? 'Đang lưu...' : 'Lưu thiết kế'}
               </Button>
