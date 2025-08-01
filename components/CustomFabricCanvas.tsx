@@ -382,9 +382,23 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
           const maxHeight = 150;
           const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
 
+          // Set vị trí riêng cho từng loại part
+          let left, top;
+          if (type === 'eyes') {
+            left = 240; // Vị trí X cho mắt
+            top = 200;  // Vị trí Y cho mắt
+          } else if (type === 'mouth') {
+            left = 250; // Vị trí X cho miệng
+            top = 320;  // Vị trí Y cho miệng
+          } else {
+            // Các part khác vẫn ở giữa canvas
+            left = fabricCanvas.width / 2;
+            top = fabricCanvas.height / 2;
+          }
+
           fabricImage.set({
-            left: fabricCanvas.width / 2,
-            top: fabricCanvas.height / 2,
+            left: left,
+            top: top,
             originX: 'center',
             originY: 'center',
             scaleX: scale,
@@ -471,16 +485,9 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
     }
     // 3. Eyes
     if (selectedOptions.eyes) {
-      if (!preserveExistingObject('eyes', selectedOptions.eyes)) {
-        clearPartType('eyes');
-        addPart(selectedOptions.eyes, 'eyes');
-        if (fabricCanvasRef.current) {
-          const eyesObjs = fabricCanvasRef.current.getObjects().filter((obj: any) => obj.partType === 'eyes');
-          if (eyesObjs.length > 1) {
-            eyesObjs.slice(0, -1).forEach((obj: any) => fabricCanvasRef.current.remove(obj));
-          }
-        }
-      }
+      // Luôn xóa mắt cũ trước khi thêm mắt mới để tránh bị dính 2 mắt
+      clearPartType('eyes');
+      addPart(selectedOptions.eyes, 'eyes');
     }
     // 4. Nose
     if (selectedOptions.nose) {
