@@ -85,14 +85,8 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/shipping" className="text-gray-600 hover:text-pink-500 text-sm hover:underline transition-all">
-                  Vận Chuyển
-                </Link>
-              </li>
-              
-              <li>
-                <Link href="/returns" className="text-gray-600 hover:text-pink-500 text-sm hover:underline transition-all">
-                  Đổi Trả
+                <Link href="/policies" className="text-gray-600 hover:text-pink-500 text-sm hover:underline transition-all">
+                  Chính Sách
                 </Link>
               </li>
               <li>

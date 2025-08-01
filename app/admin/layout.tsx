@@ -1,6 +1,6 @@
 "use client"
 import { ReactNode, useState, createContext, useEffect } from "react";
-import { Gift, User, ShoppingBag, List, Users, LayoutDashboard, Star, Palette, ClipboardList, Boxes, Pencil, Eye, EyeOff, Image as ImageIcon, Tag } from "lucide-react";
+import { Gift, User, ShoppingBag, List, Users, LayoutDashboard, Star, Palette, ClipboardList, Boxes, Pencil, Eye, EyeOff, Image as ImageIcon, Tag, Settings } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTags, faUserTie } from "@fortawesome/free-solid-svg-icons";
@@ -24,6 +24,7 @@ const menu = [
   { label: "Giảm giá", value: "coupons", icon: <FontAwesomeIcon icon={faTags} className="text-pink-400 h-5 w-5" /> },
   { label: "Thiết kế", value: "community-designs", icon: <Palette size={20} className={iconClass} /> },
   { label: "Đánh giá", value: "reviews", icon: <Star size={20} className={iconClass} /> },
+  { label: "Chính sách", value: "policies", icon: <Settings size={20} className={iconClass} /> },
   { label: "Thống kê", value: "stats", icon: <LayoutDashboard size={20} className={iconClass} /> },
 ];
 
@@ -42,6 +43,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     if (pathname.startsWith('/admin/designs') || pathname.startsWith('/admin/community-designs')) return 'community-designs';
     if (pathname.startsWith('/admin/reviews')) return 'reviews';
     if (pathname.startsWith('/admin/banner')) return 'banner';
+    if (pathname.startsWith('/admin/policies')) return 'policies';
     return 'stats';
   };
   const activeTab = getActiveTab();
