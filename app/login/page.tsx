@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import AddressSelector from "@/components/AddressSelector"
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -30,6 +31,12 @@ export default function AuthPage() {
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
   const [registerConfirm, setRegisterConfirm] = useState("");
+  const [selectedAddress, setSelectedAddress] = useState({
+    province: "",
+    ward: "",
+    detail: "",
+    fullAddress: ""
+  });
 
   useEffect(() => { setIsClient(true); }, []);
 
@@ -159,7 +166,7 @@ export default function AuthPage() {
     const phone = (document.getElementById("register-phone") as HTMLInputElement)?.value || ""
     const dob = (document.getElementById("register-dob") as HTMLInputElement)?.value || ""
     const gender = (document.querySelector('input[name="register-gender"]:checked') as HTMLInputElement)?.value || "other"
-    const address = (document.getElementById("register-address") as HTMLInputElement)?.value || ""
+    const address = selectedAddress.fullAddress || ""
 
     let errors: { email?: string; password?: string; confirm?: string } = {};
     if (!email) {
@@ -181,7 +188,7 @@ export default function AuthPage() {
       return;
     }
 
-    if (!fullName || !email || !phone || !dob || !address) {
+    if (!fullName || !email || !phone || !dob || !selectedAddress.province || !selectedAddress.ward) {
       toast.error("Vui lòng nhập đầy đủ thông tin!")
       setIsLoading(false)
       return
@@ -197,6 +204,9 @@ export default function AuthPage() {
         dob,
         gender,
         address,
+        province: selectedAddress.province,
+        ward: selectedAddress.ward,
+        detail: selectedAddress.detail,
       })
 
       toast.success("Đăng ký thành công, bạn có thể đăng nhập!")
@@ -320,8 +330,16 @@ export default function AuthPage() {
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="register-address">Địa chỉ</Label>
-                    <Input id="register-address" type="text" placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành" required />
+                    <Label>Địa chỉ</Label>
+                    <AddressSelector 
+                      onAddressChange={(addressData) => {
+                        setSelectedAddress(addressData)
+                      }}
+                      defaultProvince=""
+                      defaultWard=""
+                      defaultDetail=""
+                      disableLocalStorage={true}
+                    />
                   </div>
                   <div>
                     <Label htmlFor="register-password">Mật khẩu</Label>

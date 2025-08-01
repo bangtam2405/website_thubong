@@ -12,6 +12,9 @@ import { useCart } from "@/contexts/CartContext"
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Dialog } from '@headlessui/react';
 import { formatDateVN } from "@/lib/utils";
+import AddressSelector from "@/components/AddressSelector";
+import ShippingCalculator from "@/components/ShippingCalculator";
+import OrderSuccessModal from "@/components/OrderSuccessModal";
 
 interface CartItem {
   _id: string
@@ -30,39 +33,11 @@ function SuccessModal({ onContinue, orderId }: { onContinue: () => void; orderId
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <style>{`
-        .checkmark {
-          stroke-dasharray: 24;
-          stroke-dashoffset: 24;
-          animation: checkmark-draw 0.7s cubic-bezier(.65,0,.45,1) infinite;
-        }
-        @keyframes checkmark-draw {
-          0% { stroke-dashoffset: 24; opacity: 1; }
-          60% { stroke-dashoffset: 0; opacity: 1; }
-          80% { stroke-dashoffset: 0; opacity: 1; }
-          100% { stroke-dashoffset: 24; opacity: 1; }
-        }
-      `}</style>
-      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-        <svg className="w-24 h-24 text-green-500 mx-auto mb-6" fill="none" viewBox="0 0 48 48">
-          <circle cx="24" cy="24" r="22" stroke="currentColor" strokeWidth="4" fill="none" />
-          <path className="checkmark" d="M15 25l7 7 11-13" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-        </svg>
-        <h2 className="text-3xl font-bold text-gray-800 mb-4">Đặt hàng thành công!</h2>
-        <p className="text-gray-600 mb-6">
-          Cảm ơn bạn đã tin tưởng. Đơn hàng của bạn đang được xử lý và sẽ sớm được giao đến bạn.
-        </p>
-        <div className="space-y-3">
-           <Button 
-            className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 rounded-lg text-lg"
-            onClick={handleContinue}
-          >
-            Tiếp tục mua sắm
-          </Button>
-        </div>
-      </div>
-    </div>
+    <OrderSuccessModal 
+      isOpen={true}
+      onClose={handleContinue}
+      orderId={orderId || undefined}
+    />
   )
 }
 
@@ -79,6 +54,12 @@ export default function CheckoutPage() {
   const [name, setName] = useState("")
   const [phone, setPhone] = useState("")
   const [address, setAddress] = useState("")
+  const [selectedAddress, setSelectedAddress] = useState({
+    province: "",
+    ward: "",
+    detail: "",
+    fullAddress: ""
+  })
   const [payment, setPayment] = useState("cod")
   const [loading, setLoading] = useState(false)
   const [pageLoading, setPageLoading] = useState(true)
@@ -96,6 +77,7 @@ export default function CheckoutPage() {
   const [selectedCoupon, setSelectedCoupon] = useState<string>("");
   const [selectedCouponId, setSelectedCouponId] = useState<string>("");
   const [couponSearch, setCouponSearch] = useState("");
+  const [shippingFee, setShippingFee] = useState(0);
 
 
   useEffect(() => {
@@ -125,7 +107,40 @@ export default function CheckoutPage() {
         const user = JSON.parse(userStr);
         if (user.fullName) setName(user.fullName);
         if (user.phone) setPhone(user.phone);
-        if (user.addresses && user.addresses[0] && user.addresses[0].address) setAddress(user.addresses[0].address);
+        
+        // Ưu tiên lấy địa chỉ từ localStorage (đã được cập nhật từ profile)
+        const savedAddress = localStorage.getItem("selectedAddress");
+        if (savedAddress) {
+          try {
+            const addressData = JSON.parse(savedAddress);
+            setAddress(addressData.fullAddress || "");
+            setSelectedAddress(addressData);
+          } catch (error) {
+            // Fallback: lấy từ user.addresses nếu localStorage lỗi
+            if (user.addresses && user.addresses[0]) {
+              const userAddress = user.addresses[0];
+              setAddress(userAddress.address || "");
+              setSelectedAddress({
+                province: userAddress.province || "",
+                ward: userAddress.ward || "",
+                detail: userAddress.detail || "",
+                fullAddress: userAddress.address || ""
+              });
+            }
+          }
+        } else {
+          // Fallback: lấy từ user.addresses nếu không có trong localStorage
+          if (user.addresses && user.addresses[0]) {
+            const userAddress = user.addresses[0];
+            setAddress(userAddress.address || "");
+            setSelectedAddress({
+              province: userAddress.province || "",
+              ward: userAddress.ward || "",
+              detail: userAddress.detail || "",
+              fullAddress: userAddress.address || ""
+            });
+          }
+        }
       } catch {}
     }
     // Đánh dấu trang đã load xong
@@ -137,6 +152,46 @@ export default function CheckoutPage() {
     fetchUserCoupons(user.userId).then(setUserCoupons).catch(() => setUserCoupons([]));
   }, [user?.userId]);
 
+  // Lắng nghe thay đổi địa chỉ từ profile
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const savedAddress = localStorage.getItem("selectedAddress");
+      if (savedAddress) {
+        try {
+          const addressData = JSON.parse(savedAddress);
+          setAddress(addressData.fullAddress || "");
+          setSelectedAddress(addressData);
+        } catch {}
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('user-updated', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('user-updated', handleStorageChange);
+    };
+  }, []);
+
+  // Lưu selectedAddress vào localStorage khi thay đổi (giống profile page)
+  useEffect(() => {
+    if (selectedAddress.province && selectedAddress.ward) {
+      const currentSaved = localStorage.getItem("selectedAddress");
+      const currentSavedObj = currentSaved ? JSON.parse(currentSaved) : null;
+      
+      // Chỉ lưu nếu khác với dữ liệu đã lưu trước đó
+      if (!currentSavedObj || 
+          currentSavedObj.province !== selectedAddress.province ||
+          currentSavedObj.ward !== selectedAddress.ward ||
+          currentSavedObj.detail !== selectedAddress.detail) {
+        localStorage.setItem("selectedAddress", JSON.stringify(selectedAddress));
+        // Trigger event để profile biết có thay đổi
+        window.dispatchEvent(new Event('user-updated'));
+      }
+    }
+  }, [selectedAddress]);
+
   // Nhận mã từ query (?coupon=)
   useEffect(() => {
     const couponParam = searchParams.get('coupon');
@@ -144,7 +199,7 @@ export default function CheckoutPage() {
   }, [searchParams]);
 
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const finalTotal = total - (promoApplied ? promoAmount : 0);
+  const finalTotal = total + shippingFee - (promoApplied ? promoAmount : 0);
 
   const handleSelectCoupon = (code: string) => {
     setPromoCode(code);
@@ -204,7 +259,7 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name || !phone || !address) {
+    if (!name || !phone || !selectedAddress.province || !selectedAddress.ward) {
       toast.error("Vui lòng nhập đầy đủ thông tin nhận hàng!")
       return
     }
@@ -289,7 +344,8 @@ export default function CheckoutPage() {
           address,
           paymentMethod: 'COD', // Đảm bảo đúng enum backend
           coupon: selectedCouponId, // Thêm coupon ID
-          discountAmount: promoAmount // Thêm số tiền giảm giá
+          discountAmount: promoAmount, // Thêm số tiền giảm giá
+          shippingFee: shippingFee // Thêm phí ship
         };
         const res = await fetch("http://localhost:5000/api/orders", {
           method: "POST",
@@ -453,7 +509,33 @@ export default function CheckoutPage() {
           <Input placeholder="Họ và tên" value={name} onChange={e => setName(e.target.value)} required />
           <Input placeholder="Số điện thoại" value={phone} onChange={e => setPhone(e.target.value)} required />
         </div>
-                    <Input placeholder="Địa chỉ nhận hàng" value={address} onChange={e => setAddress(e.target.value)} required />
+        
+        {/* Địa chỉ nhận hàng */}
+        <div>
+          <h3 className="font-semibold mb-4">Địa chỉ nhận hàng</h3>
+          <AddressSelector 
+            onAddressChange={(addressData) => {
+              setSelectedAddress(addressData)
+              setAddress(addressData.fullAddress)
+            }}
+            defaultProvince={selectedAddress.province}
+            defaultWard={selectedAddress.ward}
+            defaultDetail={selectedAddress.detail}
+            disableLocalStorage={false}
+          />
+
+        </div>
+
+        {/* Tính phí ship */}
+        <div>
+          <h3 className="font-semibold mb-4">Phí vận chuyển</h3>
+          <ShippingCalculator 
+            selectedProvince={selectedAddress.province}
+            selectedWard={selectedAddress.ward}
+            subtotal={total}
+            onShippingFeeChange={setShippingFee}
+          />
+        </div>
         <div>
           <h3 className="font-semibold mb-4">Phương thức thanh toán</h3>
           <RadioGroup value={payment} onValueChange={setPayment} className="space-y-4">
@@ -480,6 +562,14 @@ export default function CheckoutPage() {
             <span className="font-bold">Tổng cộng:</span>
             <span className="text-pink-600">{total.toLocaleString('vi-VN')}₫</span>
           </div>
+          
+          {shippingFee > 0 && (
+            <div className="flex gap-2">
+              <span className="font-bold text-blue-600">Phí vận chuyển:</span>
+              <span className="text-blue-600">+{shippingFee.toLocaleString('vi-VN')}₫</span>
+            </div>
+          )}
+          
           {promoApplied && promoAmount > 0 && (
             <div className="flex gap-2">
               <span className="font-bold text-green-600">Giảm giá:</span>
@@ -487,7 +577,7 @@ export default function CheckoutPage() {
             </div>
           )}
           
-          <div className="flex gap-2">
+          <div className="flex gap-2 border-t pt-2">
             <span className="font-bold">Cần thanh toán:</span>
             <span className="text-pink-600">{finalTotal.toLocaleString('vi-VN')}₫</span>
           </div>

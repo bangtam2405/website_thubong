@@ -9,6 +9,7 @@ import { User, Pencil, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link"
 import { formatDateVN } from "@/lib/utils";
+import AddressSelector from "@/components/AddressSelector";
 
 export default function ProfilePage() {
   const [fullName, setFullName] = useState("");
@@ -19,6 +20,12 @@ export default function ProfilePage() {
   const [dob, setDob] = useState("");
   const [gender, setGender] = useState("other");
   const [address, setAddress] = useState("");
+  const [selectedAddress, setSelectedAddress] = useState({
+    province: "",
+    ward: "",
+    detail: "",
+    fullAddress: ""
+  });
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -48,7 +55,20 @@ export default function ProfilePage() {
           setPhone(u.phone || "");
           setDob(u.dob ? u.dob.slice(0, 10) : "");
           setGender(u.gender || "other");
-          setAddress(u.addresses && u.addresses[0] ? u.addresses[0].address : "");
+          const userAddress = u.addresses && u.addresses[0] ? u.addresses[0] : null;
+          
+          setAddress(userAddress ? userAddress.address : "");
+          const initialSelectedAddress = {
+            province: userAddress ? userAddress.province || "" : "",
+            ward: userAddress ? userAddress.ward || "" : "",
+            detail: userAddress ? userAddress.detail || "" : "",
+            fullAddress: userAddress ? userAddress.address || "" : ""
+          };
+
+          setSelectedAddress(initialSelectedAddress);
+          
+          // Lưu vào localStorage ngay lập tức
+          localStorage.setItem("selectedAddress", JSON.stringify(initialSelectedAddress));
           setAvatar(u.avatar || "");
           // Luôn đồng bộ localStorage từng trường lẻ (kể cả khi không bấm Lưu)
           localStorage.setItem("fullName", u.fullName || "");
@@ -72,6 +92,28 @@ export default function ProfilePage() {
         setDob(localStorage.getItem("dob") || "");
         setGender(localStorage.getItem("gender") || "other");
         setAddress(localStorage.getItem("address") || "");
+        // Load selectedAddress từ localStorage nếu có
+        const savedAddress = localStorage.getItem("selectedAddress");
+        if (savedAddress) {
+          try {
+            const parsedAddress = JSON.parse(savedAddress);
+            setSelectedAddress(parsedAddress);
+          } catch (error) {
+            setSelectedAddress({
+              province: "",
+              ward: "",
+              detail: "",
+              fullAddress: localStorage.getItem("address") || ""
+            });
+          }
+        } else {
+          setSelectedAddress({
+            province: "",
+            ward: "",
+            detail: "",
+            fullAddress: localStorage.getItem("address") || ""
+          });
+        }
         setAvatar(localStorage.getItem("avatar") || "");
       });
   }, [router]);
@@ -80,6 +122,13 @@ export default function ProfilePage() {
   useEffect(() => { localStorage.setItem("fullName", fullName); }, [fullName]);
   useEffect(() => { localStorage.setItem("phone", phone); }, [phone]);
   useEffect(() => { localStorage.setItem("address", address); }, [address]);
+  useEffect(() => { 
+    if (selectedAddress.province && selectedAddress.ward) {
+      localStorage.setItem("selectedAddress", JSON.stringify(selectedAddress));
+      // Trigger event để checkout biết có thay đổi
+      window.dispatchEvent(new Event('user-updated'));
+    }
+  }, [selectedAddress]);
 
   const handleAvatarUploaded = async (url: string) => {
     setAvatar(url);
@@ -96,6 +145,9 @@ export default function ProfilePage() {
         dob,
         gender,
         address,
+        province: selectedAddress.province,
+        ward: selectedAddress.ward,
+        detail: selectedAddress.detail,
       }, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
       });
@@ -127,6 +179,9 @@ export default function ProfilePage() {
         gender,
         address,
         avatar,
+        province: selectedAddress.province,
+        ward: selectedAddress.ward,
+        detail: selectedAddress.detail,
       }, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
       });
@@ -138,6 +193,20 @@ export default function ProfilePage() {
         setDob(u.dob ? u.dob.slice(0, 10) : "");
         setGender(u.gender || "other");
         setAddress(u.addresses && u.addresses[0] ? u.addresses[0].address : "");
+        
+        // Cập nhật selectedAddress với dữ liệu mới từ backend
+        const userAddress = u.addresses && u.addresses[0] ? u.addresses[0] : null;
+        
+        const updatedSelectedAddress = {
+          province: userAddress ? userAddress.province || "" : "",
+          ward: userAddress ? userAddress.ward || "" : "",
+          detail: userAddress ? userAddress.detail || "" : "",
+          fullAddress: userAddress ? userAddress.address || "" : ""
+        };
+
+        setSelectedAddress(updatedSelectedAddress);
+        
+        // Lưu vào localStorage
         localStorage.setItem("fullName", u.fullName || "");
         localStorage.setItem("email", u.email || "");
         localStorage.setItem("phone", u.phone || "");
@@ -145,6 +214,7 @@ export default function ProfilePage() {
         localStorage.setItem("gender", u.gender || "other");
         localStorage.setItem("address", u.addresses && u.addresses[0] ? u.addresses[0].address : "");
         localStorage.setItem("user", JSON.stringify(u));
+        localStorage.setItem("selectedAddress", JSON.stringify(updatedSelectedAddress));
         window.dispatchEvent(new Event("user-updated"));
       }
       // Đổi mật khẩu nếu có nhập
@@ -281,7 +351,16 @@ export default function ProfilePage() {
                   </div>
                   <div className="md:col-span-2">
                     <label className="block mb-1 font-medium text-sm">Địa chỉ</label>
-                    <Input value={address} onChange={e => setAddress(e.target.value)} />
+                    <AddressSelector 
+                      onAddressChange={(addressData) => {
+                        setSelectedAddress(addressData)
+                        setAddress(addressData.fullAddress)
+                      }}
+                      defaultProvince={selectedAddress.province}
+                      defaultWard={selectedAddress.ward}
+                      defaultDetail={selectedAddress.detail}
+                    />
+
                   </div>
                 </div>
                 <Button type="submit" className="w-full bg-pink-500 hover:bg-pink-600 mt-2" disabled={loading}>

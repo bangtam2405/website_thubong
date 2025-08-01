@@ -54,7 +54,7 @@ export default function AdminOrderDetailPage() {
       (sum: number, item: any) => sum + (item.product?.price || 0) * item.quantity,
       0
     );
-    const discount = totalProductPrice - order.totalPrice;
+    const discount = totalProductPrice - (order.totalPrice - (order.shippingFee || 0));
     const docDefinition = {
       content: [
         {
@@ -119,7 +119,7 @@ export default function AdminOrderDetailPage() {
                 { text: ((item.product?.price || 0) * item.quantity).toLocaleString() + '₫', alignment: 'right' },
               ]),
               // Tổng tiền sản phẩm (trước giảm)
-              (totalProductPrice !== order.totalPrice) ? [
+              (totalProductPrice !== (order.totalPrice - (order.shippingFee || 0))) ? [
                 { text: 'TỔNG TIỀN SẢN PHẨM', colSpan: 3, alignment: 'right', bold: true }, {}, {},
                 { text: totalProductPrice.toLocaleString() + '₫', alignment: 'right', bold: true }
               ] : null,
@@ -128,7 +128,17 @@ export default function AdminOrderDetailPage() {
                 { text: 'GIẢM GIÁ', colSpan: 3, alignment: 'right', bold: true }, {}, {},
                 { text: '-' + discount.toLocaleString() + '₫', alignment: 'right', bold: true, color: '#e3497a' }
               ] : null,
-              // Tổng cộng sau giảm
+              // Tổng tiền sau giảm (trước phí ship)
+              (discount > 0) ? [
+                { text: 'TỔNG TIỀN SAU GIẢM', colSpan: 3, alignment: 'right', bold: true }, {}, {},
+                { text: (totalProductPrice - discount).toLocaleString() + '₫', alignment: 'right', bold: true }
+              ] : null,
+              // Phí vận chuyển
+              order.shippingFee && order.shippingFee > 0 ? [
+                { text: 'PHÍ VẬN CHUYỂN', colSpan: 3, alignment: 'right', bold: true }, {}, {},
+                { text: order.shippingFee.toLocaleString() + '₫', alignment: 'right', bold: true, color: '#2563eb' }
+              ] : null,
+              // Tổng cộng cuối cùng
               [
                 { text: 'TỔNG CỘNG', colSpan: 3, alignment: 'right', bold: true }, {}, {},
                 { text: order.totalPrice?.toLocaleString() + '₫', alignment: 'right', bold: true }
@@ -210,28 +220,39 @@ export default function AdminOrderDetailPage() {
               <span className="font-semibold">Ngày đặt:</span>
               <span>{formatDateVN(order.createdAt)}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold">Tổng tiền:</span>
-              <span className="text-pink-600 text-xl font-extrabold">{order.totalPrice?.toLocaleString()}₫</span>
-            </div>
             {/* Hiển thị giảm giá nếu có */}
             {(() => {
               const totalProductPrice = order.products.reduce(
                 (sum: number, item: any) => sum + (item.product?.price || 0) * item.quantity,
                 0
               );
-              const discount = totalProductPrice - order.totalPrice;
+              const discount = totalProductPrice - (order.totalPrice - (order.shippingFee || 0));
               if (discount > 0) {
                 return (
                   <div className="flex flex-col gap-1 ml-2 mt-1">
                     <div className="text-sm text-gray-500">Tổng tiền trước giảm: <span className="font-semibold">{totalProductPrice.toLocaleString()}₫</span></div>
                     <div className="text-sm text-pink-500">Số tiền giảm: <span className="font-semibold">{discount.toLocaleString()}₫</span></div>
-                    <div className="text-sm text-pink-600">Tổng tiền sau giảm: <span className="font-semibold">{order.totalPrice?.toLocaleString()}₫</span></div>
+                    <div className="text-sm text-pink-600">Tổng tiền sau giảm: <span className="font-semibold">{(totalProductPrice - discount).toLocaleString()}₫</span></div>
                   </div>
                 );
               }
               return null;
             })()}
+            
+            {/* Phí vận chuyển */}
+            {order.shippingFee && order.shippingFee > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">Phí vận chuyển:</span>
+                <span className="text-blue-600 font-semibold">{order.shippingFee?.toLocaleString()}₫</span>
+              </div>
+            )}
+            
+            {/* Tổng tiền cuối cùng */}
+            <div className="flex items-center gap-2">
+              <span className="font-semibold">Tổng tiền:</span>
+              <span className="text-pink-600 text-xl font-extrabold">{order.totalPrice?.toLocaleString()}₫</span>
+            </div>
+
             <div className="flex items-center gap-2">
               <span className="font-semibold">Trạng thái thanh toán:</span>
               <Badge className={`ml-2 px-3 py-1 text-base ${order.paymentStatus === 'success' ? 'bg-green-100 text-green-700' : order.paymentStatus === 'failed' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
@@ -308,6 +329,12 @@ export default function AdminOrderDetailPage() {
                     <td className="py-3 px-4 text-right font-bold text-pink-600">{item.product?.price ? (item.product.price * item.quantity).toLocaleString() + '₫' : '--'}</td>
                   </tr>
                 ))}
+                {order.shippingFee && order.shippingFee > 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-3 px-4 text-right font-bold text-lg text-blue-600">Phí vận chuyển</td>
+                    <td className="py-3 px-4 text-right font-bold text-lg text-blue-600">{order.shippingFee?.toLocaleString()}₫</td>
+                  </tr>
+                )}
                 <tr>
                   <td colSpan={4} className="py-3 px-4 text-right font-bold text-lg">Tổng cộng</td>
                   <td className="py-3 px-4 text-right font-extrabold text-xl text-pink-700">{order.totalPrice?.toLocaleString()}₫</td>
