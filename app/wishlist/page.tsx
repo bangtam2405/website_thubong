@@ -117,8 +117,8 @@ export default function WishlistPage() {
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="flex items-center gap-2 mb-8">
-        <Heart className="h-8 w-8 text-red-500" />
-        <h1 className="text-3xl font-bold">Danh Sách Yêu Thích</h1>
+        {/* <Heart className="h-8 w-8 text-red-500" /> */}
+        <h1 className="text-3xl font-bold text-[#E3497A]">Danh Sách Yêu Thích</h1>
       </div>
 
       {wishlist.length === 0 ? (
@@ -192,15 +192,7 @@ export default function WishlistPage() {
                   )}
                 </div>
                 
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="w-full mt-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
-                  onClick={() => removeFromWishlist(product._id)}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Xóa khỏi danh sách yêu thích
-                </Button>
+
               </CardContent>
             </Card>
           ))}

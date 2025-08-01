@@ -34,7 +34,7 @@ export default function TeddyPage() {
   return (
     <div className="container mx-auto py-12 px-4">
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold mb-4">Bộ Sưu Tập Teddy</h1>
+        <h1 className="text-4xl font-bold mb-4 text-[#E3497A]">Bộ Sưu Tập Teddy</h1>
         <p className="text-lg text-gray-600 max-w-3xl mx-auto">
           Khám phá các mẫu teddy đáng yêu, bạn có thể đặt hàng nhanh hoặc tùy chỉnh theo ý thích!
         </p>

@@ -175,7 +175,7 @@ export default function CategoriesPage() {
         </CardHeader>
         <CardContent>
           {/* Thống kê tổng quan */}
-          <div className="grid grid-cols-2 md:grid-cols-8 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
               <div className="flex items-center gap-2 mb-2">
                 <FolderOpen className="w-5 h-5 text-blue-600" />
@@ -197,20 +197,7 @@ export default function CategoriesPage() {
               </div>
               <div className="text-sm text-purple-600">Danh mục con</div>
             </div>
-            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-              <div className="flex items-center gap-2 mb-2">
-                <DollarSign className="w-5 h-5 text-yellow-600" />
-                <div className="text-2xl font-bold text-yellow-600">{stats.categoriesWithPrice}</div>
-              </div>
-              <div className="text-sm text-yellow-600">Có giá</div>
-            </div>
-            <div className="bg-cyan-50 p-4 rounded-lg border border-cyan-200">
-              <div className="flex items-center gap-2 mb-2">
-                <Palette className="w-5 h-5 text-cyan-600" />
-                <div className="text-2xl font-bold text-cyan-600">{stats.categoriesWithImage}</div>
-              </div>
-              <div className="text-sm text-cyan-600">Có hình ảnh</div>
-            </div>
+
             <div className="bg-pink-50 p-4 rounded-lg border border-pink-200">
               <div className="flex items-center gap-2 mb-2">
                 <ShoppingCart className="w-5 h-5 text-pink-600" />

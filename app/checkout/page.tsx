@@ -12,8 +12,6 @@ import { useCart } from "@/contexts/CartContext"
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Dialog } from '@headlessui/react';
 import { formatDateVN } from "@/lib/utils";
-// Log the environment variable for debugging
-console.log('NEXT_PUBLIC_BASE_URL:', process.env.NEXT_PUBLIC_BASE_URL);
 
 interface CartItem {
   _id: string
@@ -25,6 +23,12 @@ interface CartItem {
 }
 
 function SuccessModal({ onContinue, orderId }: { onContinue: () => void; orderId: string | null }) {
+  const handleContinue = () => {
+    // Xóa checkoutItems khỏi sessionStorage khi tiếp tục mua sắm
+    sessionStorage.removeItem('checkoutItems');
+    onContinue();
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <style>{`
@@ -52,7 +56,7 @@ function SuccessModal({ onContinue, orderId }: { onContinue: () => void; orderId
         <div className="space-y-3">
            <Button 
             className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 rounded-lg text-lg"
-            onClick={onContinue}
+            onClick={handleContinue}
           >
             Tiếp tục mua sắm
           </Button>
@@ -77,6 +81,7 @@ export default function CheckoutPage() {
   const [address, setAddress] = useState("")
   const [payment, setPayment] = useState("cod")
   const [loading, setLoading] = useState(false)
+  const [pageLoading, setPageLoading] = useState(true)
   const { removeItemsFromCart } = useCart();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<string | null>(null);
@@ -89,16 +94,28 @@ export default function CheckoutPage() {
   const [promoLoading, setPromoLoading] = useState(false);
   const [showCouponModal, setShowCouponModal] = useState(false);
   const [selectedCoupon, setSelectedCoupon] = useState<string>("");
+  const [selectedCouponId, setSelectedCouponId] = useState<string>("");
   const [couponSearch, setCouponSearch] = useState("");
 
 
   useEffect(() => {
-    const itemsParam = searchParams.get("items")
-    if (itemsParam) {
+    // Lấy items từ sessionStorage thay vì searchParams
+    const checkoutItems = sessionStorage.getItem('checkoutItems');
+    if (checkoutItems) {
       try {
-        setItems(JSON.parse(decodeURIComponent(itemsParam)))
+        setItems(JSON.parse(checkoutItems));
       } catch {
-        setItems([])
+        setItems([]);
+      }
+    } else {
+      // Fallback: thử lấy từ searchParams nếu không có trong sessionStorage
+      const itemsParam = searchParams.get("items");
+      if (itemsParam) {
+        try {
+          setItems(JSON.parse(decodeURIComponent(itemsParam)));
+        } catch {
+          setItems([]);
+        }
       }
     }
     // Lấy thông tin user từ localStorage nếu có
@@ -111,6 +128,8 @@ export default function CheckoutPage() {
         if (user.addresses && user.addresses[0] && user.addresses[0].address) setAddress(user.addresses[0].address);
       } catch {}
     }
+    // Đánh dấu trang đã load xong
+    setPageLoading(false);
   }, [searchParams]);
 
   useEffect(() => {
@@ -152,6 +171,7 @@ export default function CheckoutPage() {
       setPromoApplied(true);
       setPromoAmount(data.discountAmount || 0);
       setPromoCode(codeToApply);
+      setSelectedCouponId(data.couponId || ""); // Lưu coupon ID
       toast.success(data.message || "Áp dụng mã giảm giá thành công!");
     } catch (err: any) {
       setPromoError(err.message);
@@ -174,6 +194,7 @@ export default function CheckoutPage() {
     setPromoAmount(0);
     setPromoError("");
     setSelectedCoupon("");
+    setSelectedCouponId("");
   };
 
 
@@ -217,6 +238,8 @@ export default function CheckoutPage() {
       });
       const data = await res.json();
       if (data.paymentUrl) {
+        // Xóa checkoutItems khỏi sessionStorage trước khi chuyển hướng
+        sessionStorage.removeItem('checkoutItems');
         window.location.href = data.paymentUrl;
       } else {
         toast.error("Không lấy được link thanh toán VNPay. Vui lòng thử lại!")
@@ -236,6 +259,8 @@ export default function CheckoutPage() {
       });
       const data = await res.json();
       if (data.paymentUrl) {
+        // Xóa checkoutItems khỏi sessionStorage trước khi chuyển hướng
+        sessionStorage.removeItem('checkoutItems');
         window.location.href = data.paymentUrl;
       } else {
         toast.error("Không lấy được link thanh toán MoMo. Vui lòng thử lại!")
@@ -262,7 +287,9 @@ export default function CheckoutPage() {
           name,
           phone,
           address,
-          paymentMethod: 'COD' // Đảm bảo đúng enum backend
+          paymentMethod: 'COD', // Đảm bảo đúng enum backend
+          coupon: selectedCouponId, // Thêm coupon ID
+          discountAmount: promoAmount // Thêm số tiền giảm giá
         };
         const res = await fetch("http://localhost:5000/api/orders", {
           method: "POST",
@@ -279,6 +306,8 @@ export default function CheckoutPage() {
         const order = await res.json();
         // Xóa sản phẩm khỏi giỏ hàng
         removeItemsFromCart(items.map(i => i._id));
+        // Xóa checkoutItems khỏi sessionStorage
+        sessionStorage.removeItem('checkoutItems');
         setLastOrderId(order._id || null);
         setShowSuccessModal(true);
         setLoading(false);
@@ -291,12 +320,36 @@ export default function CheckoutPage() {
     }
   }
 
+  // Nếu không có sản phẩm nào, chuyển về trang giỏ hàng
+  useEffect(() => {
+    if (items.length === 0 && !loading && !pageLoading) {
+      // Chỉ chuyển hướng nếu đã load xong và thực sự không có sản phẩm
+      const checkoutItems = sessionStorage.getItem('checkoutItems');
+      if (!checkoutItems) {
+        toast.error("Không có sản phẩm nào để thanh toán!");
+        router.push("/cart");
+      }
+    }
+  }, [items.length, loading, pageLoading, router]);
+
+  // Hiển thị loading khi trang đang load
+  if (pageLoading) {
+    return (
+      <div className="max-w-2xl mx-auto py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải thông tin đơn hàng...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-2xl mx-auto">
       {showSuccessModal && (
         <SuccessModal onContinue={() => router.push("/")} orderId={lastOrderId} />
       )}
-      <h1 className="text-3xl font-bold mb-8 text-center">Thanh Toán Đơn Hàng</h1>
+      <h1 className="text-3xl font-bold mb-8 text-center text-[#E3497A]">Thanh Toán Đơn Hàng</h1>
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <h2 className="text-xl font-semibold mb-4">Sản phẩm đã chọn</h2>
         {items.length === 0 ? (

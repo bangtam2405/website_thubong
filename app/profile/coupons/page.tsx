@@ -52,7 +52,7 @@ export default function MyCouponsPage() {
 
   return (
     <div className="max-w-3xl mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-6 text-center text-pink-600">Ưu đãi của tôi</h1>
+              <h1 className="text-3xl font-bold mb-6 text-center text-[#E3497A]">Ưu Đãi Của Tôi</h1>
       {coupons.length === 0 ? (
         <div className="text-center text-gray-500">Bạn chưa có mã giảm giá nào.</div>
       ) : (

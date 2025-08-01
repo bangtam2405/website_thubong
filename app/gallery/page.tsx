@@ -34,7 +34,7 @@ export default function GalleryPage() {
   return (
     <div className="container mx-auto py-12 px-4">
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold mb-4">Bộ Sưu Tập Mẫu</h1>
+        <h1 className="text-4xl font-bold mb-4 text-[#E3497A]">Bộ Sưu Tập Mẫu</h1>
         <p className="text-lg text-gray-600 max-w-3xl mx-auto">
           Khám phá bộ sưu tập thú nhồi bông được thiết kế sẵn để lấy cảm hứng hoặc đặt hàng nhanh. Bạn có thể tùy chỉnh bất kỳ mẫu nào để tạo ra sản phẩm độc đáo của riêng mình!
         </p>

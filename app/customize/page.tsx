@@ -542,6 +542,7 @@ export default function CustomizePage() {
       description: `Kích thước: ${sizeName} ; Chất liệu: ${materialName}`,
       price: totalPrice + (selectedGiftBox?.price || 0),
       image: canvasImage,
+      previewImage: canvasImage, // Thêm previewImage để tương thích với design
       type: "custom" as const,
       rating: 0,
       reviews: 0,

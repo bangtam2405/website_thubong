@@ -59,8 +59,11 @@ export default function CartPage() {
   // Chọn tất cả
   const allSelected = items.length > 0 && selectedIds.length === items.length
   const toggleSelectAll = () => {
-    if (allSelected) setSelectedIds([])
-    else setSelectedIds(items.map(i => i._id))
+    if (allSelected) {
+      setSelectedIds([])
+    } else {
+      setSelectedIds(items.map(i => i._id))
+    }
   }
 
   const toggleSelect = (id: string) => {
@@ -74,10 +77,12 @@ export default function CartPage() {
 
   const handleCheckout = () => {
     if (selectedItems.length === 0) {
-      alert("Vui lòng chọn ít nhất một sản phẩm để thanh toán!")
+      toast.error("Vui lòng chọn ít nhất một sản phẩm để thanh toán!")
       return
     }
-    router.push(`/checkout?items=${encodeURIComponent(JSON.stringify(selectedItems))}`)
+    // Lưu items vào sessionStorage thay vì truyền qua URL
+    sessionStorage.setItem('checkoutItems', JSON.stringify(selectedItems))
+    router.push('/checkout')
   }
 
   const applyPromoCode = async () => {

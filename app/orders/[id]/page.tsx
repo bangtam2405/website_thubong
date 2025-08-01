@@ -251,14 +251,20 @@ export default function OrderDetailPage() {
                 {unreviewedItems.map((item: any) => (
                   <div key={item._id} className="flex items-center gap-4 py-4 border rounded-lg mb-2 bg-yellow-50">
                     <div className="w-20 h-20 flex-shrink-0">
-                      {item.product?.image ? (
-                        <Image src={item.product.image} alt={item.product.name} width={80} height={80} className="rounded-lg object-cover w-20 h-20" />
+                      {(item.product?.previewImage || item.product?.image) ? (
+                        <Image 
+                          src={item.product.previewImage || item.product.image} 
+                          alt={item.product.name || item.product.designName} 
+                          width={80} 
+                          height={80} 
+                          className="rounded-lg object-cover w-20 h-20" 
+                        />
                       ) : (
                         <div className="w-20 h-20 bg-gray-100 rounded flex items-center justify-center text-gray-400">?</div>
                       )}
                     </div>
                     <div className="flex-1">
-                      <div className="font-semibold text-base">{item.product?.name || '---'}</div>
+                      <div className="font-semibold text-base">{item.product?.name || item.product?.designName || '---'}</div>
                       {item.product?.specifications?.size && (
                         <div className="text-xs text-gray-500 mt-1">Kích thước: {item.product.specifications.size === 'small' ? 'Nhỏ' : item.product.specifications.size === 'large' ? 'Lớn' : 'Vừa'}</div>
                       )}
@@ -289,14 +295,20 @@ export default function OrderDetailPage() {
                 {reviewedItems.map((item: any) => (
                   <div key={item._id} className="flex items-center gap-4 py-4 border rounded-lg mb-2 bg-green-50">
                     <div className="w-20 h-20 flex-shrink-0">
-                      {item.product?.image ? (
-                        <Image src={item.product.image} alt={item.product.name} width={80} height={80} className="rounded-lg object-cover w-20 h-20" />
+                      {(item.product?.previewImage || item.product?.image) ? (
+                        <Image 
+                          src={item.product.previewImage || item.product.image} 
+                          alt={item.product.name || item.product.designName} 
+                          width={80} 
+                          height={80} 
+                          className="rounded-lg object-cover w-20 h-20" 
+                        />
                       ) : (
                         <div className="w-20 h-20 bg-gray-100 rounded flex items-center justify-center text-gray-400">?</div>
                       )}
                     </div>
                     <div className="flex-1">
-                      <div className="font-semibold text-base">{item.product?.name || '---'}</div>
+                      <div className="font-semibold text-base">{item.product?.name || item.product?.designName || '---'}</div>
                       {item.product?.specifications?.size && (
                         <div className="text-xs text-gray-500 mt-1">Kích thước: {item.product.specifications.size === 'small' ? 'Nhỏ' : item.product.specifications.size === 'large' ? 'Lớn' : 'Vừa'}</div>
                       )}

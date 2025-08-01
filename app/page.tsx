@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowRight, Gift, Palette, ShoppingBag, Star } from "lucide-react"
 import Image from "next/image"
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
-import ReviewSection from "@/components/ReviewSection";
+
 import ChatBox from "../components/ChatBox";
 import HomeHeroSection from "@/components/HomeHeroSection";
 import HomeFeaturedSection from "@/components/HomeFeaturedSection";
@@ -63,7 +63,6 @@ export default async function Home() {
       <HomeHeroSection />
       <HomeFeaturedSection featuredProducts={featuredProducts} />
       <HomeFeaturesSection />
-      <ReviewSection />
       {/* CTA Section */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-pink-100">
         <div className="max-w-7xl mx-auto text-center">

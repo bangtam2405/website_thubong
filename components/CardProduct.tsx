@@ -73,7 +73,7 @@ const CardProduct: React.FC<CardProductProps> = ({ product, showCustomizeButton 
 
   const isWishlisted = wishlist.includes(product._id);
 
-  const handleAddToWishlist = async (e: React.MouseEvent) => {
+  const handleToggleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
@@ -81,18 +81,32 @@ const CardProduct: React.FC<CardProductProps> = ({ product, showCustomizeButton 
         toast.error('Bạn cần đăng nhập để thêm vào danh sách yêu thích!');
         return;
       }
-      await axios.post('http://localhost:5000/api/wishlist', {
-        productId: product._id
-      }, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      setWishlist(prev => [...prev, product._id]);
-      toast.success('Đã thêm vào danh sách yêu thích!');
+
+      if (isWishlisted) {
+        // Xóa khỏi wishlist
+        await axios.delete('http://localhost:5000/api/wishlist', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          data: { productId: product._id }
+        });
+        setWishlist(prev => prev.filter(id => id !== product._id));
+        toast.success('Đã xóa khỏi danh sách yêu thích!');
+      } else {
+        // Thêm vào wishlist
+        await axios.post('http://localhost:5000/api/wishlist', {
+          productId: product._id
+        }, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        setWishlist(prev => [...prev, product._id]);
+        toast.success('Đã thêm vào danh sách yêu thích!');
+      }
     } catch (error) {
-      console.error('Lỗi khi thêm vào wishlist:', error);
-      toast.error('Có lỗi xảy ra khi thêm vào danh sách yêu thích!');
+      console.error('Lỗi khi thao tác wishlist:', error);
+      toast.error('Có lỗi xảy ra khi thao tác danh sách yêu thích!');
     }
   };
 
@@ -110,8 +124,8 @@ const CardProduct: React.FC<CardProductProps> = ({ product, showCustomizeButton 
           {/* Icon trái tim ở góc trên phải */}
           <button
             className="absolute top-2 right-2 z-10 bg-white/80 rounded-full p-2 shadow hover:bg-pink-100 transition-colors"
-            title={isWishlisted ? 'Đã trong yêu thích' : 'Thêm vào yêu thích'}
-            onClick={handleAddToWishlist}
+            title={isWishlisted ? 'Bỏ khỏi yêu thích' : 'Thêm vào yêu thích'}
+            onClick={handleToggleWishlist}
             disabled={loadingWishlist}
           >
             <Heart className={`w-5 h-5 transition-colors ${isWishlisted ? 'fill-pink-500 text-pink-500' : 'text-pink-400'}`} />

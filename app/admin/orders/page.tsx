@@ -25,6 +25,7 @@ import * as XLSX from "xlsx";
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -54,15 +55,25 @@ export default function AdminOrdersPage() {
   }
 
   const fetchOrders = async () => {
-    const res = await axios.get("http://localhost:5000/api/orders/admin/all")
-    setOrders(res.data)
+    setLoading(true)
+    try {
+      const res = await axios.get("http://localhost:5000/api/orders/admin/all")
+      // API trả về object có cấu trúc { orders, totalOrders, totalPages, ... }
+      setOrders(res.data.orders || res.data || [])
+    } catch (error) {
+      console.error("Lỗi khi tải đơn hàng:", error)
+      toast.error("Không thể tải danh sách đơn hàng")
+      setOrders([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
     fetchOrders()
   }, [])
 
-  const filteredOrders = orders.filter(order => {
+  const filteredOrders = (Array.isArray(orders) ? orders : []).filter(order => {
     const s = search.trim().toLowerCase();
     if (!s) return true;
     return (
@@ -248,8 +259,14 @@ export default function AdminOrdersPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-xl shadow border bg-white">
-            <Table className="min-w-full">
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+              <span className="ml-3 text-gray-600">Đang tải đơn hàng...</span>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-xl shadow border bg-white">
+              <Table className="min-w-full">
               <TableHeader>
                 <TableRow className="bg-gray-50">
                   <TableHead className="py-3 px-4 text-center font-semibold">Mã Đơn</TableHead>
@@ -379,6 +396,7 @@ export default function AdminOrdersPage() {
               </div>
             )}
           </div>
+        )}
         </CardContent>
       </Card>
     </div>

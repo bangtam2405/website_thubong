@@ -71,7 +71,7 @@ export default function MyDesignsPage() {
   };
   return (
     <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-8 text-pink-600 text-center drop-shadow">Thiết kế của tôi</h1>
+              <h1 className="text-3xl font-bold mb-8 text-[#E3497A] text-center drop-shadow">Thiết Kế Của Tôi</h1>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {designs.map(d => (
           <div key={d._id} className="bg-white rounded-2xl shadow-lg border border-pink-100 flex flex-col h-full">

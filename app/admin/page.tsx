@@ -47,7 +47,6 @@ function StatsTab() {
   const [topProducts, setTopProducts] = useState<any[]>([]);
   const [loadingTop, setLoadingTop] = useState(false);
   const [groupBy, setGroupBy] = useState<'day' | 'month' | 'year'>('day');
-  const [productCategories, setProductCategories] = useState<any[]>([]);
   // Filter state động
   const today = new Date();
   const defaultYear = today.getFullYear();
@@ -110,16 +109,7 @@ function StatsTab() {
     fetchStats();
   }, [groupBy, fromDate, toDate, fromMonth, toMonth, fromYear, toYear]);
 
-  // Fetch danh mục sản phẩm
-  useEffect(() => {
-    instance.get("http://localhost:5000/api/product-categories/admin")
-      .then(res => setProductCategories(res.data))
-      .catch(err => {
-        console.error("Lỗi khi tải danh mục sản phẩm:", err);
-        // Nếu API chưa tồn tại, hiển thị thông báo lỗi
-        setProductCategories([]);
-      });
-  }, []);
+
 
   if (loading) return <div>Đang tải dữ liệu thống kê...</div>;
   if (!stats) return <div>Không có dữ liệu.</div>;
@@ -265,23 +255,7 @@ function StatsTab() {
         </Card>
       </div>
 
-      {/* Thống kê danh mục sản phẩm */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-8">
-        {productCategories.map((category, index) => (
-          <Card key={category._id || index} className="shadow-md border-0 bg-gradient-to-br from-purple-50 to-white">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{category.name}</CardTitle>
-              <div className="text-lg">{category.icon || '📦'}</div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600">
-                <CountUp end={category.productCount || 0} duration={1} separator="," />
-              </div>
-              <div className="text-xs text-gray-500 mt-1">Sản phẩm</div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+
       {/* Chọn loại thống kê và biểu đồ bên dưới */}
       <div className="space-y-8">
         <div className="flex gap-4 mb-4 items-end flex-wrap">
@@ -442,7 +416,11 @@ function StatsTab() {
 // Đơn hàng
 function OrdersTab() {
   const [orders, setOrders] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalOrders, setTotalOrders] = useState(0)
   const router = useRouter()
   const orderStatusList = [
     'Chờ xác nhận',
@@ -452,61 +430,118 @@ function OrdersTab() {
     'Đã giao hàng',
     'Đã hủy'
   ]
+  
+  const fetchOrders = async (pageNum = 1) => {
+    setLoading(true)
+    try {
+      const res = await instance.get(`http://localhost:5000/api/orders/admin/all?page=${pageNum}&limit=20`)
+      setOrders(res.data.orders || res.data)
+      setTotalPages(res.data.totalPages || 1)
+      setTotalOrders(res.data.totalOrders || res.data.length)
+    } catch (err) {
+      console.error("Lỗi khi tải đơn hàng:", err)
+      toast.error("Không thể tải danh sách đơn hàng")
+    } finally {
+      setLoading(false)
+    }
+  }
+  
   useEffect(() => {
-    instance.get("http://localhost:5000/api/orders/admin/all").then(res => setOrders(res.data))
-  }, [])
+    fetchOrders(page)
+  }, [page])
+  
   return (
     <div className="max-w-5xl mx-auto py-8">
       <h1 className="text-2xl font-bold mb-6 text-pink-600">Quản Lý Đơn Hàng</h1>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Mã Đơn</TableHead>
-            <TableHead>Khách Hàng</TableHead>
-            <TableHead>Ngày</TableHead>
-            <TableHead>Trạng Thái</TableHead>
-            <TableHead>Tổng</TableHead>
-            <TableHead>Thao Tác</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {orders.map(order => (
-            <TableRow key={order._id}>
-              <TableCell>{order._id.slice(-6).toUpperCase()}</TableCell>
-              <TableCell>{order.user?.username || order.user?.email || 'Ẩn danh'}</TableCell>
-              <TableCell>{formatDateVN(order.createdAt)}</TableCell>
-              <TableCell>
-                <Select
-                  value={order.status}
-                  onValueChange={async (value) => {
-                    setUpdatingOrderId(order._id)
-                    await instance.put(`http://localhost:5000/api/orders/admin/${order._id}/status`, { status: value })
-                    const res = await instance.get("http://localhost:5000/api/orders/admin/all")
-                    setOrders(res.data)
-                    setUpdatingOrderId(null)
-                  }}
-                  disabled={updatingOrderId === order._id}
-                >
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {orderStatusList.map(status => (
-                      <SelectItem key={status} value={status}>{status}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </TableCell>
-              <TableCell>{order.totalPrice?.toLocaleString()}₫</TableCell>
-              <TableCell>
-                <Button size="icon" variant="ghost" onClick={() => router.push(`/admin/orders/${order._id}`)}>
-                  <Eye />
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+          <span className="ml-3 text-gray-600">Đang tải đơn hàng...</span>
+        </div>
+      ) : (
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Mã Đơn</TableHead>
+                <TableHead>Khách Hàng</TableHead>
+                <TableHead>Ngày</TableHead>
+                <TableHead>Trạng Thái</TableHead>
+                <TableHead>Tổng</TableHead>
+                <TableHead>Thao Tác</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {orders.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                    Không có đơn hàng nào
+                  </TableCell>
+                </TableRow>
+              ) : (
+                orders.map(order => (
+                  <TableRow key={order._id}>
+                    <TableCell>{order._id.slice(-6).toUpperCase()}</TableCell>
+                    <TableCell>{order.user?.username || order.user?.email || 'Ẩn danh'}</TableCell>
+                    <TableCell>{formatDateVN(order.createdAt)}</TableCell>
+                    <TableCell>
+                      <Select
+                        value={order.status}
+                        onValueChange={async (value) => {
+                          setUpdatingOrderId(order._id)
+                          await instance.put(`http://localhost:5000/api/orders/admin/${order._id}/status`, { status: value })
+                          const res = await instance.get("http://localhost:5000/api/orders/admin/all")
+                          setOrders(res.data)
+                          setUpdatingOrderId(null)
+                        }}
+                        disabled={updatingOrderId === order._id}
+                      >
+                        <SelectTrigger className="w-40">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {orderStatusList.map(status => (
+                            <SelectItem key={status} value={status}>{status}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>{order.totalPrice?.toLocaleString()}₫</TableCell>
+                    <TableCell>
+                      <Button size="icon" variant="ghost" onClick={() => router.push(`/admin/orders/${order._id}`)}>
+                        <Eye />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-2 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setPage(Math.max(1, page - 1))}
+                disabled={page === 1}
+              >
+                Trước
+              </Button>
+              <span className="px-4 py-2">
+                Trang {page} / {totalPages} ({totalOrders} đơn hàng)
+              </span>
+              <Button
+                variant="outline"
+                onClick={() => setPage(Math.min(totalPages, page + 1))}
+                disabled={page === totalPages}
+              >
+                Sau
+              </Button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }
