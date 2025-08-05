@@ -111,7 +111,7 @@ export default function CartPage() {
 
   return (
     <div className="container mx-auto py-12 px-4">
-      <h1 className="text-3xl font-bold mb-2">Giỏ Hàng Của Bạn</h1>
+      <h1 className="text-3xl font-bold mb-2">Giỏ hàng của bạn</h1>
       {items.length === 0 ? (
         <div className="text-center py-12">
           <h2 className="text-2xl font-medium mb-4">Giỏ hàng của bạn đang trống</h2>
@@ -245,7 +245,7 @@ export default function CartPage() {
               </div>
               <div className="flex justify-between text-lg">
                 <span>Phí vận chuyển:</span>
-                <span className="font-semibold">Miễn phí</span>
+                <span className="font-semibold text-gray-500">Chưa tính</span>
               </div>
               {promoApplied && (
                 <div className="flex justify-between text-green-600">
@@ -264,7 +264,7 @@ export default function CartPage() {
                 Tiến Hành Thanh Toán <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
               <p className="text-xs text-gray-500 text-center mt-4">
-                Phí vận chuyển được tính tại bước thanh toán. Có thể áp dụng thuế.
+                Phí vận chuyển sẽ được tính dựa trên địa chỉ giao hàng tại bước thanh toán.
               </p>
             </div>
           </div>

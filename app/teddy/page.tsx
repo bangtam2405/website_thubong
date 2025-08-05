@@ -33,12 +33,12 @@ export default function TeddyPage() {
 
   return (
     <div className="container mx-auto py-12 px-4">
-      <div className="text-center mb-12">
+      {/* <div className="text-center mb-12">
         <h1 className="text-4xl font-bold mb-4 text-[#E3497A]">Bộ Sưu Tập Teddy</h1>
         <p className="text-lg text-gray-600 max-w-3xl mx-auto">
           Khám phá các mẫu teddy đáng yêu, bạn có thể đặt hàng nhanh hoặc tùy chỉnh theo ý thích!
         </p>
-      </div>
+      </div> */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-end gap-2 mb-6">
         <label className="text-sm text-gray-500 mr-2 md:mb-0 mb-1">Sắp xếp theo:</label>
         <Select value={sort || "default"} onValueChange={v => setSort(v === "default" ? "" : v)}>

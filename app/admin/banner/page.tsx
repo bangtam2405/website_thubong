@@ -177,7 +177,7 @@ export default function AdminBannerPage() {
                   </div>
                   <Button variant="destructive" size="icon" onClick={() => handleDelete(b._id)} title="Xóa banner" className="ml-2">
                     <span className="sr-only">Xóa</span>
-                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="text-pink-500"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="text-white"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                   </Button>
                 </div>
               ))}

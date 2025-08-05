@@ -944,7 +944,7 @@ export default function CustomizePage() {
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold text-center mb-8">Thiết Kế Thú Nhồi Bông Tùy Chỉnh Của Bạn</h1>
+              {/* <h1 className="text-3xl font-bold text-center mb-8 text-[#E3497A]">Thiết Kế Thú Nhồi Bông Tùy Chỉnh Của Bạn</h1> */}
 
       {/* Nút lưu mẫu thiết kế sẵn cho admin, đặt phía trên canvas */}
       {/* XÓA: Nút và modal Lưu thành mẫu thiết kế sẵn (chỉ admin) */}
@@ -982,10 +982,18 @@ export default function CustomizePage() {
           <div className="bg-white rounded-xl shadow-lg p-6 h-full">
             <div className="mb-4 flex items-center gap-4">
               <label className="font-medium">Nền tuỳ chỉnh:</label>
+              <button
+                type="button"
+                className="px-4 py-2 rounded border border-gray-300 bg-white hover:bg-pink-50 text-gray-700 font-medium"
+                onClick={() => bgInputRef.current?.click()}
+              >
+                Chọn ảnh nền
+              </button>
               <input
                 type="file"
                 accept="image/*"
                 ref={bgInputRef}
+                className="hidden"
                 onChange={e => {
                   const file = e.target.files?.[0];
                   if (file) {

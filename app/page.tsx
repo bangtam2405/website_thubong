@@ -9,6 +9,7 @@ import ChatBox from "../components/ChatBox";
 import HomeHeroSection from "@/components/HomeHeroSection";
 import HomeFeaturedSection from "@/components/HomeFeaturedSection";
 import HomeFeaturesSection from "@/components/HomeFeaturesSection";
+import ReviewSection from "@/components/ReviewSection";
 
 // Hàm fetch sản phẩm nổi bật từ backend
 async function getFeaturedProducts() {
@@ -63,15 +64,16 @@ export default async function Home() {
       <HomeHeroSection />
       <HomeFeaturedSection featuredProducts={featuredProducts} />
       <HomeFeaturesSection />
+      <ReviewSection />
       {/* CTA Section */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-pink-100">
         <div className="max-w-7xl mx-auto text-center">
           <h2 className="text-3xl font-bold mb-6" style={{color: '#e3497a'}}>Sẵn Sàng Tạo Ra Thú Nhồi Bông Độc Đáo Của Bạn?</h2>
-          <Link href="/customize">
-            <Button size="lg" className="bg-pink-500 hover:bg-pink-600 animate-pulse shadow-pink-200 shadow-lg">
-              Bắt Đầu Thiết Kế Ngay
-            </Button>
-          </Link>
+                      <Link href="/customize">
+              <Button size="lg" className="bg-pink-500 hover:bg-pink-600 text-white animate-pulse shadow-lg font-semibold">
+                Bắt Đầu Thiết Kế Ngay
+              </Button>
+            </Link>
         </div>
       </section>
       <ChatBox />
