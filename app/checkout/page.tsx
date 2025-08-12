@@ -259,10 +259,29 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name || !phone || !selectedAddress.province || !selectedAddress.ward) {
-      toast.error("Vui lòng nhập đầy đủ thông tin nhận hàng!")
-      return
+    
+    // Validation đầy đủ thông tin
+    if (!name.trim()) {
+      toast.error("Vui lòng nhập họ và tên!");
+      return;
     }
+    
+    if (!phone.trim()) {
+      toast.error("Vui lòng nhập số điện thoại!");
+      return;
+    }
+    
+    if (!selectedAddress.province || !selectedAddress.ward) {
+      toast.error("Vui lòng chọn địa chỉ nhận hàng!");
+      return;
+    }
+    
+    if (items.length === 0) {
+      toast.error("Giỏ hàng trống!");
+      router.push("/cart");
+      return;
+    }
+
     setLoading(true)
 
     if (payment === 'vnpay') {

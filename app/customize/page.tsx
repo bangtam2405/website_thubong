@@ -445,6 +445,12 @@ export default function CustomizePage() {
 
   // Sửa handleOptionSelect: không reset loadedCanvasJSON nếu đã từng chỉnh sửa
   const handleOptionSelect = (category: string, optionId: string) => {
+    // Kiểm tra nếu chưa chọn thân thú bông
+    if (category !== "body" && !selectedOptions.body && !loadedCanvasJSON) {
+      toast.error("Vui lòng chọn thân thú bông trước");
+      return;
+    }
+
     // Chỉ reset loadedCanvasJSON nếu chưa từng chỉnh sửa sau khi load
     if (loadedCanvasJSON && !hasEditedAfterLoad) {
       setLoadedCanvasJSON(null);
@@ -503,6 +509,9 @@ export default function CustomizePage() {
     if (historyIndex > 0) {
       setHistoryIndex(historyIndex - 1)
       setSelectedOptions(history[historyIndex - 1])
+      toast.success("Đã hoàn tác thao tác");
+    } else {
+      toast.info("Không có thao tác nào để hoàn tác");
     }
   }
 
@@ -510,6 +519,9 @@ export default function CustomizePage() {
     if (historyIndex < history.length - 1) {
       setHistoryIndex(historyIndex + 1)
       setSelectedOptions(history[historyIndex + 1])
+      toast.success("Đã làm lại thao tác");
+    } else {
+      toast.info("Không có thao tác nào để làm lại");
     }
   }
 
@@ -524,6 +536,12 @@ export default function CustomizePage() {
   const [savingDesign, setSavingDesign] = useState(false);
 
   const handleAddToCart = () => {
+    // Kiểm tra xem đã chọn thân thú bông chưa
+    if (!selectedOptions.body && !loadedCanvasJSON) {
+      toast.error("Vui lòng chọn thân thú bông trước khi thêm vào giỏ hàng!");
+      return;
+    }
+
     if (!fabricRef.current) {
       toast.error("Không thể lấy hình ảnh thiết kế!");
       return;
@@ -583,6 +601,12 @@ export default function CustomizePage() {
   };
 
   const handleAddToWishlist = async () => {
+    // Kiểm tra xem đã chọn thân thú bông chưa
+    if (!selectedOptions.body && !loadedCanvasJSON) {
+      toast.error("Vui lòng chọn thân thú bông trước khi thêm vào danh sách yêu thích!");
+      return;
+    }
+
     if (!fabricRef.current) {
       toast.error("Không thể lấy hình ảnh thiết kế!")
       return
@@ -699,6 +723,12 @@ export default function CustomizePage() {
   }
 
   const handleDownloadDesign = () => {
+    // Kiểm tra xem đã chọn thân thú bông chưa
+    if (!selectedOptions.body && !loadedCanvasJSON) {
+      toast.error("Vui lòng chọn thân thú bông trước khi tải xuống!");
+      return;
+    }
+
     if (fabricRef.current && fabricRef.current.toDataURL) {
       try {
         const dataUrl = fabricRef.current.toDataURL({ format: 'png', quality: 1 });
@@ -708,7 +738,7 @@ export default function CustomizePage() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast.success("Đã tải xuống thiết kế dưới dạng PNG!");
+        toast.success("Tải xuống thiết kế thành công!");
       } catch (e) {
         toast.error("Không thể tải xuống hình ảnh!");
       }
@@ -718,7 +748,28 @@ export default function CustomizePage() {
   }
 
   const handleTakeScreenshot = () => {
-    toast.success("Đã Chụp Màn Hình. Ảnh chụp màn hình thiết kế của bạn đã được lưu.");
+    // Kiểm tra xem đã chọn thân thú bông chưa
+    if (!selectedOptions.body && !loadedCanvasJSON) {
+      toast.error("Vui lòng chọn thân thú bông trước khi chụp ảnh!");
+      return;
+    }
+
+    if (fabricRef.current && fabricRef.current.toDataURL) {
+      try {
+        const dataUrl = fabricRef.current.toDataURL({ format: 'png', quality: 1 });
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = `screenshot-thu-bong-${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Chụp ảnh màn hình thiết kế thành công!");
+      } catch (e) {
+        toast.error("Không thể chụp ảnh màn hình!");
+      }
+    } else {
+      toast.error("Không thể chụp ảnh màn hình!");
+    }
   }
 
   const handleDeleteElement = () => {
