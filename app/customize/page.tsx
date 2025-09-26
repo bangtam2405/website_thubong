@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Download, Heart, Save, ShoppingCart, Undo, Redo, Camera, Trash2, Type, Copy } from "lucide-react"
+import { Download, Heart, Save, ShoppingCart, Undo, Redo, Trash2, Type, Copy } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { toast } from "sonner"
 import axios from "axios"
@@ -447,7 +447,9 @@ export default function CustomizePage() {
   const handleOptionSelect = (category: string, optionId: string) => {
     // Kiểm tra nếu chưa chọn thân thú bông
     if (category !== "body" && !selectedOptions.body && !loadedCanvasJSON) {
-      toast.error("Vui lòng chọn thân thú bông trước");
+      toast.error("Vui lòng chọn loại thân trước khi tùy chỉnh các phần khác!", {
+        description: "Bạn cần chọn loại thân (gấu, thỏ, mèo...) trước khi có thể thêm mắt, miệng, phụ kiện..."
+      });
       return;
     }
 
@@ -461,8 +463,8 @@ export default function CustomizePage() {
         return {
           ...prev,
           accessories: {
-            ...prev.accessories,
-            [optionId]: (prev.accessories[optionId] || 0) + 1
+            ...(prev.accessories || {}),
+            [optionId]: ((prev.accessories && prev.accessories[optionId]) || 0) + 1
           }
         };
       } else {
@@ -483,6 +485,14 @@ export default function CustomizePage() {
   }
 
   const handleSizeChange = (value: string) => {
+    // Kiểm tra nếu chưa chọn thân
+    if (!selectedOptions.body && !loadedCanvasJSON) {
+      toast.error("Vui lòng chọn loại thân trước khi chọn kích thước!", {
+        description: "Bạn cần chọn loại thân trước khi có thể chọn kích thước cho thú nhồi bông"
+      });
+      return;
+    }
+    
     if (loadedCanvasJSON && !hasEditedAfterLoad) {
       setLoadedCanvasJSON(null);
       setHasEditedAfterLoad(true);
@@ -492,6 +502,14 @@ export default function CustomizePage() {
 
   // Sửa: colorId là _id của category màu lông
   const handleColorChange = (colorId: string) => {
+    // Kiểm tra nếu chưa chọn thân
+    if (!selectedOptions.body && !loadedCanvasJSON) {
+      toast.error("Vui lòng chọn loại thân trước khi chọn màu lông!", {
+        description: "Bạn cần chọn loại thân trước khi có thể chọn màu lông cho thú nhồi bông"
+      });
+      return;
+    }
+    
     if (loadedCanvasJSON && !hasEditedAfterLoad) {
       setLoadedCanvasJSON(null);
       setHasEditedAfterLoad(true);
@@ -536,6 +554,34 @@ export default function CustomizePage() {
   const [savingDesign, setSavingDesign] = useState(false);
 
   const handleAddToCart = () => {
+    // Yêu cầu đăng nhập trước khi thêm vào giỏ hàng
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error("Vui lòng đăng nhập tài khoản để tiếp tục mua hàng hoặc lưu trữ thiết kế!");
+        return;
+      }
+    }
+    // Kiểm tra đầy đủ các bộ phận bắt buộc
+    const requiredFields = {
+      body: 'Thân thú bông',
+      eyes: 'Mắt',
+      size: 'Kích thước',
+      material: 'Chất liệu'
+    };
+
+    const missingFields = [];
+    for (const [field, label] of Object.entries(requiredFields)) {
+      if (!selectedOptions[field] || selectedOptions[field].trim() === '') {
+        missingFields.push(label);
+      }
+    }
+
+    if (missingFields.length > 0) {
+      toast.error(`Vui lòng chọn đầy đủ: ${missingFields.join(', ')} trước khi thêm vào giỏ hàng!`);
+      return;
+    }
+
     // Kiểm tra xem đã chọn thân thú bông chưa
     if (!selectedOptions.body && !loadedCanvasJSON) {
       toast.error("Vui lòng chọn thân thú bông trước khi thêm vào giỏ hàng!");
@@ -567,18 +613,23 @@ export default function CustomizePage() {
       sold: 0,
       stock: 1,
       featured: false,
+      size: sizeName,
+      material: materialName,
       specifications: {
-        body: bodyGroups.find((o) => o._id === selectedOptions.body)?.name || "",
+        body: bodyGroups.find((o) => o._id === selectedOptions.body)?.name || 
+              bodyGroups.find((o) => o.name === selectedOptions.body)?.name || 
+              selectedOptions.body || "",
         ears: categories.find((o) => o._id === selectedOptions.ears)?.name || "",
         eyes: categories.find((o) => o._id === selectedOptions.eyes)?.name || "",
         nose: categories.find((o) => o._id === selectedOptions.nose)?.name || "",
         mouth: categories.find((o) => o._id === selectedOptions.mouth)?.name || "",
         furColor: categories.find((o) => o._id === selectedOptions.furColor)?.name || "",
         clothing: selectedOptions.clothing ? categories.find((o) => o._id === selectedOptions.clothing)?.name || "" : null,
-        accessories: Object.entries(selectedOptions.accessories)
+        accessories: selectedOptions.accessories ? Object.entries(selectedOptions.accessories)
           .map(([id, quantity]) => categories.find((o) => o._id === id)?.name)
-          .filter((name): name is string => name !== undefined),
+          .filter((name): name is string => name !== undefined) : [],
         size: selectedOptions.size,
+        sizeName,
         material: selectedMaterial?.name || "",
         materialPrice: selectedMaterial?.price || 0,
         giftBox: selectedGiftBox ? {
@@ -591,6 +642,21 @@ export default function CustomizePage() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
+
+    // Debug logging để kiểm tra tại sao body name bị rỗng trong handleAddToCart
+    console.log('=== DEBUG ADD TO CART ===');
+    console.log('selectedOptions.body:', selectedOptions.body);
+    console.log('bodyGroups:', bodyGroups);
+    console.log('bodyGroups.length:', bodyGroups.length);
+    console.log('bodyGroups.find result:', bodyGroups.find((o) => o._id === selectedOptions.body));
+    console.log('bodyGroups.find result name:', bodyGroups.find((o) => o._id === selectedOptions.body)?.name);
+    console.log('bodyGroups.find by name result:', bodyGroups.find((o) => o.name === selectedOptions.body));
+    console.log('bodyGroups.find by name result name:', bodyGroups.find((o) => o.name === selectedOptions.body)?.name);
+    console.log('Final body name:', bodyGroups.find((o) => o._id === selectedOptions.body)?.name || 
+              bodyGroups.find((o) => o.name === selectedOptions.body)?.name || 
+              selectedOptions.body || "");
+    console.log('=== END DEBUG ===');
+
     addToCart(customizedProduct);
     toast.success("Đã thêm thú nhồi bông tùy chỉnh vào giỏ hàng!");
   };
@@ -643,21 +709,33 @@ export default function CustomizePage() {
       stock: 1,
       featured: false,
       specifications: {
-        body: bodyGroups.find((o) => o._id === selectedOptions.body)?.name || "",
+        body: bodyGroups.find((o) => o._id === selectedOptions.body)?.name || 
+              bodyGroups.find((o) => o.name === selectedOptions.body)?.name || 
+              selectedOptions.body || "",
         ears: categories.find((o) => o._id === selectedOptions.ears)?.name || "",
         eyes: categories.find((o) => o._id === selectedOptions.eyes)?.name || "",
         nose: categories.find((o) => o._id === selectedOptions.nose)?.name || "",
         mouth: categories.find((o) => o._id === selectedOptions.mouth)?.name || "",
         furColor: categories.find((o) => o._id === selectedOptions.furColor)?.name || "",
         clothing: selectedOptions.clothing ? categories.find((o) => o._id === selectedOptions.clothing)?.name || "" : null,
-        accessories: Object.entries(selectedOptions.accessories)
+        accessories: selectedOptions.accessories ? Object.entries(selectedOptions.accessories)
           .map(([id, quantity]) => categories.find((o) => o._id === id)?.name)
-          .filter((name): name is string => name !== undefined),
+          .filter((name): name is string => name !== undefined) : [],
         size: selectedOptions.size
       },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }
+
+    // Debug logging để kiểm tra tại sao body name bị rỗng
+    console.log('=== DEBUG CUSTOM PRODUCT CREATION ===');
+    console.log('selectedOptions.body:', selectedOptions.body);
+    console.log('bodyGroups:', bodyGroups);
+    console.log('bodyGroups.length:', bodyGroups.length);
+    console.log('bodyGroups.find result:', bodyGroups.find((o) => o._id === selectedOptions.body));
+    console.log('bodyGroups.find result name:', bodyGroups.find((o) => o._id === selectedOptions.body)?.name);
+    console.log('Final body name:', bodyGroups.find((o) => o._id === selectedOptions.body)?.name || "");
+    console.log('=== END DEBUG ===');
 
     try {
       console.log("Token exists:", !!token)
@@ -666,7 +744,7 @@ export default function CustomizePage() {
       
       // Chuyển đổi accessories từ object sang array để tương thích với backend
       const partsForSave = { ...selectedOptions };
-      if (selectedOptions.accessories && typeof selectedOptions.accessories === 'object') {
+      if (selectedOptions.accessories && typeof selectedOptions.accessories === 'object' && Object.keys(selectedOptions.accessories).length > 0) {
         const accessoriesArray: string[] = [];
         Object.entries(selectedOptions.accessories).forEach(([accId, quantity]) => {
           for (let i = 0; i < quantity; i++) {
@@ -803,9 +881,9 @@ export default function CustomizePage() {
                   // Xóa khỏi accessories nếu là accessory
           if (activeObject.partType === 'accessory') {
             const accId = activeObject.partId;
-            if (accId && next.accessories[accId] > 1) {
+            if (accId && next.accessories && next.accessories[accId] > 1) {
               next.accessories[accId]--;
-            } else if (accId) {
+            } else if (accId && next.accessories) {
               delete next.accessories[accId];
             }
           } else {
@@ -844,10 +922,23 @@ export default function CustomizePage() {
     : [];
 
   // Lấy nhóm con cho Thân (Body)
-  const bodyParent = categories.find(cat => cat.name === "Thân" && cat.parent === null);
-  const bodyGroups = bodyParent
+  const bodyParent = categories.find(cat => 
+    (cat.name === "Thân" || cat.name === "Loại Thân" || cat.name === "Body" || cat.name.includes("Thân")) && 
+    cat.parent === null
+  );
+  let bodyGroups = bodyParent
     ? categories.filter(cat => cat.parent === bodyParent._id)
     : [];
+  
+  // Fallback: nếu không tìm thấy body parent, tìm tất cả categories có type "body"
+  if (bodyGroups.length === 0) {
+    bodyGroups = categories.filter(cat => cat.type === "body");
+  }
+  
+  // Fallback cuối cùng: nếu vẫn không tìm thấy, lấy tất cả categories gốc
+  if (bodyGroups.length === 0) {
+    bodyGroups = categories.filter(cat => cat.parent === null);
+  }
 
   // Lấy nhóm con của 'Thân' (các nhóm: Loại Thân, Kích Thước, Chất Liệu, Màu Lông)
   const thanParent = categories.find(cat => cat.name === "Thân" && !cat.parent);
@@ -924,7 +1015,7 @@ export default function CustomizePage() {
   useEffect(() => { setIsClient(true); }, []);
 
   useEffect(() => {
-    console.log("accessories:", selectedOptions.accessories);
+    console.log("accessories:", selectedOptions.accessories || {});
   }, [selectedOptions.accessories]);
 
   // Sau khi render CustomFabricCanvas, lắng nghe sự kiện chọn object để hiển thị UI chỉnh sửa text
@@ -934,7 +1025,7 @@ export default function CustomizePage() {
     if (!canvas) return;
     const handleSelection = () => {
       const active = canvas.getActiveObject();
-      if (active && active.type === 'textbox') {
+      if (active && (active.type === 'text' || active.type === 'textbox')) {
         setActiveTextProps({
           text: (active as any).text,
           fill: (active as any).fill,
@@ -957,14 +1048,14 @@ export default function CustomizePage() {
     };
   }, [fabricRef.current?.getCanvas, fabricRef.current, bgImage, selectedOptions]);
 
-  // Hàm đồng bộ toàn bộ textbox hiện tại trên canvas về customTexts
+  // Hàm đồng bộ toàn bộ text hiện tại trên canvas về customTexts
   const syncAllTextsFromCanvas = () => {
     const canvas = fabricRef.current?.getCanvas?.();
     if (!canvas) return [];
     return canvas.getObjects()
-      .filter((obj: any) => obj.type === 'textbox')
+      .filter((obj: any) => obj.type === 'text' || obj.type === 'textbox')
       .map((obj: any) => ({
-        id: obj.customId,
+        id: obj.customId || obj._id || Date.now().toString(),
         text: obj.text,
         fill: obj.fill,
         fontSize: obj.fontSize,
@@ -985,13 +1076,27 @@ export default function CustomizePage() {
     setSelectedOptions(prev => ({
       ...prev,
       accessories: {
-        ...prev.accessories,
-        [accId]: (prev.accessories[accId] || 0) + 1
+        ...(prev.accessories || {}),
+        [accId]: ((prev.accessories && prev.accessories[accId]) || 0) + 1
       }
     }));
   };
 
   if (loading) return <div>Đang tải dữ liệu...</div>
+
+  // Debug logging để kiểm tra bodyParent và bodyGroups
+  console.log('=== DEBUG BODY GROUPS ===');
+  console.log('categories.length:', categories.length);
+  console.log('All categories:', categories.map(cat => ({ name: cat.name, parent: cat.parent, type: cat.type })));
+  console.log('Categories with name "Thân":', categories.filter(cat => cat.name === "Thân"));
+  console.log('Categories with name containing "Thân":', categories.filter(cat => cat.name.includes("Thân")));
+  console.log('Categories with type "body":', categories.filter(cat => cat.type === "body"));
+  console.log('bodyParent:', bodyParent);
+  console.log('Final bodyGroups:', bodyGroups);
+  console.log('bodyGroups.length:', bodyGroups.length);
+  console.log('selectedOptions.body:', selectedOptions.body);
+  console.log('selectedOptions:', selectedOptions);
+  console.log('=== END DEBUG ===');
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -1082,9 +1187,6 @@ export default function CustomizePage() {
                 </Button>
               </div>
               <div className="flex space-x-2">
-                <Button variant="outline" size="icon" onClick={handleTakeScreenshot}>
-                  <Camera className="h-4 w-4" />
-                </Button>
                 <Button variant="outline" size="icon" onClick={handleDownloadDesign}>
                   <Download className="h-4 w-4" />
                 </Button>
@@ -1099,7 +1201,7 @@ export default function CustomizePage() {
               </div>
             </div>
 
-            <div className="relative h-[650px] w-[500px] mx-auto bg-pink-50 rounded-lg flex items-center justify-center mb-6 overflow-hidden">
+            <div className="relative w-full max-w-[500px] h-[60vh] sm:h-[650px] mx-auto bg-pink-50 rounded-lg flex items-center justify-center mb-6 overflow-hidden">
               {/* Gấu bông luôn ở trên */}
               <div className="relative z-10 w-full h-full flex items-center justify-center">
                 <CustomFabricCanvas 
@@ -1138,7 +1240,7 @@ export default function CustomizePage() {
                   {selectedOptions.clothing && (
                     <li>Quần Áo: {categories.find((o) => o._id === selectedOptions.clothing)?.name}</li>
                   )}
-                  {Object.entries(selectedOptions.accessories).length > 0 && (
+                  {selectedOptions.accessories && Object.entries(selectedOptions.accessories).length > 0 && (
                     <li>
                       Phụ Kiện:{" "}
                       {Object.entries(selectedOptions.accessories).map(([id, quantity]) => (
@@ -1225,7 +1327,7 @@ export default function CustomizePage() {
                         </span>
                       </li>
                     )}
-                    {Object.entries(selectedOptions.accessories).map(([accId, quantity]) => {
+                    {selectedOptions.accessories && Object.entries(selectedOptions.accessories).map(([accId, quantity]) => {
                       const accessoryObj = categories.find((o) => o._id === accId);
                       return accessoryObj && accessoryObj.price !== undefined ? (
                         <li key={accId} className="flex justify-between">
@@ -1259,16 +1361,25 @@ export default function CustomizePage() {
             <CardContent className="p-6">
               <Tabs defaultValue="body" value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="grid grid-cols-3 mb-6">
-                  <TabsTrigger value="body">Thân</TabsTrigger>
-                  <TabsTrigger value="features">Đặc Điểm</TabsTrigger>
-                  <TabsTrigger value="extras">Phụ Kiện</TabsTrigger>
+                  <TabsTrigger value="body" className="relative">
+                    Thân
+                    {!selectedOptions.body && (
+                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" title="Vui lòng chọn loại thân trước"></span>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="features">
+                    Đặc Điểm
+                  </TabsTrigger>
+                  <TabsTrigger value="extras">
+                    Phụ Kiện
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="body" className="space-y-6">
                   {/* Loại Thân */}
                   <div>
                     <h3 className="font-medium mb-4 text-lg text-gray-800">Loại Thân</h3>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {bodyOptions.slice(0, bodyPerPage).map(option => (
                         <div
                           key={option._id}
@@ -1328,13 +1439,20 @@ export default function CustomizePage() {
                     <h3 className="font-medium mb-3">Kích Thước</h3>
                     <RadioGroup
                       value={selectedOptions.size}
-                      onValueChange={value => setSelectedOptions(prev => ({ ...prev, size: value }))}
+                      onValueChange={value => handleSizeChange(value)}
                       className="flex space-x-4"
                     >
                       {sizeOptions.map(option => (
                         <div className="flex items-center space-x-2" key={option._id}>
-                          <RadioGroupItem value={option._id} id={`size-${option._id}`} />
-                          <Label htmlFor={`size-${option._id}`}>{option.name}</Label>
+                          <RadioGroupItem 
+                            value={option._id} 
+                            id={`size-${option._id}`}
+                          />
+                          <Label 
+                            htmlFor={`size-${option._id}`}
+                          >
+                            {option.name}
+                          </Label>
                         </div>
                       ))}
                     </RadioGroup>
@@ -1344,13 +1462,29 @@ export default function CustomizePage() {
                     <h3 className="font-medium mb-3">Chất Liệu</h3>
                     <RadioGroup
                       value={selectedOptions.material}
-                      onValueChange={value => setSelectedOptions(prev => ({ ...prev, material: value }))}
+                      onValueChange={value => {
+                        // Kiểm tra nếu chưa chọn thân
+                        if (!selectedOptions.body && !loadedCanvasJSON) {
+                          toast.error("Vui lòng chọn loại thân trước khi chọn chất liệu!", {
+                            description: "Bạn cần chọn loại thân trước khi có thể chọn chất liệu cho thú nhồi bông"
+                          });
+                          return;
+                        }
+                        setSelectedOptions(prev => ({ ...prev, material: value }))
+                      }}
                       className="flex space-x-4"
                     >
                       {materialOptions.map(option => (
                         <div className="flex items-center space-x-2" key={option._id}>
-                          <RadioGroupItem value={option._id} id={`material-${option._id}`} />
-                          <Label htmlFor={`material-${option._id}`}>{option.name}</Label>
+                          <RadioGroupItem 
+                            value={option._id} 
+                            id={`material-${option._id}`}
+                          />
+                          <Label 
+                            htmlFor={`material-${option._id}`}
+                          >
+                            {option.name}
+                          </Label>
                         </div>
                       ))}
                     </RadioGroup>
@@ -1367,7 +1501,7 @@ export default function CustomizePage() {
                             selectedOptions.furColor === option._id
                               ? "ring-2 ring-offset-2 ring-pink-500"
                               : "border-gray-200"
-                          }`}
+                          } hover:border-pink-300`}
                           style={{ backgroundColor: option.image || "#eee" }}
                           title={option.name}
                         />
@@ -1396,7 +1530,7 @@ export default function CustomizePage() {
                     return (
                       <div key={group._id}>
                         <h3 className="font-medium mb-4 text-lg text-gray-800">{group.name}</h3>
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                           {displayedFeatures.map(option => (
                             <div
                               key={option._id}
@@ -1458,12 +1592,12 @@ export default function CustomizePage() {
                     return (
                       <div key={group._id}>
                         <h3 className="font-medium mb-4 text-lg text-gray-800">{group.name}</h3>
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                           {displayedAccessories.map(option => (
                             <div
                               key={option._id}
                               className={`border-2 rounded-xl p-4 cursor-pointer transition-all hover:shadow-md ${
-                                selectedOptions.accessories[option._id] 
+                                selectedOptions.accessories && selectedOptions.accessories[option._id] 
                                   ? "border-pink-500 bg-pink-50 shadow-md" 
                                   : "border-gray-200 hover:border-pink-300"
                               }`}
@@ -1478,7 +1612,7 @@ export default function CustomizePage() {
                                     height={80}
                                     className="rounded-lg object-contain"
                                   />
-                                  {selectedOptions.accessories[option._id] && (
+                                  {selectedOptions.accessories && selectedOptions.accessories[option._id] && (
                                     <div className="absolute -top-2 -right-2 bg-pink-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
                                       {selectedOptions.accessories[option._id]}
                                     </div>
@@ -1531,6 +1665,11 @@ export default function CustomizePage() {
                 <div className="flex gap-4">
                   {/* 2. Sửa nút Lưu Thiết Kế để mở modal thay vì lưu ngay */}
                   <Button variant="outline" className="flex-1" onClick={() => {
+                    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+                    if (!token) {
+                      toast.error("Vui lòng đăng nhập tài khoản để tiếp tục mua hàng hoặc lưu trữ thiết kế!");
+                      return;
+                    }
                     let preview = "";
                     if (fabricRef.current && fabricRef.current.toDataURL) {
                       try {
@@ -1567,9 +1706,6 @@ export default function CustomizePage() {
                       onClick={() => {
                         if (!newText.trim()) return toast.error("Vui lòng nhập nội dung!");
                         if (!isClient) return;
-                        const id = Date.now().toString();
-                        const allCurrentTexts = syncAllTextsFromCanvas();
-                        setCustomTexts([...allCurrentTexts, { id, text: newText, fill: '#000', fontSize: 32, fontFamily: 'Arial', left: 250, top: 325 }]);
                         fabricRef.current?.addText(newText, { left: 250, top: 325 });
                         setNewText("");
                       }}
@@ -1666,7 +1802,7 @@ export default function CustomizePage() {
                   // Có thể kiểm tra thêm các trường khác nếu muốn
                   // Chuyển đổi accessories từ object sang array để tương thích với backend
                   const partsForSave = { ...selectedOptions };
-                  if (selectedOptions.accessories && typeof selectedOptions.accessories === 'object') {
+                  if (selectedOptions.accessories && typeof selectedOptions.accessories === 'object' && Object.keys(selectedOptions.accessories).length > 0) {
                     const accessoriesArray: string[] = [];
                     Object.entries(selectedOptions.accessories).forEach(([accId, quantity]) => {
                       for (let i = 0; i < quantity; i++) {

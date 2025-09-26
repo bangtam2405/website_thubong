@@ -127,19 +127,130 @@ export default function SharedDesignPage({ params }: { params: Promise<{ id: str
               <Separator className="my-6" />
               
               <div className="space-y-4">
-                <h3 className="font-semibold text-lg flex items-center"><Ruler className="mr-2 h-5 w-5 text-pink-500"/>Các bộ phận đã dùng</h3>
-                <div className="flex flex-wrap gap-2">
-                  {design.parts && Object.values(design.parts).filter(Boolean).map((part: any) => (
-                    part && <Badge key={part._id} variant="secondary" className="text-sm py-1 px-3">{part.name}</Badge>
-                  ))}
-                  {(!design.parts || Object.values(design.parts).filter(Boolean).length === 0) && <p className="text-sm text-gray-500">Không có thông tin bộ phận.</p>}
+                <h3 className="font-semibold text-lg flex items-center">
+                  <Ruler className="mr-2 h-5 w-5 text-pink-500"/>
+                  Các bộ phận đã dùng
+                </h3>
+                
+                                 {/* Hiển thị chi tiết từng bộ phận */}
+                 <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-3">
+                   <div>Thân: {design.parts?.body?.name || 'Chưa chọn'}</div>
+                   <div>Tai: {design.parts?.ears?.name || 'Chưa chọn'}</div>
+                   <div>Mắt: {design.parts?.eyes?.name || 'Chưa chọn'}</div>
+                   <div>Mũi: {design.parts?.nose?.name || 'Chưa chọn'}</div>
+                   <div>Miệng: {design.parts?.mouth?.name || 'Chưa chọn'}</div>
+                   <div>Kích thước: {design.parts?.size?.name || 'Chưa chọn'}</div>
+                 </div>
+
+                                 {/* Hiển thị badges cho các bộ phận */}
+                 <div className="flex flex-wrap gap-2">
+                   {design.parts && Object.entries(design.parts).map(([key, part]: [string, any]) => {
+                     // Chỉ hiển thị các part có thông tin và không phải accessories
+                     if (part && key !== 'accessories' && typeof part === 'object' && part.name) {
+                       return (
+                         <div key={`${key}-${part._id}`} className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2">
+                           {part.image && (
+                             <img 
+                               src={part.image} 
+                               alt={part.name} 
+                               className="w-8 h-8 rounded object-cover"
+                             />
+                           )}
+                           <span className="text-sm font-medium">{part.name}</span>
+                           {part.price && part.price > 0 && (
+                             <Badge variant="outline" className="text-xs">
+                               +{part.price.toLocaleString('vi-VN')}đ
+                             </Badge>
+                           )}
+                         </div>
+                       );
+                     }
+                     return null;
+                   })}
+                   {(!design.parts || Object.values(design.parts).filter(part => part && typeof part === 'object' && 'name' in part).length === 0) && 
+                     <p className="text-sm text-gray-500">Không có thông tin bộ phận.</p>
+                   }
+                 </div>
+
+                                 {/* Hiển thị accessories nếu có */}
+                 {design.parts?.accessories && Array.isArray(design.parts.accessories) && design.parts.accessories.length > 0 && (
+                   <>
+                     <h4 className="font-medium text-base flex items-center mt-3">
+                       <span className="mr-2">🎁</span>Phụ kiện
+                     </h4>
+                     <div className="flex flex-wrap gap-2">
+                       {design.parts.accessories.map((accessory: any) => (
+                         <div key={`accessory-${accessory._id}`} className="flex items-center gap-2 bg-blue-50 rounded-lg px-3 py-2 border border-blue-200">
+                           {accessory.image && (
+                             <img 
+                               src={accessory.image} 
+                               alt={accessory.name} 
+                               className="w-8 h-8 rounded object-cover"
+                             />
+                           )}
+                           <span className="text-sm font-medium">{accessory.name}</span>
+                           {accessory.price && accessory.price > 0 && (
+                             <Badge variant="outline" className="text-xs">
+                               +{accessory.price.toLocaleString('vi-VN')}đ
+                             </Badge>
+                           )}
+                         </div>
+                       ))}
+                     </div>
+                   </>
+                 )}
+
+                <h3 className="font-semibold text-lg flex items-center pt-4">
+                  <Palette className="mr-2 h-5 w-5 text-pink-500"/>
+                  Màu sắc & Vật liệu
+                </h3>
+                <div className="space-y-3">
+                                     {design.parts?.furColor && typeof design.parts.furColor === 'object' && 'color' in design.parts.furColor && (design.parts.furColor as any).color && (
+                     <div className="flex items-center gap-3">
+                       <span className="text-sm text-gray-600">Màu lông:</span>
+                       <div 
+                         style={{backgroundColor: (design.parts.furColor as any).color}} 
+                         className="w-8 h-8 rounded-full border-2 border-gray-300 shadow-lg"
+                         title={(design.parts.furColor as any).color}
+                       ></div>
+                       <div className="flex flex-col">
+                         <span className="text-sm font-medium">{(design.parts.furColor as any).name}</span>
+                         <span className="text-xs text-gray-500 font-mono">{(design.parts.furColor as any).color}</span>
+                       </div>
+                     </div>
+                   )}
+                   {design.parts?.furColor && typeof design.parts.furColor === 'object' && (!('color' in design.parts.furColor) || !(design.parts.furColor as any).color) && (
+                     <div className="flex items-center gap-3">
+                       <span className="text-sm text-gray-600">Màu lông:</span>
+                       <span className="text-sm font-medium">{(design.parts.furColor as any).name}</span>
+                     </div>
+                   )}
+                  {design.parts?.material && typeof design.parts.material === 'object' && 'name' in design.parts.material && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-600">Vật liệu:</span>
+                      <span className="text-sm font-medium">{(design.parts.material as any).name}</span>
+                    </div>
+                  )}
+                  {design.parts?.clothing && typeof design.parts.clothing === 'object' && 'name' in design.parts.clothing && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-600">Trang phục:</span>
+                      <span className="text-sm font-medium">{(design.parts.clothing as any).name}</span>
+                    </div>
+                  )}
+                  {(!design.parts?.furColor && !design.parts?.material && !design.parts?.clothing) && (
+                    <p className="text-sm text-gray-500">Không có thông tin màu sắc và vật liệu.</p>
+                  )}
                 </div>
 
-                 <h3 className="font-semibold text-lg flex items-center pt-4"><Palette className="mr-2 h-5 w-5 text-pink-500"/>Màu sắc</h3>
-                 <div className="flex items-center gap-2">
-                    <div style={{backgroundColor: design.fabricColor}} className="w-8 h-8 rounded-full border shadow"></div>
-                    <span>{design.fabricColor}</span>
-                 </div>
+                {/* Hiển thị giá nếu có */}
+                {design.price && typeof design.price === 'number' && design.price > 0 && (
+                  <div className="pt-4">
+                    <h3 className="font-semibold text-lg flex items-center text-green-600">
+                      <span className="mr-2">💰</span>Giá thiết kế
+                    </h3>
+                    <p className="text-2xl font-bold text-green-600">{design.price.toLocaleString('vi-VN')} VNĐ</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

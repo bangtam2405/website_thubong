@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/contexts/CartContext"
 import { formatDateVN } from "@/lib/utils";
+import CustomPartsSummary from "@/components/CustomPartsSummary";
 
 const ORDER_TABS = [
   { label: "Tất cả", value: "all" },
@@ -20,6 +21,7 @@ const ORDER_TABS = [
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([])
+  const [categories, setCategories] = useState<any[]>([])
   const [userId, setUserId] = useState("")
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
@@ -31,8 +33,13 @@ export default function OrdersPage() {
       const uid = localStorage.getItem("userId") || ""
       setUserId(uid)
       if (uid) {
-        axios.get(`http://localhost:5000/api/orders/${uid}`)
-          .then(res => setOrders(res.data))
+        Promise.all([
+          axios.get(`http://localhost:5000/api/orders/${uid}`),
+          axios.get(`http://localhost:5000/api/categories`)
+        ]).then(([ordersRes, categoriesRes]) => {
+          setOrders(ordersRes.data)
+          setCategories(categoriesRes.data)
+        })
       }
     }
   }, [])
@@ -115,6 +122,27 @@ export default function OrdersPage() {
                         {item.product?.type && <span className="ml-2">Loại: {item.product.type}</span>}
                       </div>
                       <div className="text-gray-500 text-xs mt-1">Số lượng: x{item.quantity}</div>
+                      
+                      {/* Hiển thị tóm tắt bộ phận tùy chỉnh nếu có */}
+                      {(item.product?.type === 'custom' || 
+                        item.product?.isCustom || 
+                        item.productInfo?.type === 'custom' ||
+                        item.productInfo?.isCustom ||
+                        item.product?.customData ||
+                        item.productInfo?.customData ||
+                        item.product?.specifications ||
+                        item.productInfo?.specifications) && (
+                        <CustomPartsSummary 
+                          parts={item.product?.customData?.parts || 
+                                 item.productInfo?.customData?.parts ||
+                                 item.product?.specifications ||
+                                 item.productInfo?.specifications ||
+                                 item.product?.customData ||
+                                 item.productInfo?.customData ||
+                                 {}}
+                          categories={categories}
+                        />
+                      )}
                     </div>
                     <div className="flex flex-col items-end min-w-[100px]">
                       {item.product?.price && (
@@ -124,6 +152,14 @@ export default function OrdersPage() {
                   </div>
                 ))}
               </div>
+              {/* Ghi chú khách hàng */}
+              {order.customerNote && (
+                <div className="w-full bg-blue-50 rounded-lg p-3 border border-blue-200 mb-3">
+                  <div className="text-sm text-blue-700 font-medium mb-1">💬 Ghi chú:</div>
+                  <div className="text-sm text-gray-700">{order.customerNote}</div>
+                </div>
+              )}
+              
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 pt-2 border-t">
                 <div className="text-right md:text-left">
                   <span className="text-gray-500 mr-2">Thành tiền:</span>

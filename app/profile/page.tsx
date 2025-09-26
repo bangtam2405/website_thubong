@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Input } from "@/components/ui/input"
+import { ValidatedInput } from "@/components/ui/ValidatedInput"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import axios from "axios"
@@ -327,7 +328,12 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block mb-1 font-medium text-sm">Họ và tên</label>
-                    <Input value={fullName} onChange={e => setFullName(e.target.value)} required />
+                    <ValidatedInput 
+                      value={fullName} 
+                      onChange={e => setFullName(e.target.value)} 
+                      required 
+                      errorMessage="Vui lòng nhập họ và tên"
+                    />
                   </div>
                   <div>
                     <label className="block mb-1 font-medium text-sm">Email</label>

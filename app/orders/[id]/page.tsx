@@ -19,6 +19,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 import ReviewModal from "@/components/ReviewModal";
 import { formatDateVN } from "@/lib/utils";
+import CustomPartsDisplay from "@/components/CustomPartsDisplay";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 
 const statusColor = (status: string) => {
@@ -37,6 +40,7 @@ export default function OrderDetailPage() {
   const { id } = useParams()
   const router = useRouter()
   const [order, setOrder] = useState<any>(null)
+  const [categories, setCategories] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [canceling, setCanceling] = useState(false)
   const [editInfo, setEditInfo] = useState(false)
@@ -57,6 +61,8 @@ export default function OrderDetailPage() {
   const [userReviews, setUserReviews] = useState<any[]>([]);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [deleteReviewId, setDeleteReviewId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   useEffect(() => { setIsClient(true); }, []);
 
   // Lấy danh sách review của user cho các sản phẩm trong đơn
@@ -73,18 +79,47 @@ export default function OrderDetailPage() {
   }, [order]);
 
   useEffect(() => {
-    axios.get(`http://localhost:5000/api/orders/detail/${id}`)
-      .then(res => {
-        setOrder(res.data)
-        setForm({
-          phone: res.data.phone || "",
-          address: res.data.address || ""
-        })
+    Promise.all([
+      axios.get(`http://localhost:5000/api/orders/detail/${id}`),
+      axios.get(`http://localhost:5000/api/categories`)
+    ]).then(([orderRes, categoriesRes]) => {
+      setOrder(orderRes.data)
+      setCategories(categoriesRes.data)
+      setForm({
+        phone: orderRes.data.phone || "",
+        address: orderRes.data.address || ""
       })
-      .finally(() => setLoading(false))
+    }).finally(() => setLoading(false))
   }, [id])
 
   const canEditInfo = order && order.status === "Chờ xác nhận"
+
+  const handleDeleteReview = async (reviewId: string) => {
+    setDeleteReviewId(reviewId);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteReview = async () => {
+    if (!deleteReviewId) return;
+    
+    try {
+      await axios.delete(`http://localhost:5000/api/reviews/${deleteReviewId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      
+      // Cập nhật danh sách userReviews
+      setUserReviews(userReviews.filter(r => r._id !== deleteReviewId));
+      
+      toast.success("Đã xóa đánh giá thành công!");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Xóa đánh giá thất bại!");
+    } finally {
+      setShowDeleteConfirm(false);
+      setDeleteReviewId(null);
+    }
+  };
 
   const handleSaveInfo = async () => {
     setSaving(true)
@@ -120,9 +155,20 @@ export default function OrderDetailPage() {
   if (loading) return <div className="p-8 text-center">Đang tải...</div>
   if (!order) return <div className="p-8 text-center">Không tìm thấy đơn hàng.</div>
 
-  // Phân loại sản phẩm đã đánh giá và chưa đánh giá
-  const reviewedItems = order.products.filter((item: any) => userReviews.some(r => r.product && (r.product._id === item.product?._id) && r.orderItem === item._id));
-  const unreviewedItems = order.products.filter((item: any) => !userReviews.some(r => r.product && (r.product._id === item.product?._id) && r.orderItem === item._id));
+  // Phân loại sản phẩm đã đánh giá và chưa đánh giá (loại trừ sản phẩm tùy chỉnh)
+  const reviewedItems = order.products.filter((item: any) => 
+    userReviews.some(r => r.product && (r.product._id === item.product?._id) && r.orderItem === item._id) &&
+    item.product?.type !== 'custom' && 
+    !item.product?.isCustom
+  );
+  const unreviewedItems = order.products.filter((item: any) => 
+    !userReviews.some(r => r.product && (r.product._id === item.product?._id) && r.orderItem === item._id) &&
+    item.product?.type !== 'custom' && 
+    !item.product?.isCustom
+  );
+  const customItems = order.products.filter((item: any) => 
+    item.product?.type === 'custom' || item.product?.isCustom
+  );
 
   return (
     <div className="container max-w-4xl mx-auto py-10">
@@ -236,11 +282,82 @@ export default function OrderDetailPage() {
             </>
           )}
           {cancelMsg && <div className="text-red-600 font-semibold mt-2">{cancelMsg}</div>}
+          
+          {/* Ghi chú khách hàng */}
+          {order.customerNote && (
+            <div className="bg-blue-50 rounded-xl p-4 border border-blue-200 mt-4">
+              <div className="font-semibold mb-2 text-blue-700 flex items-center gap-2">
+                <span>💬</span>
+                Ghi chú của bạn
+              </div>
+              <div className="text-gray-700 bg-white p-3 rounded-lg border border-blue-100">
+                {order.customerNote}
+              </div>
+            </div>
+          )}
         </div>
         {/* Danh sách sản phẩm */}
         <div className="bg-white rounded-xl shadow p-6">
           <div className="font-semibold mb-3 text-lg">Sản phẩm trong đơn</div>
           <div className="divide-y">
+            {/* Sản phẩm tùy chỉnh */}
+            {customItems.length > 0 && (
+              <div className="mb-4">
+                <div className="font-semibold text-purple-600 mb-2 flex items-center gap-2 text-base">
+                  <span>🎨 Sản phẩm tùy chỉnh</span>
+                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">{customItems.length}</span>
+                </div>
+                {customItems.map((item: any) => (
+                  <div key={item._id} className="flex items-center gap-4 py-4 border rounded-lg mb-2 bg-purple-50">
+                    <div className="w-20 h-20 flex-shrink-0">
+                      {(item.product?.previewImage || item.product?.image) ? (
+                        <Image 
+                          src={item.product.previewImage || item.product.image} 
+                          alt={item.product.name || item.product.designName} 
+                          width={80} 
+                          height={80} 
+                          className="rounded-lg object-cover w-20 h-20" 
+                        />
+                      ) : (
+                        <div className="w-20 h-20 bg-gray-100 rounded flex items-center justify-center text-gray-400">🎨</div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-base">{item.product?.name || item.product?.designName || 'Sản phẩm tùy chỉnh'}</div>
+                      {/* Hiển thị kích thước từ nhiều nguồn khác nhau */}
+                      {(item.product?.specifications?.size || item.product?.size || item.product?.sizeText) && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          Kích thước: {
+                            item.product?.sizeText || 
+                            (item.product?.specifications?.size === 'small' ? 'Nhỏ' : 
+                             item.product?.specifications?.size === 'large' ? 'Lớn' : 
+                             item.product?.specifications?.size === 'medium' ? 'Vừa' : 
+                             item.product?.specifications?.size || item.product?.size || '--')
+                          }
+                        </div>
+                      )}
+                      {/* Hiển thị chất liệu từ nhiều nguồn khác nhau */}
+                      {(item.product?.specifications?.material || item.product?.material || item.product?.materialText) && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          Chất liệu: {item.product?.materialText || item.product?.specifications?.material || item.product?.material || '--'}
+                        </div>
+                      )}
+                      <div className="text-sm text-gray-500">x{item.quantity}</div>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="font-bold text-pink-600 text-lg">{item.product?.price ? (item.product.price * item.quantity).toLocaleString() + '₫' : '--'}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-1 text-purple-700 font-semibold text-sm bg-purple-100 px-2 py-1 rounded-full">
+                          <span>🎨</span>
+                          Tùy chỉnh
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
             {/* Sản phẩm chưa đánh giá */}
             {unreviewedItems.length > 0 && (
               <div className="mb-4">
@@ -265,17 +382,29 @@ export default function OrderDetailPage() {
                     </div>
                     <div className="flex-1">
                       <div className="font-semibold text-base">{item.product?.name || item.product?.designName || '---'}</div>
-                      {item.product?.specifications?.size && (
-                        <div className="text-xs text-gray-500 mt-1">Kích thước: {item.product.specifications.size === 'small' ? 'Nhỏ' : item.product.specifications.size === 'large' ? 'Lớn' : 'Vừa'}</div>
+                      {/* Hiển thị kích thước từ nhiều nguồn khác nhau */}
+                      {(item.product?.specifications?.size || item.product?.size || item.product?.sizeText) && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          Kích thước: {
+                            item.product?.sizeText || 
+                            (item.product?.specifications?.size === 'small' ? 'Nhỏ' : 
+                             item.product?.specifications?.size === 'large' ? 'Lớn' : 
+                             item.product?.specifications?.size === 'medium' ? 'Vừa' : 
+                             item.product?.specifications?.size || item.product?.size || '--')
+                          }
+                        </div>
                       )}
-                      {!item.product?.specifications?.size && item.product?.size && (
-                        <div className="text-xs text-gray-500 mt-1">Kích thước: {item.product.size === 'small' ? 'Nhỏ' : item.product.size === 'large' ? 'Lớn' : 'Vừa'}</div>
+                      {/* Hiển thị chất liệu từ nhiều nguồn khác nhau */}
+                      {(item.product?.specifications?.material || item.product?.material || item.product?.materialText) && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          Chất liệu: {item.product?.materialText || item.product?.specifications?.material || item.product?.material || '--'}
+                        </div>
                       )}
                       <div className="text-sm text-gray-500">x{item.quantity}</div>
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <div className="font-bold text-pink-600 text-lg">{item.product?.price ? (item.product.price * item.quantity).toLocaleString() + '₫' : '--'}</div>
-                      {order.status === 'Đã giao hàng' && (
+                      {order.status === 'Đã giao hàng' && item.product?.type !== 'custom' && !item.product?.isCustom && (
                         <Button size="sm" className="bg-pink-500 hover:bg-pink-600 text-white font-semibold shadow" onClick={() => setReviewingProduct(item._id)} disabled={reviewLoading}>
                           Đánh giá
                         </Button>
@@ -309,26 +438,73 @@ export default function OrderDetailPage() {
                     </div>
                     <div className="flex-1">
                       <div className="font-semibold text-base">{item.product?.name || item.product?.designName || '---'}</div>
-                      {item.product?.specifications?.size && (
-                        <div className="text-xs text-gray-500 mt-1">Kích thước: {item.product.specifications.size === 'small' ? 'Nhỏ' : item.product.specifications.size === 'large' ? 'Lớn' : 'Vừa'}</div>
+                      {/* Hiển thị kích thước từ nhiều nguồn khác nhau */}
+                      {(item.product?.specifications?.size || item.product?.size || item.product?.sizeText) && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          Kích thước: {
+                            item.product?.sizeText || 
+                            (item.product?.specifications?.size === 'small' ? 'Nhỏ' : 
+                             item.product?.specifications?.size === 'large' ? 'Lớn' : 
+                             item.product?.specifications?.size === 'medium' ? 'Vừa' : 
+                             item.product?.specifications?.size || item.product?.size || '--')
+                          }
+                        </div>
                       )}
-                      {!item.product?.specifications?.size && item.product?.size && (
-                        <div className="text-xs text-gray-500 mt-1">Kích thước: {item.product.size === 'small' ? 'Nhỏ' : item.product.size === 'large' ? 'Lớn' : 'Vừa'}</div>
+                      {/* Hiển thị chất liệu từ nhiều nguồn khác nhau */}
+                      {(item.product?.specifications?.material || item.product?.material || item.product?.materialText) && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          Chất liệu: {item.product?.materialText || item.product?.specifications?.material || item.product?.material || '--'}
+                        </div>
                       )}
                       <div className="text-sm text-gray-500">x{item.quantity}</div>
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <div className="font-bold text-pink-600 text-lg">{item.product?.price ? (item.product.price * item.quantity).toLocaleString() + '₫' : '--'}</div>
-                      <span className="flex items-center gap-1 text-green-700 font-semibold text-sm bg-green-100 px-2 py-1 rounded-full">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                        Đã đánh giá
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-1 text-green-700 font-semibold text-sm bg-green-100 px-2 py-1 rounded-full">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                          Đã đánh giá
+                        </span>
+                        {/* Nút xóa review */}
+                        {(() => {
+                          const review = userReviews.find(r => r.product && (r.product._id === item.product?._id) && r.orderItem === item._id);
+                          return review ? (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteReview(review._id)}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              title="Xóa đánh giá"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </Button>
+                          ) : null;
+                        })()}
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
+
+          {/* Ghi chú khách hàng */}
+          {order.customerNote && (
+            <div className="bg-blue-50 rounded-xl p-6 border border-blue-200 mt-6">
+              <div className="font-semibold mb-3 text-lg text-blue-700 flex items-center gap-2">
+                <span>💬</span>
+                Ghi chú từ khách hàng
+              </div>
+              <div className="text-gray-700 bg-white p-4 rounded-lg border border-blue-100">
+                {order.customerNote}
+              </div>
+            </div>
+          )}
+
+          {/* Ẩn phần chi tiết bộ phận tùy chỉnh ở trang chi tiết đơn hàng của khách hàng */}
+
           <ReviewModal
             open={!!reviewingProduct}
             onClose={() => setReviewingProduct(null)}
@@ -347,7 +523,17 @@ export default function OrderDetailPage() {
           />
         </div>
         
-        
+        {/* Modal xác nhận xóa review */}
+        <ConfirmDialog
+          open={showDeleteConfirm}
+          onOpenChange={setShowDeleteConfirm}
+          title="Xóa đánh giá"
+          description="Bạn có chắc muốn xóa đánh giá này? Hành động này không thể hoàn tác."
+          confirmText="Xóa"
+          cancelText="Hủy"
+          onConfirm={confirmDeleteReview}
+          variant="destructive"
+        />
       </div>
     </div>
   )

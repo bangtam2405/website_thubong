@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import axios from "axios"
 import Image from "next/image"
 import { formatDateVN } from "@/lib/utils";
+import CustomPartsDisplay from "@/components/CustomPartsDisplay"
 import { FileDown, ArrowLeft } from "lucide-react";
 
 const statusColor = (status: string) => {
@@ -25,12 +26,19 @@ export default function AdminOrderDetailPage() {
   const { id } = useParams()
   const router = useRouter()
   const [order, setOrder] = useState<any>(null)
+  const [categories, setCategories] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    axios.get(`http://localhost:5000/api/orders/detail/${id}`)
-      .then(res => setOrder(res.data))
-      .finally(() => setLoading(false))
+    Promise.all([
+      axios.get(`http://localhost:5000/api/orders/detail/${id}`),
+      axios.get(`http://localhost:5000/api/categories`)
+    ]).then(([orderRes, categoriesRes]) => {
+      console.log('Order data received:', orderRes.data);
+      console.log('Products:', orderRes.data.products);
+      setOrder(orderRes.data);
+      setCategories(categoriesRes.data);
+    }).finally(() => setLoading(false))
   }, [id])
 
   if (loading) return <div className="p-8 text-center">Đang tải...</div>
@@ -51,7 +59,7 @@ export default function AdminOrderDetailPage() {
     pdfMake.vfs = (pdfFonts.pdfMake && pdfFonts.pdfMake.vfs) || pdfFonts.vfs;
     // Tính tổng tiền sản phẩm và số tiền giảm
     const totalProductPrice = order.products.reduce(
-      (sum: number, item: any) => sum + (item.product?.price || 0) * item.quantity,
+      (sum: number, item: any) => sum + (item.product?.price || item.productInfo?.price || 0) * item.quantity,
       0
     );
     const discount = totalProductPrice - (order.totalPrice - (order.shippingFee || 0));
@@ -104,46 +112,74 @@ export default function AdminOrderDetailPage() {
         {
           table: {
             headerRows: 1,
-            widths: ['*', 40, 80, 80],
+            widths: ['*', 60, 60, 40, 80, 80],
             body: [
               [
                 { text: 'Tên sản phẩm', style: 'tableHeader' },
+                { text: 'Kích thước', style: 'tableHeader', alignment: 'center' },
+                { text: 'Chất liệu', style: 'tableHeader', alignment: 'center' },
                 { text: 'SL', style: 'tableHeader', alignment: 'center' },
                 { text: 'Đơn giá', style: 'tableHeader', alignment: 'right' },
                 { text: 'Thành tiền', style: 'tableHeader', alignment: 'right' },
               ],
               ...order.products.map((item: any) => [
-                item.product?.name || '',
+                item.product?.name || item.productInfo?.name || 'Sản phẩm tùy chỉnh',
+                { text: (() => {
+                  // Lấy kích thước từ nhiều nguồn
+                  let size = item.productInfo?.sizeText || item.product?.sizeText || '';
+                  if (!size) {
+                    const specs = item.product?.specifications || item.productInfo?.specifications;
+                    size = specs?.sizeName || specs?.size || '';
+                  }
+                  if (!size && item.product?.description) {
+                    const sizeFromDesc = /Kích thước\s*:\s*([^;]+)/i.exec(item.product.description)?.[1]?.trim();
+                    size = sizeFromDesc || '';
+                  }
+                  return size || '--';
+                })(), alignment: 'center' },
+                { text: (() => {
+                  // Lấy chất liệu từ nhiều nguồn
+                  let material = item.productInfo?.materialText || item.product?.materialText || '';
+                  if (!material) {
+                    const specs = item.product?.specifications || item.productInfo?.specifications;
+                    material = specs?.material || '';
+                  }
+                  if (!material && item.product?.description) {
+                    const materialFromDesc = /Chất liệu\s*:\s*([^;]+)/i.exec(item.product.description)?.[1]?.trim();
+                    material = materialFromDesc || '';
+                  }
+                  return material || '--';
+                })(), alignment: 'center' },
                 { text: item.quantity.toString(), alignment: 'center' },
-                { text: (item.product?.price || 0).toLocaleString() + '₫', alignment: 'right' },
-                { text: ((item.product?.price || 0) * item.quantity).toLocaleString() + '₫', alignment: 'right' },
+                { text: (item.product?.price || item.productInfo?.price || 0).toLocaleString() + '₫', alignment: 'right' },
+                { text: ((item.product?.price || item.productInfo?.price || 0) * item.quantity).toLocaleString() + '₫', alignment: 'right' },
               ]),
               // Tổng tiền sản phẩm (trước giảm)
-              (totalProductPrice !== (order.totalPrice - (order.shippingFee || 0))) ? [
-                { text: 'TỔNG TIỀN SẢN PHẨM', colSpan: 3, alignment: 'right', bold: true }, {}, {},
+              ...(totalProductPrice !== (order.totalPrice - (order.shippingFee || 0)) ? [[
+                { text: 'TỔNG TIỀN SẢN PHẨM', colSpan: 5, alignment: 'right', bold: true }, {}, {}, {}, {},
                 { text: totalProductPrice.toLocaleString() + '₫', alignment: 'right', bold: true }
-              ] : null,
+              ]] : []),
               // Số tiền giảm
-              (discount > 0) ? [
-                { text: 'GIẢM GIÁ', colSpan: 3, alignment: 'right', bold: true }, {}, {},
+              ...(discount > 0 ? [[
+                { text: 'GIẢM GIÁ', colSpan: 5, alignment: 'right', bold: true }, {}, {}, {}, {},
                 { text: '-' + discount.toLocaleString() + '₫', alignment: 'right', bold: true, color: '#e3497a' }
-              ] : null,
+              ]] : []),
               // Tổng tiền sau giảm (trước phí ship)
-              (discount > 0) ? [
-                { text: 'TỔNG TIỀN SAU GIẢM', colSpan: 3, alignment: 'right', bold: true }, {}, {},
+              ...(discount > 0 ? [[
+                { text: 'TỔNG TIỀN SAU GIẢM', colSpan: 5, alignment: 'right', bold: true }, {}, {}, {}, {},
                 { text: (totalProductPrice - discount).toLocaleString() + '₫', alignment: 'right', bold: true }
-              ] : null,
+              ]] : []),
               // Phí vận chuyển
-              order.shippingFee && order.shippingFee > 0 ? [
-                { text: 'PHÍ VẬN CHUYỂN', colSpan: 3, alignment: 'right', bold: true }, {}, {},
+              ...(order.shippingFee && order.shippingFee > 0 ? [[
+                { text: 'PHÍ VẬN CHUYỂN', colSpan: 5, alignment: 'right', bold: true }, {}, {}, {}, {},
                 { text: order.shippingFee.toLocaleString() + '₫', alignment: 'right', bold: true, color: '#2563eb' }
-              ] : null,
+              ]] : []),
               // Tổng cộng cuối cùng
               [
-                { text: 'TỔNG CỘNG', colSpan: 3, alignment: 'right', bold: true }, {}, {},
+                { text: 'TỔNG CỘNG', colSpan: 5, alignment: 'right', bold: true }, {}, {}, {}, {},
                 { text: order.totalPrice?.toLocaleString() + '₫', alignment: 'right', bold: true }
               ]
-            ]
+            ].filter(row => row !== null) // Loại bỏ các row null
           },
           layout: {
             fillColor: (rowIndex: number) => rowIndex === 0 ? '#fce7f3' : null,
@@ -154,6 +190,88 @@ export default function AdminOrderDetailPage() {
           },
           margin: [0, 0, 0, 12]
         },
+        
+        // Thêm thông tin chi tiết bộ phận tùy chỉnh nếu có
+        ...(order.products.some((item: any) => 
+          item.product?.type === 'custom' || 
+          item.product?.isCustom || 
+          item.productInfo?.type === 'custom' ||
+          item.productInfo?.isCustom ||
+          item.product?.customData ||
+          item.productInfo?.customData
+        ) ? [
+          { text: '🎨 CHI TIẾT BỘ PHẬN TÙY CHỈNH', style: 'subheader', margin: [0, 16, 0, 8] },
+          ...order.products.map((item: any, index: number) => {
+            const isCustom = item.product?.type === 'custom' || 
+                            item.product?.isCustom || 
+                            item.productInfo?.type === 'custom' ||
+                            item.productInfo?.isCustom ||
+                            item.product?.customData ||
+                            item.productInfo?.customData;
+            
+            if (!isCustom) return null;
+            
+            const parts = item.product?.customData?.parts || 
+                         item.productInfo?.customData?.parts ||
+                         item.product?.specifications ||
+                         item.productInfo?.specifications ||
+                         {};
+            
+            const size = item.productInfo?.sizeText || 
+                        item.product?.sizeText || 
+                        item.product?.size || 
+                        item.productInfo?.size ||
+                        parts.size;
+            
+            const material = item.productInfo?.materialText || 
+                            item.product?.materialText || 
+                            item.product?.material || 
+                            item.productInfo?.material ||
+                            parts.material;
+            
+            // Hàm lấy tên bộ phận từ ID
+            const getPartName = (partId: string) => {
+              if (!partId) return 'Chưa chọn';
+              const category = categories.find(cat => cat._id === partId);
+              return category ? category.name : 'Không xác định';
+            };
+            
+            // Hàm xử lý accessories
+            const getAccessoriesText = () => {
+              if (!parts.accessories) return 'Không có';
+              if (Array.isArray(parts.accessories)) {
+                return parts.accessories.map((accId: string) => getPartName(accId)).join(', ');
+              } else if (typeof parts.accessories === 'object') {
+                return Object.entries(parts.accessories)
+                  .map(([accId, quantity]) => `${getPartName(accId as string)} (x${quantity})`)
+                  .join(', ');
+              }
+              return 'Không có';
+            };
+            
+            return [
+              { text: `Sản phẩm ${index + 1}: ${item.product?.name || item.productInfo?.name || 'Sản phẩm tùy chỉnh'}`, style: 'subheader', margin: [0, 8, 0, 4] },
+              { text: `Kích thước: ${size === 'small' ? 'Nhỏ' : size === 'medium' ? 'Vừa' : size === 'large' ? 'Lớn' : size || '--'}`, margin: [16, 2, 0, 0] },
+              { text: `Chất liệu: ${material === 'cotton' ? 'Bông' : material === 'wool' ? 'Len' : material === 'silk' ? 'Tơ' : material === 'leather' ? 'Da' : material || '--'}`, margin: [16, 2, 0, 0] },
+              { text: `Thân: ${getPartName(parts.body)}`, margin: [16, 2, 0, 0] },
+              { text: `Tai: ${getPartName(parts.ears)}`, margin: [16, 2, 0, 0] },
+              { text: `Mắt: ${getPartName(parts.eyes)}`, margin: [16, 2, 0, 0] },
+              ...(parts.nose ? [{ text: `Mũi: ${getPartName(parts.nose)}`, margin: [16, 2, 0, 0] }] : []),
+              ...(parts.mouth ? [{ text: `Miệng: ${getPartName(parts.mouth)}`, margin: [16, 2, 0, 0] }] : []),
+              ...(parts.furColor ? [{ text: `Màu lông: ${getPartName(parts.furColor)}`, margin: [16, 2, 0, 0] }] : []),
+              ...(parts.clothing ? [{ text: `Quần áo: ${getPartName(parts.clothing)}`, margin: [16, 2, 0, 0] }] : []),
+              { text: `Phụ kiện: ${getAccessoriesText()}`, margin: [16, 2, 0, 0] },
+              { text: 'Ghi chú: Đây là sản phẩm tùy chỉnh theo yêu cầu khách hàng. Vui lòng sử dụng đúng các bộ phận đã được chọn.', margin: [16, 8, 0, 8], italics: true, color: '#e3497a' }
+            ];
+          }).filter(Boolean).flat()
+        ] : []),
+        
+        // Ghi chú khách hàng nếu có
+        ...(order.customerNote ? [
+          { text: 'GHI CHÚ TỪ KHÁCH HÀNG', style: 'subheader', margin: [0, 16, 0, 8] },
+          { text: order.customerNote, margin: [16, 0, 0, 16], italics: true, color: '#2563eb' }
+        ] : []),
+        
         { text: 'Cảm ơn bạn đã mua hàng tại Shop Gấu Bông! Mọi thắc mắc vui lòng liên hệ hotline: 079 398 0972.', style: 'footer', alignment: 'center', margin: [0, 16, 0, 0] }
       ],
       styles: {
@@ -223,7 +341,7 @@ export default function AdminOrderDetailPage() {
             {/* Hiển thị giảm giá nếu có */}
             {(() => {
               const totalProductPrice = order.products.reduce(
-                (sum: number, item: any) => sum + (item.product?.price || 0) * item.quantity,
+                (sum: number, item: any) => sum + (item.product?.price || item.productInfo?.price || 0) * item.quantity,
                 0
               );
               const discount = totalProductPrice - (order.totalPrice - (order.shippingFee || 0));
@@ -240,12 +358,10 @@ export default function AdminOrderDetailPage() {
             })()}
             
             {/* Phí vận chuyển */}
-            {order.shippingFee && order.shippingFee > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="font-semibold">Phí vận chuyển:</span>
-                <span className="text-blue-600 font-semibold">{order.shippingFee?.toLocaleString()}₫</span>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <span className="font-semibold">Phí vận chuyển:</span>
+              <span className={`${Number(order.shippingFee) > 0 ? 'text-blue-600' : 'text-gray-600'} font-semibold`}>{(order.shippingFee || 0).toLocaleString()}₫</span>
+            </div>
             
             {/* Tổng tiền cuối cùng */}
             <div className="flex items-center gap-2">
@@ -301,49 +417,309 @@ export default function AdminOrderDetailPage() {
                 <tr className="bg-pink-50">
                   <th className="py-3 px-4 text-left font-bold">Sản phẩm</th>
                   <th className="py-3 px-4 text-center font-bold">Kích thước</th>
+                  <th className="py-3 px-4 text-center font-bold">Chất liệu</th>
                   <th className="py-3 px-4 text-center font-bold">Số lượng</th>
                   <th className="py-3 px-4 text-right font-bold">Đơn giá</th>
                   <th className="py-3 px-4 text-right font-bold">Thành tiền</th>
                 </tr>
               </thead>
               <tbody>
-                {order.products.map((item: any) => (
-                  <tr key={item.product?._id} className="border-b last:border-0">
-                    <td className="py-3 px-4 flex items-center gap-3">
-                      {item.product?.image ? (
-                        <Image src={item.product.image} alt={item.product.name} width={60} height={60} className="rounded-lg object-cover w-16 h-16 border" />
-                      ) : (
-                        <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center text-gray-400">?</div>
-                      )}
-                      <span className="font-semibold">{item.product?.name || '---'}</span>
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      {item.product?.specifications?.size
-                        ? item.product.specifications.size === 'small' ? 'Nhỏ' : item.product.specifications.size === 'large' ? 'Lớn' : 'Vừa'
-                        : item.product?.size
-                        ? item.product.size === 'small' ? 'Nhỏ' : item.product.size === 'large' ? 'Lớn' : 'Vừa'
-                        : '--'}
-                    </td>
-                    <td className="py-3 px-4 text-center">{item.quantity}</td>
-                    <td className="py-3 px-4 text-right">{item.product?.price?.toLocaleString()}₫</td>
-                    <td className="py-3 px-4 text-right font-bold text-pink-600">{item.product?.price ? (item.product.price * item.quantity).toLocaleString() + '₫' : '--'}</td>
-                  </tr>
-                ))}
-                {order.shippingFee && order.shippingFee > 0 && (
-                  <tr>
-                    <td colSpan={4} className="py-3 px-4 text-right font-bold text-lg text-blue-600">Phí vận chuyển</td>
-                    <td className="py-3 px-4 text-right font-bold text-lg text-blue-600">{order.shippingFee?.toLocaleString()}₫</td>
-                  </tr>
-                )}
-                <tr>
-                  <td colSpan={4} className="py-3 px-4 text-right font-bold text-lg">Tổng cộng</td>
-                  <td className="py-3 px-4 text-right font-extrabold text-xl text-pink-700">{order.totalPrice?.toLocaleString()}₫</td>
-                </tr>
+                {(() => {
+                  const rows = [];
+                  
+                  // Add product rows
+                  order.products.forEach((item: any, index: number) => {
+                    rows.push(
+                      <tr key={item.product?._id || item.product || `product-${index}`} className="border-b last:border-0">
+                        <td className="py-3 px-4 flex items-center gap-3">
+                          {(() => {
+                            const src = (item.product?.image || item.product?.previewImage || item.productInfo?.image || item.productInfo?.previewImage || '/placeholder.jpg') as string;
+                            return (
+                              <Image src={src} alt={(item.product?.name || item.productInfo?.name || 'Sản phẩm') as string} width={60} height={60} className="rounded-lg object-cover w-16 h-16 border" unoptimized={true} />
+                            );
+                          })()}
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-base">{item.product?.name || item.productInfo?.name || 'Sản phẩm tùy chỉnh'}</span>
+                            {/* Hiển thị thông tin bổ sung nếu có */}
+                            {(() => {
+                              const specs = item.product?.specifications || item.productInfo?.specifications;
+                              // Chỉ hiển thị thông tin khác ngoài size và material
+                              const otherInfo = [];
+                              
+                              // Thêm thông tin hộp quà nếu có
+                              if (specs?.giftBox?.name) {
+                                otherInfo.push(`Hộp quà: ${specs.giftBox.name}`);
+                              }
+                              
+                              // Thêm thông tin màu sắc nếu có
+                              if (specs?.color) {
+                                otherInfo.push(`Màu: ${specs.color}`);
+                              }
+                              
+                              // Thêm thông tin khác từ description nếu không phải size/material
+                              const descText = (item.product?.description || item.productInfo?.description || '') as string;
+                              if (descText && !descText.includes('Kích thước:') && !descText.includes('Chất liệu:')) {
+                                otherInfo.push(descText);
+                              }
+                              
+                              return otherInfo.length > 0 ? (
+                                <span className="text-sm text-gray-600 mt-0.5">{otherInfo.join(' · ')}</span>
+                              ) : null;
+                            })()}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          {(() => {
+                            // Ưu tiên lấy từ sizeText đã được xử lý
+                            let size = item.productInfo?.sizeText || item.product?.sizeText || '';
+                            
+                            // Nếu không có sizeText, lấy từ các trường trực tiếp
+                            if (!size) {
+                              size = item.product?.size || item.productInfo?.size || '';
+                            }
+                            
+                            // Nếu không có, lấy từ specifications
+                            if (!size) {
+                              const specs = item.product?.specifications || item.productInfo?.specifications;
+                              size = specs?.size || specs?.sizeName || '';
+                            }
+                            
+                            // Fallback từ description nếu thiếu
+                            if (!size) {
+                              const descText = (item.product?.description || item.productInfo?.description || '') as string;
+                              const sizeFromDesc = /Kích thước\s*:\s*([^;]+)/i.exec(descText)?.[1]?.trim();
+                              if (sizeFromDesc) {
+                                size = sizeFromDesc;
+                              }
+                            }
+                            
+                            // Xử lý giá trị size
+                            if (typeof size === 'string' && /^[a-f\d]{24}$/i.test(size)) {
+                              // Nếu là ObjectId, hiển thị --
+                              size = '--';
+                            } else if (size === 'small') {
+                              size = 'Nhỏ';
+                            } else if (size === 'medium') {
+                              size = 'Vừa';
+                            } else if (size === 'large') {
+                              size = 'Lớn';
+                            }
+                            
+                            return size || '--';
+                          })()}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          {(() => {
+                            // Ưu tiên lấy từ materialText đã được xử lý
+                            let material = item.productInfo?.materialText || item.product?.materialText || '';
+                            
+                            // Nếu không có materialText, lấy từ các trường trực tiếp
+                            if (!material) {
+                              material = item.product?.material || item.productInfo?.material || '';
+                            }
+                            
+                            // Nếu không có, lấy từ specifications
+                            if (!material) {
+                              const specs = item.product?.specifications || item.productInfo?.specifications;
+                              material = specs?.material || specs?.materialName || '';
+                            }
+                            
+                            // Fallback từ description nếu thiếu
+                            if (!material) {
+                              const descText = (item.product?.description || item.productInfo?.description || '') as string;
+                              const materialFromDesc = /Chất liệu\s*:\s*([^;]+)/i.exec(descText)?.[1]?.trim();
+                              if (materialFromDesc) {
+                                material = materialFromDesc;
+                              }
+                            }
+                            
+                            // Xử lý giá trị material
+                            if (typeof material === 'string' && /^[a-f\d]{24}$/i.test(material)) {
+                              // Nếu là ObjectId, hiển thị --
+                              material = '--';
+                            } else if (material === 'cotton') {
+                              material = 'Bông';
+                            } else if (material === 'wool') {
+                              material = 'Len';
+                            } else if (material === 'silk') {
+                              material = 'Tơ';
+                            } else if (material === 'leather') {
+                              material = 'Da';
+                            } else if (material === 'cotton-wool') {
+                              material = 'Bông Len';
+                            } else if (material === 'cotton-silk') {
+                              material = 'Bông Tơ';
+                            } else if (material === 'wool-silk') {
+                              material = 'Len Tơ';
+                            } else if (material === 'cotton-wool-silk') {
+                              material = 'Bông Len Tơ';
+                            }
+                            
+                            return material || '--';
+                          })()}
+                        </td>
+                        <td className="py-3 px-4 text-center">{item.quantity}</td>
+                        <td className="py-3 px-4 text-right">
+                          {(() => {
+                            const base = (item.product?.price ?? item.productInfo?.price ?? 0);
+                            const unit = base > 0
+                              ? base
+                              : (order.products.length === 1
+                                  ? Math.max((order.totalPrice - (order.shippingFee || 0)) / (item.quantity || 1), 0)
+                                  : 0);
+                            return unit.toLocaleString() + '₫';
+                          })()}
+                        </td>
+                        <td className="py-3 px-4 text-right font-bold text-pink-600">
+                          {(() => {
+                            const base = (item.product?.price ?? item.productInfo?.price ?? 0);
+                            const unit = base > 0
+                              ? base
+                              : (order.products.length === 1
+                                  ? Math.max((order.totalPrice - (order.shippingFee || 0)) / (item.quantity || 1), 0)
+                                  : 0);
+                            return (unit * item.quantity).toLocaleString() + '₫';
+                          })()}
+                        </td>
+                      </tr>
+                    );
+                  });
+                  
+                  // Add shipping fee row if exists
+                  // Luôn hiển thị phí ship, kể cả 0₫
+                  rows.push(
+                    <tr key="shipping-fee">
+                      <td colSpan={5} className={`py-3 px-4 text-right font-bold text-lg ${Number(order.shippingFee) > 0 ? 'text-blue-600' : 'text-gray-600'}`}>Phí vận chuyển</td>
+                      <td className={`py-3 px-4 text-right font-bold text-lg ${Number(order.shippingFee) > 0 ? 'text-blue-600' : 'text-gray-600'}`}>{(order.shippingFee || 0).toLocaleString()}₫</td>
+                    </tr>
+                  );
+                  
+                  // Add total row
+                  rows.push(
+                    <tr key="total">
+                      <td colSpan={5} className="py-3 px-4 text-right font-bold text-lg">Tổng cộng</td>
+                      <td className="py-3 px-4 text-right font-extrabold text-xl text-pink-700">{order.totalPrice?.toLocaleString()}₫</td>
+                    </tr>
+                  );
+                  
+                  return rows;
+                })()}
               </tbody>
             </table>
           </div>
         </div>
+        
+        {/* Ghi chú khách hàng */}
+        {order.customerNote && (
+          <div className="bg-blue-50 rounded-xl p-6 border border-blue-200 mt-6">
+            <div className="font-semibold mb-3 text-lg text-blue-700 flex items-center gap-2">
+              <span>💬</span>
+              Ghi chú từ khách hàng
+            </div>
+            <div className="text-gray-700 bg-white p-4 rounded-lg border border-blue-100">
+              {order.customerNote}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Hiển thị chi tiết bộ phận tùy chỉnh cho các sản phẩm custom */}
+      {order.products.some((item: any) => 
+        item.product?.type === 'custom' || 
+        item.product?.isCustom || 
+        item.productInfo?.type === 'custom' ||
+        item.productInfo?.isCustom ||
+        item.product?.customData ||
+        item.productInfo?.customData
+      ) && (
+        <div className="bg-white rounded-2xl shadow-lg p-8 mt-8">
+          <h2 className="text-2xl font-bold mb-6 text-pink-600 flex items-center gap-3">
+            <span className="text-3xl">🎨</span>
+            Chi tiết bộ phận tùy chỉnh
+          </h2>
+          <div className="space-y-8">
+            {order.products.map((item: any, index: number) => {
+              // Kiểm tra xem sản phẩm có phải là custom không
+              const isCustom = item.product?.type === 'custom' || 
+                              item.product?.isCustom || 
+                              item.productInfo?.type === 'custom' ||
+                              item.productInfo?.isCustom ||
+                              item.product?.customData ||
+                              item.productInfo?.customData;
+              
+              if (!isCustom) return null;
+              
+              // Lấy thông tin parts từ nhiều nguồn khác nhau
+              const parts = item.product?.customData?.parts || 
+                           item.productInfo?.customData?.parts ||
+                           item.product?.specifications ||
+                           item.productInfo?.specifications ||
+                           {};
+              
+              // Lấy size và material
+              const size = item.productInfo?.sizeText || 
+                          item.product?.sizeText || 
+                          item.product?.size || 
+                          item.productInfo?.size ||
+                          parts.size;
+              
+              const material = item.productInfo?.materialText || 
+                              item.product?.materialText || 
+                              item.product?.material || 
+                              item.productInfo?.material ||
+                              parts.material;
+              
+              return (
+                <div key={`custom-${index}`} className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-xl p-6 border border-pink-200">
+                  {/* Header sản phẩm */}
+                  <div className="flex items-center gap-4 mb-6 p-4 bg-white rounded-lg border border-pink-100">
+                    <img 
+                      src={item.product?.image || item.product?.previewImage || item.productInfo?.image || item.productInfo?.previewImage || '/placeholder.jpg'} 
+                      alt={item.product?.name || item.productInfo?.name || 'Sản phẩm tùy chỉnh'}
+                      className="w-20 h-20 object-cover rounded-xl border-2 border-pink-200 shadow-md"
+                    />
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-gray-800 mb-2">
+                        {item.product?.name || item.productInfo?.name || 'Sản phẩm tùy chỉnh'}
+                      </h3>
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <span className="bg-pink-100 text-pink-700 px-3 py-1 rounded-full font-medium">
+                          Số lượng: {item.quantity}
+                        </span>
+                        {size && (
+                          <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-medium">
+                            Kích thước: {size}
+                          </span>
+                        )}
+                        {material && (
+                          <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium">
+                            Chất liệu: {material}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Chi tiết bộ phận */}
+                  <div className="bg-white rounded-lg p-6 border border-pink-100">
+                    <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                      <span className="text-pink-500">🔧</span>
+                      Các bộ phận đã chọn
+                    </h4>
+                    <CustomPartsDisplay 
+                      parts={parts}
+                      categories={categories}
+                      size={size}
+                      material={material}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <Button
         className="mt-10 mx-auto block border-2 border-gray-400 text-gray-700 font-semibold text-base px-8 py-3 rounded-lg hover:bg-gray-100 flex items-center gap-2"
         variant="outline"

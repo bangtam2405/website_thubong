@@ -7,6 +7,7 @@ import { Star, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatDateVN } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
@@ -19,6 +20,8 @@ export default function AdminReviewPage() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [selected, setSelected] = useState<any>(null);
   const [search, setSearch] = useState("");
+  const [deleteReviewId, setDeleteReviewId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     axios.get("http://localhost:5000/api/reviews", {
@@ -32,20 +35,28 @@ export default function AdminReviewPage() {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Bạn có chắc muốn xóa đánh giá này?")) return;
-    setDeleting(id);
+    setDeleteReviewId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteReview = async () => {
+    if (!deleteReviewId) return;
+    
+    setDeleting(deleteReviewId);
     try {
-      await axios.delete(`http://localhost:5000/api/reviews/${id}`, {
+      await axios.delete(`http://localhost:5000/api/reviews/${deleteReviewId}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
-      setReviews(reviews => reviews.filter(r => r._id !== id));
+      setReviews(reviews => reviews.filter(r => r._id !== deleteReviewId));
       toast.success("Đã xóa đánh giá!");
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Xóa đánh giá thất bại hoặc API chưa hỗ trợ!");
     } finally {
       setDeleting(null);
+      setShowDeleteConfirm(false);
+      setDeleteReviewId(null);
     }
   };
 
@@ -197,6 +208,18 @@ export default function AdminReviewPage() {
           )}
         </DialogContent>
       </Dialog>
+      
+      {/* Modal xác nhận xóa review */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title="Xóa đánh giá"
+        description="Bạn có chắc muốn xóa đánh giá này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        onConfirm={confirmDeleteReview}
+        variant="destructive"
+      />
     </div>
   );
 } 

@@ -69,6 +69,14 @@ export function AddToCartButton({
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // Yêu cầu đăng nhập trước khi thêm vào giỏ hàng
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      if (!token) {
+        toast.error("Vui lòng đăng nhập tài khoản để tiếp tục mua hàng hoặc lưu trữ thiết kế!");
+        return;
+      }
+    } catch {}
     if (product.type === "custom") {
       setShowModal(true);
       fetchOptions();
@@ -99,6 +107,12 @@ export function AddToCartButton({
   };
 
   const handleConfirm = () => {
+    // An toàn: kiểm tra đăng nhập lại trước khi xác nhận
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      toast.error("Vui lòng đăng nhập tài khoản để tiếp tục mua hàng hoặc lưu trữ thiết kế!");
+      return;
+    }
     if (!selectedSize || !selectedMaterial) {
       toast.error("Vui lòng chọn đầy đủ kích thước và chất liệu!");
       return;

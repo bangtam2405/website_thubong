@@ -8,6 +8,8 @@ import instance from "@/lib/axiosConfig"
 import ImageUpload from "@/components/ImageUpload"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "sonner";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([])
@@ -16,6 +18,8 @@ export default function ProductsPage() {
   const [editProduct, setEditProduct] = useState<any>(null)
   const router = useRouter()
   const [search, setSearch] = useState("");
+  const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     fetchProducts()
@@ -126,16 +130,40 @@ export default function ProductsPage() {
               setShowEditForm(true)
             }}
             onDelete={async (id: string) => {
-              const token = localStorage.getItem("token");
-              const headers = { Authorization: `Bearer ${token}` };
-              if (window.confirm("Bạn có chắc chắn muốn xóa sản phẩm này?")) {
-                await instance.delete(`http://localhost:5000/api/products/${id}`, { headers });
-                fetchProducts();
-              }
+              setDeleteProductId(id);
+              setShowDeleteConfirm(true);
             }}
           />
         </CardContent>
       </Card>
+      
+      {/* Modal xác nhận xóa sản phẩm */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title="Xóa sản phẩm"
+        description="Bạn có chắc chắn muốn xóa sản phẩm này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        onConfirm={async () => {
+          if (!deleteProductId) return;
+          
+          const token = localStorage.getItem("token");
+          const headers = { Authorization: `Bearer ${token}` };
+          
+          try {
+            await instance.delete(`http://localhost:5000/api/products/${deleteProductId}`, { headers });
+            await fetchProducts();
+            toast.success("Đã xóa sản phẩm thành công!");
+          } catch (err: any) {
+            toast.error("Xóa sản phẩm thất bại!");
+          } finally {
+            setShowDeleteConfirm(false);
+            setDeleteProductId(null);
+          }
+        }}
+        variant="destructive"
+      />
     </div>
   )
 }

@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Heart, Copy, Eye, Loader2 } from 'lucide-react';
+import { Copy, Eye, Loader2 } from 'lucide-react';
 import { motion, Variants } from 'framer-motion';
 
 const cardVariants: Variants = {
@@ -26,10 +26,22 @@ export default function CommunityDesignsPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
+
+    useEffect(() => {
+    const loadDesigns = async () => {
+      try {
+        const designsRes = await fetch('/api/designs/public');
+        const designsData = await designsRes.json();
+        setDesigns(designsData);
+      } catch (error) {
+        console.error('Error loading designs:', error);
+      }
+    };
+
+    loadDesigns();
+  }, []);
+
   useEffect(() => {
-    fetch('/api/designs/public')
-      .then(res => res.json())
-      .then(setDesigns);
     if (typeof window !== 'undefined') {
       setUserId(localStorage.getItem('userId'));
     }
@@ -60,14 +72,16 @@ export default function CommunityDesignsPage() {
     }
   };
 
+
+
   return (
     <div className="container mx-auto py-12 px-4">
-      <div className="text-center mb-12">
+      {/* <div className="text-center mb-12">
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900">Khám Phá Sáng Tạo</h1>
         <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">
           Nơi cộng đồng chia sẻ những mẫu gấu bông độc đáo. Hãy tìm cảm hứng và tự tay tùy chỉnh thiết kế của riêng bạn!
         </p>
-      </div>
+      </div> */}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         {designs.map((design, i) => (
@@ -80,19 +94,15 @@ export default function CommunityDesignsPage() {
           >
             <Card className="group overflow-hidden rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col h-full">
               <CardHeader className="p-0 relative">
-                <Link href={`/shared-designs/${design._id}`} className="block overflow-hidden">
-                  <Image
-                    src={design.previewImage || '/placeholder.jpg'}
-                    alt={design.designName}
-                    width={400}
-                    height={400}
-                    className="object-cover w-full h-64 group-hover:scale-105 transition-transform duration-500"
-                  />
-                </Link>
-                <div className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm rounded-full p-2 flex items-center gap-2 text-sm font-medium text-gray-700">
-                  <Heart className="h-4 w-4 text-red-500" />
-                  <span>{design.likes ?? 0}</span>
-                </div>
+                                 <Link href={`/shared-designs/${design._id}`} className="block overflow-hidden">
+                   <Image
+                     src={design.previewImage || '/placeholder.jpg'}
+                     alt={design.designName}
+                     width={400}
+                     height={400}
+                     className="object-cover w-full h-64 group-hover:scale-105 transition-transform duration-500"
+                   />
+                 </Link>
               </CardHeader>
               <CardContent className="p-4 flex-grow">
                 <CardTitle className="text-lg font-bold truncate">{design.designName}</CardTitle>
@@ -102,10 +112,12 @@ export default function CommunityDesignsPage() {
                 
                 <div className="flex items-center gap-2 mt-4">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={design.user?.avatar || '/placeholder-user.jpg'} alt={design.user?.fullName} />
-                    <AvatarFallback>{design.user?.fullName?.[0] || 'A'}</AvatarFallback>
+                    <AvatarImage src={design.user?.avatar || '/placeholder-user.jpg'} alt={design.user?.fullName || design.user?.username || 'User'} />
+                    <AvatarFallback>{(design.user?.fullName || design.user?.username || 'U')?.[0]?.toUpperCase()}</AvatarFallback>
                   </Avatar>
-                  <span className="text-sm font-medium text-gray-800">{design.user?.fullName || 'Người dùng ẩn danh'}</span>
+                  <span className="text-sm font-medium text-gray-800">
+                    {design.user?.fullName || design.user?.username || 'Người dùng ẩn danh'}
+                  </span>
                 </div>
               </CardContent>
               <CardFooter className="p-4 bg-gray-50/50">

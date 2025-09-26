@@ -23,6 +23,12 @@ interface CartItem {
   image: string
   quantity: number
   type: string
+  designName?: string
+  description?: string
+  previewImage?: string
+  specifications?: any
+  size?: string
+  material?: string
 }
 
 function SuccessModal({ onContinue, orderId }: { onContinue: () => void; orderId: string | null }) {
@@ -78,6 +84,7 @@ export default function CheckoutPage() {
   const [selectedCouponId, setSelectedCouponId] = useState<string>("");
   const [couponSearch, setCouponSearch] = useState("");
   const [shippingFee, setShippingFee] = useState(0);
+  const [customerNote, setCustomerNote] = useState("");
 
 
   useEffect(() => {
@@ -294,22 +301,35 @@ export default function CheckoutPage() {
         return;
       }
 
-      const res = await fetch('http://localhost:5000/api/payment/vnpay', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: finalTotal,
-          returnUrl: `${window.location.origin}/payment-result`,
-          products: items.map(item => ({
-            product: item._id,
-            quantity: item.quantity
-          })),
-          user: userId,
-          name,
-          phone,
-          address,
-        })
-      });
+              const res = await fetch('http://localhost:5000/api/payment/vnpay', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: finalTotal,
+            returnUrl: `${window.location.origin}/payment-result`,
+            products: items.map(item => ({
+              product: item._id,
+              quantity: item.quantity,
+              price: item.price,
+              name: item.name,
+              designName: item.designName,
+              description: item.description,
+              image: item.image,
+              previewImage: item.previewImage,
+              specifications: item.specifications,
+              size: item.size || item.specifications?.sizeName,
+              material: item.material || item.specifications?.material
+            })),
+            user: userId,
+            name,
+            phone,
+            address,
+            customerNote,
+            shippingFee,
+            coupon: selectedCouponId,
+            discountAmount: promoAmount,
+          })
+        });
       const data = await res.json();
       if (data.paymentUrl) {
         // Xóa checkoutItems khỏi sessionStorage trước khi chuyển hướng
@@ -320,17 +340,18 @@ export default function CheckoutPage() {
         setLoading(false)
       }
     } else if (payment === 'momo') {
-      const res = await fetch('http://localhost:5000/api/payment/momo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: finalTotal,
-          orderId: `ORDER${Date.now()}`,
-          orderInfo: `Thanh toán đơn hàng cho ${name}`,
-          returnUrl: `${window.location.origin}/payment-result`,
-          notifyUrl: `${window.location.origin}/api/payment/momo-notify`
-        })
-      });
+              const res = await fetch('http://localhost:5000/api/payment/momo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: finalTotal,
+            orderId: `ORDER${Date.now()}`,
+            orderInfo: `Thanh toán đơn hàng cho ${name}`,
+            returnUrl: `${window.location.origin}/payment-result`,
+            notifyUrl: `${window.location.origin}/api/payment/momo-notify`,
+            customerNote,
+          })
+        });
       const data = await res.json();
       if (data.paymentUrl) {
         // Xóa checkoutItems khỏi sessionStorage trước khi chuyển hướng
@@ -355,7 +376,16 @@ export default function CheckoutPage() {
           user: userId,
           products: items.map(item => ({
             product: item._id,
-            quantity: item.quantity
+            quantity: item.quantity,
+            price: item.price,
+            name: item.name,
+            designName: item.designName,
+            description: item.description,
+            image: item.image,
+            previewImage: item.previewImage,
+            specifications: item.specifications,
+            size: item.size || item.specifications?.sizeName,
+            material: item.material || item.specifications?.material
           })),
           totalPrice: finalTotal,
           name,
@@ -364,7 +394,8 @@ export default function CheckoutPage() {
           paymentMethod: 'COD', // Đảm bảo đúng enum backend
           coupon: selectedCouponId, // Thêm coupon ID
           discountAmount: promoAmount, // Thêm số tiền giảm giá
-          shippingFee: shippingFee // Thêm phí ship
+          shippingFee: shippingFee, // Thêm phí ship
+          customerNote: customerNote // Thêm ghi chú khách hàng
         };
         const res = await fetch("http://localhost:5000/api/orders", {
           method: "POST",
@@ -436,6 +467,29 @@ export default function CheckoutPage() {
                 <Image src={item.image || "/placeholder.svg"} alt={item.name} width={64} height={64} className="rounded-md" />
                 <div className="flex-1">
                   <div className="font-semibold">{item.name}</div>
+                  {(item.size || item.material || item.specifications?.size || item.specifications?.material || item.description) && (
+                    <div className="text-sm text-gray-600 mt-1">
+                      {(() => {
+                        // Fallback từ description nếu thiếu size/material
+                        const descText = typeof item.description === 'string' ? item.description : '';
+                        const sizeFromDesc = /Kích thước\s*:\s*([^;]+)/i.exec(descText)?.[1]?.trim();
+                        const materialFromDesc = /Chất liệu\s*:\s*([^;]+)/i.exec(descText)?.[1]?.trim();
+
+                        let sizeRaw: any = item.size || item.specifications?.sizeName || item.specifications?.size || sizeFromDesc;
+                        // Nếu bắt trúng ObjectId, fallback về sizeFromDesc (nếu có)
+                        if (typeof sizeRaw === 'string' && /^[a-f\d]{24}$/i.test(sizeRaw)) {
+                          sizeRaw = sizeFromDesc || '';
+                        }
+                        // Map giá trị chuẩn
+                        const size = sizeRaw === 'small' ? 'Nhỏ' : sizeRaw === 'medium' ? 'Vừa' : sizeRaw === 'large' ? 'Lớn' : sizeRaw || '';
+                        const material = item.material || item.specifications?.material || materialFromDesc || '';
+                        const parts: string[] = [];
+                        if (size) parts.push(`Kích thước: ${size}`);
+                        if (material) parts.push(`Chất liệu: ${material}`);
+                        return parts.join(' · ');
+                      })()}
+                    </div>
+                  )}
                   <div className="text-sm text-gray-500">x{item.quantity}</div>
                 </div>
                 <div className="font-bold text-pink-600">{(item.price * item.quantity).toLocaleString('vi-VN')}₫</div>
@@ -601,6 +655,18 @@ export default function CheckoutPage() {
             <span className="text-pink-600">{finalTotal.toLocaleString('vi-VN')}₫</span>
           </div>
         </div>
+        {/* Ghi chú đơn hàng */}
+        <div>
+          <h3 className="font-semibold mb-4">Ghi chú đơn hàng (không bắt buộc)</h3>
+          <textarea
+            placeholder="Ghi chú về đơn hàng, yêu cầu đặc biệt, hoặc hướng dẫn giao hàng..."
+            value={customerNote}
+            onChange={e => setCustomerNote(e.target.value)}
+            className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            rows={3}
+          />
+        </div>
+
         <Button type="submit" className="w-full bg-pink-600 hover:bg-pink-700 text-lg" disabled={loading || items.length === 0}>
           {loading ? "Đang xử lý..." : `Xác nhận thanh toán`}
         </Button>

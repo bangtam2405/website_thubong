@@ -11,6 +11,7 @@ import { useCart } from "@/contexts/CartContext"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner";
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 //import { formatDateVN } from "@/lib/utils";
 
 const fetchUserCoupons = async (userId: string) => {
@@ -33,6 +34,11 @@ export default function CartPage() {
   const [userCoupons, setUserCoupons] = useState<any[]>([]);
   const [selectedCoupon, setSelectedCoupon] = useState<string>("");
   const [couponLoading, setCouponLoading] = useState(false);
+  
+  // Modal xác nhận xóa
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -74,6 +80,35 @@ export default function CartPage() {
   const total = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const discount = promoApplied ? promoAmount : 0;
   const finalTotal = total - discount
+
+  // Xử lý mở modal xác nhận xóa
+  const handleDeleteClick = (item: any) => {
+    setItemToDelete(item);
+    setDeleteModalOpen(true);
+  };
+
+  // Xử lý xác nhận xóa
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      removeFromCart(itemToDelete._id);
+      toast.success("Đã xóa sản phẩm khỏi giỏ hàng!");
+      setDeleteModalOpen(false);
+      setItemToDelete(null);
+    } catch (error) {
+      toast.error("Có lỗi xảy ra khi xóa sản phẩm!");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Đóng modal
+  const handleCloseDeleteModal = () => {
+    setDeleteModalOpen(false);
+    setItemToDelete(null);
+  };
 
   const handleCheckout = () => {
     if (selectedItems.length === 0) {
@@ -184,7 +219,7 @@ export default function CartPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => removeFromCart(item._id)}
+                          onClick={() => handleDeleteClick(item)}
                           className="text-red-500 hover:text-red-700 hover:bg-red-50"
                           aria-label="Xóa sản phẩm"
                         >
@@ -270,6 +305,15 @@ export default function CartPage() {
           </div>
         </div>
       )}
+      
+      {/* Modal xác nhận xóa sản phẩm */}
+      <DeleteConfirmModal
+        isOpen={deleteModalOpen}
+        onClose={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        productName={itemToDelete?.name || ""}
+        isLoading={isDeleting}
+      />
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import axios from "axios"
 import { Input } from "@/components/ui/input"
+import { ValidatedInput } from "@/components/ui/ValidatedInput"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
@@ -82,7 +83,14 @@ export default function EditProductPage() {
       <form onSubmit={handleSubmit} className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md space-y-6">
         <div>
           <Label htmlFor="name">Tên sản phẩm</Label>
-          <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="Tên sản phẩm" required />
+          <ValidatedInput 
+            id="name" 
+            value={name} 
+            onChange={e => setName(e.target.value)} 
+            placeholder="Tên sản phẩm" 
+            required 
+            errorMessage="Vui lòng nhập tên sản phẩm"
+          />
         </div>
         <div>
           <Label htmlFor="description">Mô tả</Label>

@@ -4,6 +4,7 @@ export type Product = {
   description: string
   price: number
   image: string
+  previewImage?: string
   type: "teddy" | "accessory" | "collection" | "new" | "custom"
   rating: number
   reviews: number
@@ -19,7 +20,16 @@ export type Product = {
     clothing?: string | null
     accessories?: string[]
     size?: string
+    sizeName?: string
     color?: string
+    material?: string
+    materialName?: string
+    giftBox?: {
+      id: string
+      name: string
+      price: number
+      image: string
+    } | null
   }
   createdAt: string
   updatedAt: string

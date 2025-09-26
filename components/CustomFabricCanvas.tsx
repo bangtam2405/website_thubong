@@ -31,6 +31,26 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
   const clipboardOriginalPartIdRef = useRef<string | null>(null);
   const clipboardOriginalObjectRef = useRef<any>(null);
 
+  // Hàm helper để áp dụng cấu hình transform controls cho tất cả objects
+  const applyTransformControlsToAllObjects = (canvas: any) => {
+    canvas.getObjects().forEach((obj: any) => {
+      if (obj.partType && obj.partType !== 'body') {
+        obj.setControlsVisibility({
+          mt: false, // Ẩn control giữa trên
+          mb: false, // Ẩn control giữa dưới  
+          ml: false, // Ẩn control giữa trái
+          mr: false, // Ẩn control giữa phải
+          mtr: true, // Giữ control xoay
+          tl: true,  // Giữ control góc trên trái
+          tr: true,  // Giữ control góc trên phải
+          bl: true,  // Giữ control góc dưới trái
+          br: true   // Giữ control góc dưới phải
+        });
+        obj.lockUniScaling = true;
+      }
+    });
+  };
+
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
     toJSON: () => fabricCanvasRef.current?.toJSON() || {},
@@ -63,22 +83,56 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
     addText: (text: string, options?: { left?: number, top?: number, fill?: string, fontSize?: number, fontFamily?: string }) => {
       const canvas = fabricCanvasRef.current;
       if (!canvas) return;
-      const textbox = new fabric.Textbox(text, {
+      
+      // Xóa tất cả text cũ trước khi thêm text mới
+      const objects = canvas.getObjects();
+      objects.forEach((obj: any) => {
+        if (obj.type === 'text' || obj.type === 'textbox') {
+          canvas.remove(obj);
+        }
+      });
+      
+      const textbox = new fabric.Text(text, {
         left: options?.left ?? canvas.width / 2,
         top: options?.top ?? canvas.height / 2,
         fill: options?.fill ?? '#000',
         fontSize: options?.fontSize ?? 32,
         fontFamily: options?.fontFamily ?? 'Arial',
-        editable: true,
         fontWeight: 'bold',
         borderColor: '#f472b6',
         cornerColor: '#f472b6',
         cornerSize: 8,
         transparentCorners: false,
         padding: 4,
-        lockUniScaling: false,
+        lockUniScaling: false, // Cho phép scaling theo cả hai chiều
+        lockScalingX: false,    // Cho phép scaling theo chiều ngang
+        lockScalingY: false,    // Cho phép scaling theo chiều dọc
+        lockRotation: false,    // Cho phép xoay
+        lockMovementX: false,   // Cho phép di chuyển theo chiều ngang
+        lockMovementY: false,   // Cho phép di chuyển theo chiều dọc
+        customId: Date.now().toString(), // Thêm ID duy nhất
       });
+      
       canvas.add(textbox);
+      
+      // Cấu hình transform controls sau khi đã add vào canvas
+      textbox.setControlsVisibility({
+        mt: true,  // Cho phép control giữa trên
+        mb: true,  // Cho phép control giữa dưới  
+        ml: true,  // Cho phép control giữa trái
+        mr: true,  // Cho phép control giữa phải
+        mtr: true, // Giữ control xoay
+        tl: true,  // Giữ control góc trên trái
+        tr: true,  // Giữ control góc trên phải
+        bl: true,  // Giữ control góc dưới trái
+        br: true   // Giữ control góc dưới phải
+      });
+      
+      // Đảm bảo text có thể scale tự do
+      textbox.lockUniScaling = false;
+      textbox.lockScalingX = false;
+      textbox.lockScalingY = false;
+      
       canvas.setActiveObject(textbox);
       canvas.renderAll();
     },
@@ -87,7 +141,7 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
       const canvas = fabricCanvasRef.current;
       if (!canvas) return;
       const active = canvas.getActiveObject();
-      if (active && active.type === 'textbox') {
+      if (active && (active.type === 'text' || active.type === 'textbox')) {
         if (props.text !== undefined) (active as any).text = props.text;
         if (props.fill !== undefined) (active as any).set('fill', props.fill);
         if (props.fontSize !== undefined) (active as any).set('fontSize', props.fontSize);
@@ -100,7 +154,7 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
       const canvas = fabricCanvasRef.current;
       if (!canvas) return;
       const active = canvas.getActiveObject();
-      if (active && active.type === 'textbox') {
+      if (active && active.type === 'text') {
         canvas.remove(active);
         canvas.discardActiveObject();
         canvas.renderAll();
@@ -173,6 +227,9 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
             });
             fabricCanvasRef.current.sendToBack(obj);
           }
+          // Áp dụng cấu hình transform controls cho tất cả objects sau khi load
+          applyTransformControlsToAllObjects(fabricCanvasRef.current);
+          
           fabricCanvasRef.current.renderAll()
           setHasLoadedFromJSON(true)
           setJustRestored(true)
@@ -189,6 +246,9 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
         height: 650,
         backgroundColor: "#fdf2f8"
       })
+      
+      // Áp dụng cấu hình transform controls cho tất cả objects hiện có
+      applyTransformControlsToAllObjects(fabricCanvasRef.current);
     }
     return () => {
       if (fabricCanvasRef.current) {
@@ -307,7 +367,7 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
 
     // Helper: add part với snap point nếu có
     const addPart = (id: string, type: 'body' | 'ears' | 'eyes' | 'clothing' | 'nose' | 'mouth' | 'accessory' | 'furColor', side?: string, accessoryIndex?: number) => {
-      console.log('addPart CALLED', { id, type });
+      console.log('addPart CALLED', { id, type, side, accessoryIndex });
       const url = getImageUrl(id)
       console.log('Add part', { id, type, url }); // debug
       if (!url) return
@@ -410,6 +470,22 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
             partId: id,
             accessoryIndex: accessoryIndex,
           })
+          
+          // Cấu hình transform controls chỉ cho phép kéo 4 góc và xoay
+          fabricImage.setControlsVisibility({
+            mt: false, // Ẩn control giữa trên
+            mb: false, // Ẩn control giữa dưới  
+            ml: false, // Ẩn control giữa trái
+            mr: false, // Ẩn control giữa phải
+            mtr: true, // Giữ control xoay
+            tl: true,  // Giữ control góc trên trái
+            tr: true,  // Giữ control góc trên phải
+            bl: true,  // Giữ control góc dưới trái
+            br: true   // Giữ control góc dưới phải
+          });
+          
+          // Khóa scaling theo một chiều để tránh méo
+          fabricImage.lockUniScaling = true;
           // Nếu đã có trạng thái cũ thì apply lại
           let state = partStatesRef.current[id];
           // Ưu tiên lấy vị trí cuối cùng của partType (ví dụ 'eyes') nếu có
@@ -435,7 +511,10 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
         fabricCanvas.renderAll()
         if (type === 'eyes') {
           const eyesObjs = fabricCanvasRef.current.getObjects().filter((obj: any) => obj.partType === 'eyes');
-          console.log('DEBUG số lượng object eyes trên canvas:', eyesObjs.length);
+          console.log('DEBUG số lượng object eyes trên canvas sau khi thêm:', eyesObjs.length);
+          eyesObjs.forEach((obj: any, index: number) => {
+            console.log(`DEBUG eyes object ${index}:`, { partId: obj.partId, left: obj.left, top: obj.top });
+          });
         }
       }
       img.onerror = (err) => {
@@ -485,9 +564,23 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
     }
     // 3. Eyes
     if (selectedOptions.eyes) {
-      // Luôn xóa mắt cũ trước khi thêm mắt mới để tránh bị dính 2 mắt
-      clearPartType('eyes');
-      addPart(selectedOptions.eyes, 'eyes');
+      console.log('[CustomFabricCanvas] Processing eyes:', selectedOptions.eyes);
+      // Kiểm tra xem mắt hiện tại đã đúng chưa
+      const existingEyes = fabricCanvas.getObjects().filter((obj: any) => obj.partType === 'eyes');
+      console.log('[CustomFabricCanvas] Existing eyes count:', existingEyes.length);
+      
+      // Chỉ thêm mắt mới nếu chưa có hoặc khác với mắt hiện tại
+      const shouldAddEyes = existingEyes.length === 0 || 
+                           existingEyes.length > 1 || 
+                           existingEyes[0].partId !== selectedOptions.eyes;
+      
+      if (shouldAddEyes) {
+        console.log('[CustomFabricCanvas] Adding new eyes, clearing old ones');
+        clearPartType('eyes');
+        addPart(selectedOptions.eyes, 'eyes');
+      } else {
+        console.log('[CustomFabricCanvas] Eyes already correct, skipping');
+      }
     }
     // 4. Nose
     if (selectedOptions.nose) {
@@ -603,6 +696,9 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
       }
     })
 
+    // Áp dụng cấu hình transform controls cho tất cả objects sau khi thêm mới
+    applyTransformControlsToAllObjects(fabricCanvas);
+    
     return () => {
       // fabricCanvas.off('object:moving', onMoving) // Đã comment vì tắt snap
       fabricCanvas.off('selection:created')
@@ -633,11 +729,29 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
         cornerSize: 8,
         transparentCorners: false,
         padding: 4,
-        lockUniScaling: false,
+        lockUniScaling: true, // Khóa scaling theo một chiều
       });
+      
+      // Cấu hình transform controls chỉ cho phép kéo 4 góc và xoay
+      textbox.setControlsVisibility({
+        mt: false, // Ẩn control giữa trên
+        mb: false, // Ẩn control giữa dưới  
+        ml: false, // Ẩn control giữa trái
+        mr: false, // Ẩn control giữa phải
+        mtr: true, // Giữ control xoay
+        tl: true,  // Giữ control góc trên trái
+        tr: true,  // Giữ control góc trên phải
+        bl: true,  // Giữ control góc dưới trái
+        br: true   // Giữ control góc dưới phải
+      });
+      
       textbox.customId = t.id;
       canvas.add(textbox);
     });
+    
+    // Áp dụng cấu hình transform controls cho tất cả objects sau khi thêm text
+    applyTransformControlsToAllObjects(canvas);
+    
     canvas.renderAll();
   }, [customTexts]);
 
@@ -700,6 +814,23 @@ const CustomFabricCanvas = forwardRef(function CustomFabricCanvas({ selectedOpti
               evented: true,
               selectable: true,
             });
+            
+            // Cấu hình transform controls cho object được clone
+            if (clonedObj.partType !== 'body') {
+              clonedObj.setControlsVisibility({
+                mt: false, // Ẩn control giữa trên
+                mb: false, // Ẩn control giữa dưới  
+                ml: false, // Ẩn control giữa trái
+                mr: false, // Ẩn control giữa phải
+                mtr: true, // Giữ control xoay
+                tl: true,  // Giữ control góc trên trái
+                tr: true,  // Giữ control góc trên phải
+                bl: true,  // Giữ control góc dưới trái
+                br: true   // Giữ control góc dưới phải
+              });
+              clonedObj.lockUniScaling = true;
+            }
+            
             if (clonedObj.partId) {
               clonedObj.partId = clonedObj.partId + '_copy_' + Date.now();
             }

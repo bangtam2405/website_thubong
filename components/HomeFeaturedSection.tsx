@@ -36,7 +36,11 @@ export default function HomeFeaturedSection({ featuredProducts }: { featuredProd
                 <h3 className="text-xl font-bold text-gray-900 mt-4">{product.name}</h3>
                 <p className="text-gray-500 text-xs mt-1">🛒 Đã bán: {product.sold || 0} lượt</p>
                 <p className="text-pink-500 font-semibold mt-2">{product.price?.toLocaleString()}₫</p>
-                <Link href={`/product/${product._id}`}>
+                <Link href={
+                  product.type === 'design' || product.type === 'custom' || product.isCustom
+                    ? `/customize?templateId=${product._id}`
+                    : `/product/${product._id}`
+                }>
                   <Button size="sm" className="mt-4 bg-pink-500 hover:bg-pink-600">Xem Chi Tiết</Button>
                 </Link>
               </motion.div>

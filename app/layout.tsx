@@ -6,6 +6,7 @@ import Providers from "./providers";
 import AppLayoutClient from "@/components/AppLayoutClient";
 import ClientOnly from "@/components/ClientOnly";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import '@fortawesome/fontawesome-svg-core/styles.css';
 
 const inter = Inter({ subsets: ["latin"] });
 const pacifico = Pacifico({ subsets: ['latin'], weight: '400', display: 'swap' });

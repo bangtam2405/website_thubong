@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbo",
+    "dev:webpack": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "clean": "if exist .next rmdir /s /q .next && if exist node_modules rmdir /s /q node_modules && npm install"
   },
   "dependencies": {
     "@date-io/date-fns": "^3.2.1",

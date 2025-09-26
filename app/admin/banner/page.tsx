@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import ImageUpload from "@/components/ImageUpload"
 import { Switch } from "@/components/ui/switch"
 import Loader from "@/components/ui/Loader"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 export default function AdminBannerPage() {
   const [banners, setBanners] = useState<any[]>([])
@@ -15,6 +16,8 @@ export default function AdminBannerPage() {
   const [newBanner, setNewBanner] = useState({ url: "", caption: "", link: "", order: 0, isActive: true })
   const [uploading, setUploading] = useState(false)
   const [isClient, setIsClient] = useState(false);
+  const [deleteBannerId, setDeleteBannerId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const fetchBanners = async () => {
     setLoading(true)
@@ -52,10 +55,16 @@ export default function AdminBannerPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa banner này?")) return
+    setDeleteBannerId(id);
+    setShowDeleteConfirm(true);
+  }
+
+  const confirmDeleteBanner = async () => {
+    if (!deleteBannerId) return;
+    
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
-      const res = await fetch(`http://localhost:5000/api/banner/${id}`, {
+      const res = await fetch(`http://localhost:5000/api/banner/${deleteBannerId}`, {
         method: "DELETE",
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {})
@@ -66,6 +75,9 @@ export default function AdminBannerPage() {
       fetchBanners()
     } catch {
       toast.error("Lỗi khi xóa banner!")
+    } finally {
+      setShowDeleteConfirm(false);
+      setDeleteBannerId(null);
     }
   }
 
@@ -185,6 +197,18 @@ export default function AdminBannerPage() {
           )}
         </CardContent>
       </Card>
+      
+      {/* Modal xác nhận xóa banner */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title="Xóa banner"
+        description="Bạn có chắc chắn muốn xóa banner này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        onConfirm={confirmDeleteBanner}
+        variant="destructive"
+      />
     </div>
   )
 } 
