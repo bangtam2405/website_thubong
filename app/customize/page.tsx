@@ -13,21 +13,10 @@ import { Download, Heart, Save, ShoppingCart, Undo, Redo, Trash2, Type, Copy } f
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { toast } from "sonner"
 import axios from "axios"
-import dynamic from "next/dynamic"
 import type { AxiosError } from "axios"
 
-// Dynamic import CustomFabricCanvas - chỉ load ở client-side để tránh lỗi canvas
-const CustomFabricCanvas = dynamic(
-  () => import("@/components/CustomFabricCanvas"),
-  { 
-    ssr: false, // Disable server-side rendering
-    loading: () => (
-      <div className="w-full h-full flex items-center justify-center bg-pink-50 rounded-lg">
-        <p className="text-gray-500">Đang tải canvas...</p>
-      </div>
-    )
-  }
-)
+// Import wrapper component để đảm bảo fabric chỉ load ở client-side
+import CustomFabricCanvas from "@/components/CustomFabricCanvas.wrapper"
 import { useSearchParams } from "next/navigation"
 import { useCart } from "@/contexts/CartContext"
 import { AddToCartButton } from "@/components/AddToCartButton"

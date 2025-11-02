@@ -37,9 +37,17 @@ const nextConfig = {
   // Exclude canvas and fabric from server components (Next.js 13+)
   serverExternalPackages: ['canvas', 'fabric'],
   
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, webpack }) => {
     // Exclude canvas and fabric from server-side bundle (for Vercel deployment)
     if (isServer) {
+      // Ignore canvas native bindings trong server-side build
+      config.plugins.push(
+        new webpack.IgnorePlugin({
+          resourceRegExp: /^canvas$/,
+          contextRegExp: /node_modules[\/\\]canvas/,
+        })
+      );
+      
       config.externals = config.externals || [];
       config.externals.push(
         {
@@ -52,6 +60,14 @@ const nextConfig = {
           jsdom: 'commonjs jsdom',
         }
       );
+      
+      // Mock fabric and canvas for server-side
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        'fabric': require.resolve('./lib/fabric-stub.js'),
+        'canvas': require.resolve('./lib/canvas-stub.js'),
+        'jsdom': false,
+      };
     } else {
       // For client-side, replace canvas with a stub
       config.resolve.fallback = {
