@@ -46,7 +46,7 @@ export default function Header() {
     }
     setLoadingSuggest(true);
     const timeout = setTimeout(() => {
-      fetch(`http://localhost:5000/api/products?search=${encodeURIComponent(search)}`)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/products?search=${encodeURIComponent(search)}`)
         .then(res => res.json())
         .then(data => {
           // Lọc type
@@ -76,7 +76,7 @@ export default function Header() {
     const token = localStorage.getItem("token");
     const userId = localStorage.getItem("userId");
     if (token && userId) {
-      fetch("http://localhost:5000/api/auth/me", {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then(res => res.json())

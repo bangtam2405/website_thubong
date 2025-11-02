@@ -25,7 +25,7 @@ const GiftBoxModal: React.FC<GiftBoxModalProps> = ({ open, onClose, onSelect }) 
   useEffect(() => {
     if (open) {
       setLoading(true);
-      fetch('http://localhost:5000/api/giftboxes')
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/giftboxes`)
         .then(res => res.json())
         .then(data => setGiftBoxes(data))
         .finally(() => setLoading(false));

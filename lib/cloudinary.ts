@@ -1,49 +1,55 @@
 import { v2 as cloudinary } from 'cloudinary';
 
-// Debug: Log tất cả biến môi trường liên quan đến Cloudinary
-console.log('Environment variables check:');
-console.log('CLOUDINARY_URL:', process.env.CLOUDINARY_URL ? 'EXISTS' : 'NOT FOUND');
-console.log('CLOUDINARY_CLOUD_NAME:', process.env.CLOUDINARY_CLOUD_NAME || 'NOT FOUND');
-console.log('CLOUDINARY_API_KEY:', process.env.CLOUDINARY_API_KEY ? 'EXISTS' : 'NOT FOUND');
-console.log('CLOUDINARY_API_SECRET:', process.env.CLOUDINARY_API_SECRET ? 'EXISTS' : 'NOT FOUND');
+// Lazy initialization - chỉ config khi cần (tránh chạy trong build time)
+let isConfigured = false;
 
-// Cấu hình Cloudinary sử dụng URL connection string
-if (process.env.CLOUDINARY_URL) {
-  console.log('Using CLOUDINARY_URL configuration');
-  cloudinary.config({
-    url: process.env.CLOUDINARY_URL
-  });
-} else if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
-  console.log('Using individual Cloudinary configuration');
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-  });
-} else {
-  console.error('❌ ERROR: No Cloudinary configuration found!');
-  console.error('Please set either CLOUDINARY_URL or all three: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET');
-  
-  // Fallback với giá trị mặc định (sẽ gây lỗi nhưng để debug)
-  cloudinary.config({
-    cloud_name: 'dalfo6cjq',
-    api_key: '791655776287295',
-    api_secret: 'qgaCkC1d5k7HlUyGeA3Cirn6a3k',
-  });
+function configureCloudinary() {
+  if (isConfigured) return;
+
+  // Chỉ config khi có environment variables (runtime, không phải build time)
+  if (typeof window === 'undefined') { // Server-side only
+    if (process.env.CLOUDINARY_URL) {
+      cloudinary.config({
+        url: process.env.CLOUDINARY_URL
+      });
+      isConfigured = true;
+    } else if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+      cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+      });
+      isConfigured = true;
+    } else {
+      // Chỉ log error khi thực sự cần dùng (runtime), không phải build time
+      // Sẽ được log khi hàm upload được gọi
+    }
+  }
 }
 
-// Log cấu hình (ẩn secret)
-console.log('Cloudinary config:', {
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'from URL or fallback',
-  api_key: process.env.CLOUDINARY_API_KEY ? '***' + process.env.CLOUDINARY_API_KEY.slice(-4) : 'from URL or fallback',
-  has_secret: !!(process.env.CLOUDINARY_API_SECRET || process.env.CLOUDINARY_URL)
-});
+// Auto-configure on import (chỉ chạy ở server-side runtime)
+if (typeof window === 'undefined') {
+  configureCloudinary();
+}
 
 export default cloudinary;
 
 // Hàm upload hình ảnh
 export const uploadImage = async (file: Buffer, folder: string = 'website_thubong'): Promise<string> => {
   try {
+    // Đảm bảo Cloudinary đã được config trước khi sử dụng
+    configureCloudinary();
+    
+    // Kiểm tra config
+    if (!isConfigured && typeof window === 'undefined') {
+      const hasConfig = process.env.CLOUDINARY_URL || 
+        (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+      
+      if (!hasConfig) {
+        throw new Error('Cloudinary configuration not found. Please set CLOUDINARY_URL or all three: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET');
+      }
+    }
+    
     console.log('Starting Cloudinary upload...');
     console.log('Folder:', folder);
     console.log('Buffer size:', file.length);
@@ -87,6 +93,7 @@ export const uploadImage = async (file: Buffer, folder: string = 'website_thubon
 // Hàm xóa hình ảnh
 export const deleteImage = async (publicId: string): Promise<void> => {
   try {
+    configureCloudinary();
     await cloudinary.uploader.destroy(publicId);
   } catch (error) {
     console.error('Error deleting from Cloudinary:', error);
@@ -110,6 +117,18 @@ export const getPublicIdFromUrl = (url: string): string | null => {
 // Hàm upload video mp4
 export const uploadVideo = async (file: Buffer, folder: string = 'website_thubong'): Promise<string> => {
   try {
+    configureCloudinary();
+    
+    // Kiểm tra config
+    if (!isConfigured && typeof window === 'undefined') {
+      const hasConfig = process.env.CLOUDINARY_URL || 
+        (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+      
+      if (!hasConfig) {
+        throw new Error('Cloudinary configuration not found. Please set CLOUDINARY_URL or all three: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET');
+      }
+    }
+    
     console.log('Starting Cloudinary video upload...');
     const result = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(

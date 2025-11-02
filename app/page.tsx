@@ -11,29 +11,54 @@ import HomeFeaturedSection from "@/components/HomeFeaturedSection";
 import HomeFeaturesSection from "@/components/HomeFeaturesSection";
 import ReviewSection from "@/components/ReviewSection";
 
+import { getApiUrl } from '@/lib/api';
+
+// Lấy API URL từ environment variable
+const API_URL = getApiUrl();
+
 // Hàm fetch sản phẩm nổi bật từ backend
 async function getFeaturedProducts() {
-  // Đổi URL này cho đúng backend của bạn nếu cần
-  const res = await fetch("http://localhost:5000/api/products?featured=true", { cache: "no-store" });
-  if (!res.ok) return [];
-  return res.json();
+  try {
+    const res = await fetch(`${API_URL}/api/products?featured=true`, { 
+      cache: "no-store"
+    });
+    if (!res.ok) return [];
+    return res.json();
+  } catch (error) {
+    console.error('Error fetching featured products:', error);
+    return [];
+  }
 }
 
 // Hàm fetch ngẫu nhiên mẫu thiết kế
 async function getRandomDesigns(count: number) {
-  const res = await fetch("http://localhost:5000/api/designs?userId=admin", { cache: "no-store" });
-  if (!res.ok) return [];
-  const designs = await res.json();
-  return designs.sort(() => 0.5 - Math.random()).slice(0, count);
+  try {
+    const res = await fetch(`${API_URL}/api/designs?userId=admin`, { 
+      cache: "no-store"
+    });
+    if (!res.ok) return [];
+    const designs = await res.json();
+    return designs.sort(() => 0.5 - Math.random()).slice(0, count);
+  } catch (error) {
+    console.error('Error fetching designs:', error);
+    return [];
+  }
 }
 
 // Hàm fetch ngẫu nhiên sản phẩm theo loại
 async function getRandomProductsByType(type: string, count: number) {
-  const res = await fetch(`http://localhost:5000/api/products?type=${type}`, { cache: "no-store" });
-  if (!res.ok) return [];
-  const products = await res.json();
-  // Lấy ngẫu nhiên count sản phẩm
-  return products.sort(() => 0.5 - Math.random()).slice(0, count);
+  try {
+    const res = await fetch(`${API_URL}/api/products?type=${type}`, { 
+      cache: "no-store"
+    });
+    if (!res.ok) return [];
+    const products = await res.json();
+    // Lấy ngẫu nhiên count sản phẩm
+    return products.sort(() => 0.5 - Math.random()).slice(0, count);
+  } catch (error) {
+    console.error('Error fetching products by type:', error);
+    return [];
+  }
 }
 
 

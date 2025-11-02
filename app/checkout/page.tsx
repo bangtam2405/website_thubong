@@ -47,8 +47,10 @@ function SuccessModal({ onContinue, orderId }: { onContinue: () => void; orderId
   )
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
 const fetchUserCoupons = async (userId: string) => {
-  const res = await fetch(`http://localhost:5000/api/admin/coupons/user/${userId}`);
+  const res = await fetch(`${API_URL}/api/admin/coupons/user/${userId}`);
   if (!res.ok) throw new Error('Lỗi khi lấy mã giảm giá');
   return res.json();
 };
@@ -223,7 +225,7 @@ export default function CheckoutPage() {
     const codeToApply = code || promoCode;
     if (!codeToApply) return;
     try {
-      const res = await fetch("http://localhost:5000/api/coupons/apply", {
+      const res = await fetch(`${API_URL}/api/coupons/apply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: codeToApply, totalAmount: total })
@@ -301,7 +303,7 @@ export default function CheckoutPage() {
         return;
       }
 
-              const res = await fetch('http://localhost:5000/api/payment/vnpay', {
+              const res = await fetch(`${API_URL}/api/payment/vnpay`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -340,7 +342,7 @@ export default function CheckoutPage() {
         setLoading(false)
       }
     } else if (payment === 'momo') {
-              const res = await fetch('http://localhost:5000/api/payment/momo', {
+              const res = await fetch(`${API_URL}/api/payment/momo`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -397,7 +399,7 @@ export default function CheckoutPage() {
           shippingFee: shippingFee, // Thêm phí ship
           customerNote: customerNote // Thêm ghi chú khách hàng
         };
-        const res = await fetch("http://localhost:5000/api/orders", {
+        const res = await fetch(`${API_URL}/api/orders`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(orderData)

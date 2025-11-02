@@ -14,7 +14,7 @@ export default function ReviewSection() {
   }
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/reviews?rating=5&limit=10")
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reviews?rating=5&limit=10`)
       .then(res => res.json())
       .then(data => setTopReviews(Array.isArray(data) ? data : []))
       .catch(() => setTopReviews([]));
