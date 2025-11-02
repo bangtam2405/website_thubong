@@ -1,3 +1,9 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
@@ -64,8 +70,8 @@ const nextConfig = {
       // Mock fabric and canvas for server-side
       config.resolve.alias = {
         ...config.resolve.alias,
-        'fabric': require.resolve('./lib/fabric-stub.js'),
-        'canvas': require.resolve('./lib/canvas-stub.js'),
+        'fabric': path.resolve(__dirname, 'lib/fabric-stub.js'),
+        'canvas': path.resolve(__dirname, 'lib/canvas-stub.js'),
         'jsdom': false,
       };
     } else {
