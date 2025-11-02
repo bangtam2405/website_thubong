@@ -10,16 +10,27 @@ import HomeHeroSection from "@/components/HomeHeroSection";
 import HomeFeaturedSection from "@/components/HomeFeaturedSection";
 import HomeFeaturesSection from "@/components/HomeFeaturesSection";
 import ReviewSection from "@/components/ReviewSection";
+// Force dynamic rendering cho trang chủ - QUAN TRỌNG để tránh lỗi static rendering
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
-import { getApiUrl } from '@/lib/api';
-
-// Lấy API URL từ environment variable
-const API_URL = getApiUrl();
+// Hàm lấy API URL - luôn ưu tiên env var, fallback về production backend
+function getBackendUrl() {
+  // Trong server-side rendering, NEXT_PUBLIC_* vars được inject vào build
+  // Nhưng cần fallback về production URL thay vì localhost
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (apiUrl) {
+    return apiUrl;
+  }
+  // Fallback: nếu không có env var, dùng production backend (không phải localhost)
+  return 'https://backend-webthubong.onrender.com';
+}
 
 // Hàm fetch sản phẩm nổi bật từ backend
 async function getFeaturedProducts() {
   try {
-    const res = await fetch(`${API_URL}/api/products?featured=true`, { 
+    const apiUrl = getBackendUrl();
+    const res = await fetch(`${apiUrl}/api/products?featured=true`, { 
       cache: "no-store"
     });
     if (!res.ok) return [];
@@ -33,7 +44,8 @@ async function getFeaturedProducts() {
 // Hàm fetch ngẫu nhiên mẫu thiết kế
 async function getRandomDesigns(count: number) {
   try {
-    const res = await fetch(`${API_URL}/api/designs?userId=admin`, { 
+    const apiUrl = getBackendUrl();
+    const res = await fetch(`${apiUrl}/api/designs?userId=admin`, { 
       cache: "no-store"
     });
     if (!res.ok) return [];
@@ -48,7 +60,8 @@ async function getRandomDesigns(count: number) {
 // Hàm fetch ngẫu nhiên sản phẩm theo loại
 async function getRandomProductsByType(type: string, count: number) {
   try {
-    const res = await fetch(`${API_URL}/api/products?type=${type}`, { 
+    const apiUrl = getBackendUrl();
+    const res = await fetch(`${apiUrl}/api/products?type=${type}`, { 
       cache: "no-store"
     });
     if (!res.ok) return [];
