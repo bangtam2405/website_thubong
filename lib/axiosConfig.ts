@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const instance = axios.create({
-  baseURL: 'http://localhost:5000',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
   withCredentials: true,
 });
 
@@ -54,7 +54,8 @@ instance.interceptors.response.use(
         return Promise.reject(error);
       }
       try {
-        const res = await axios.post('http://localhost:5000/api/auth/refresh-token', { refreshToken });
+        const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const res = await axios.post(`${backendUrl}/api/auth/refresh-token`, { refreshToken });
         const newAccessToken = res.data.accessToken;
         localStorage.setItem('accessToken', newAccessToken);
         localStorage.setItem('token', newAccessToken);
