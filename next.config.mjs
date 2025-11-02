@@ -34,6 +34,25 @@ const nextConfig = {
       },
     ],
   },
+  // Exclude canvas from server components (Next.js 13+)
+  serverExternalPackages: ['canvas'],
+  
+  webpack: (config, { isServer }) => {
+    // Exclude canvas from server-side bundle (for Vercel deployment)
+    if (isServer) {
+      config.externals = config.externals || [];
+      config.externals.push({
+        canvas: 'commonjs canvas',
+      });
+    } else {
+      // For client-side, replace canvas with a stub
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        canvas: false,
+      };
+    }
+    return config;
+  },
   experimental: {
     optimizePackageImports: ['@radix-ui/react-icons', 'lucide-react'],
     turbo: {
