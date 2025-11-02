@@ -34,16 +34,24 @@ const nextConfig = {
       },
     ],
   },
-  // Exclude canvas from server components (Next.js 13+)
-  serverExternalPackages: ['canvas'],
+  // Exclude canvas and fabric from server components (Next.js 13+)
+  serverExternalPackages: ['canvas', 'fabric'],
   
   webpack: (config, { isServer }) => {
-    // Exclude canvas from server-side bundle (for Vercel deployment)
+    // Exclude canvas and fabric from server-side bundle (for Vercel deployment)
     if (isServer) {
       config.externals = config.externals || [];
-      config.externals.push({
-        canvas: 'commonjs canvas',
-      });
+      config.externals.push(
+        {
+          canvas: 'commonjs canvas',
+        },
+        {
+          fabric: 'commonjs fabric',
+        },
+        {
+          jsdom: 'commonjs jsdom',
+        }
+      );
     } else {
       // For client-side, replace canvas with a stub
       config.resolve.fallback = {
